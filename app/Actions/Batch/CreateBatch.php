@@ -66,7 +66,13 @@ class CreateBatch
                 ? (int) $data['production_type_id']
                 : ProductionType::resolveOrCreate($data['type'], $data['species_id'] ?? null)->id;
 
-            $batch = Batch::create([
+            $batch = Batch::create(array_filter([
+                // Identifiant du terrain (synchronisation idempotente) : le
+                // rejouer retrouve CE lot au lieu d'en créer un second.
+                'uuid'        => $data['uuid'] ?? null,
+                'is_synced'   => $data['is_synced'] ?? null,
+                'last_sync_at' => $data['last_sync_at'] ?? null,
+            ], fn ($v) => $v !== null) + [
                 // Identité
                 'code'        => $data['code'],
                 'model_name'  => ($data['model_name'] ?? null) ?: 'Non spécifié',

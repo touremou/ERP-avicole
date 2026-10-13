@@ -39,7 +39,9 @@ beforeEach(function () {
     }
 
     $this->building = Building::create([
-        'farm_id' => $this->farm->id, 'name' => 'P1', 'type' => 'Poulailler',
+        // Un type de bâtiment RÉEL : « Poulailler » n'en est pas un, et le
+        // terrain applique désormais la règle de compatibilité du web.
+        'farm_id' => $this->farm->id, 'name' => 'P1', 'type' => 'chair',
         'status' => Building::STATUS_VIDE, 'capacity' => 500,
     ]);
 
@@ -98,14 +100,16 @@ test('une arrivée déclarée au terrain crée le lot au serveur', function () {
 
     $batch = Batch::withoutGlobalScopes()->where('code', 'CHA-260811')->first();
 
+    // Même convention que le web (CreateBatch, désormais emprunté par le
+    // terrain) : l'effectif initial est le VIVANT reçu ; les morts du transport
+    // sont comptés à part, dans le taux de mortalité d'arrivage.
     expect($batch)->not->toBeNull()
-        ->and($batch->initial_quantity)->toBe(300)
-        // L'effectif VIVANT : les morts du transport sont déduits d'emblée.
+        ->and($batch->initial_quantity)->toBe(295)
         ->and($batch->current_quantity)->toBe(295)
         ->and($batch->qty_dead)->toBe(5)
+        ->and((float) $batch->arrival_mortality_rate)->toBe(1.67)
         ->and((float) $batch->buy_price_per_unit)->toBe(5000.0)
-        // Le coût d'acquisition suit, sans quoi le coût de revient partirait faux.
-        ->and((float) $batch->total_acquisition_cost)->toBe(300 * 5000.0);
+        ->and((float) $batch->total_acquisition_cost)->toBe(295 * 5000.0);
 });
 
 test('le rejeu de la même arrivée ne crée pas un second lot', function () {

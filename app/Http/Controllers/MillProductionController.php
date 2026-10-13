@@ -52,31 +52,6 @@ class MillProductionController extends Controller
     /**
      * Planification d'un Ordre de Production.
      */
-    /*
-    public function store(StoreMillProductionRequest $request): RedirectResponse
-    {
-        $totalWeight = UnitConverter::sacksToKg((float) $request->nb_bags);
-
-        $production = DB::transaction(function () use ($request, $totalWeight) {
-            $prod = MillProduction::create([
-                'batch_number'      => DocumentNumberingService::generate('mill_production'),
-                'formula_id'        => $request->formula_id,
-                'machine_id'        => $request->machine_ids[0],
-                'quantity_produced' => $totalWeight,
-                'supervisor_id'     => $request->supervisor_id,
-                'operator_id'       => auth()->id(),
-                'status'            => 'Planifié',
-            ]);
-
-            $prod->machines()->attach($request->machine_ids);
-
-            return $prod;
-        });
-
-        return redirect()->route('production.index')
-            ->with('success', "OP {$production->batch_number} : {$totalWeight} kg planifiés.");
-    }
-    */
     public function store(StoreMillProductionRequest $request): RedirectResponse
     {
         // Occupation machine : une machine ne traite qu'un OP à la fois. Un OP
@@ -102,16 +77,16 @@ class MillProductionController extends Controller
             $prod = MillProduction::create([
                 'batch_number'      => DocumentNumberingService::generate('mill_production'),
                 'formula_id'        => $request->formula_id,
-                // ON A SUPPRIMÉ 'machine_id' ICI
+                // Machine principale : la première choisie — comme la
+                // synchronisation terrain. L'usure, elle, se compte sur le pivot.
+                'machine_id'        => $request->machine_ids[0] ?? null,
                 'quantity_produced' => $totalWeight,
                 'supervisor_id'     => $request->supervisor_id,
                 'operator_id'       => auth()->id(),
                 'status'            => 'Planifié',
             ]);
 
-            // On attache toutes les machines uniquement via la table pivot
-            // Remplacer : $prod->machines()->attach($request->machine_ids);
-            // Par ceci :
+            // Toutes les machines, avec leur capacité FIGÉE au lancement.
             $machinesData = [];
             foreach ($request->machine_ids as $mId) {
                 $machine = MillMachine::find($mId);

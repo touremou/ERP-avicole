@@ -172,7 +172,10 @@ test('planifier un OP sur une machine disponible réussit', function () {
     ]);
 
     $response->assertSessionHasNoErrors();
-    expect(MillProduction::where('status', 'Planifié')->count())->toBe(1);
+    expect(MillProduction::where('status', 'Planifié')->count())->toBe(1)
+        // Machine principale renseignée, comme par la synchronisation terrain
+        // (le web l'avait retirée : deux portes, deux OP différents).
+        ->and(MillProduction::where('status', 'Planifié')->value('machine_id'))->toBe($machine->id);
 });
 
 test('un OP clôturé (Terminé) libère la machine pour un nouvel ordre', function () {

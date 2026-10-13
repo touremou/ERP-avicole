@@ -631,6 +631,45 @@ class SyncService
                 ]);
             }
 
+            /*
+             * ─── UNE FICHE PAR LOT ET PAR JOUR — COMME AU BUREAU ───
+             *
+             * La table porte une contrainte unique (lot, jour), et le bureau
+             * met à jour la fiche du jour. Le terrain en CRÉAIT une à chaque
+             * traite : la traite du soir après celle du matin (ou une traite
+             * saisie au bureau puis au terrain) butait sur la contrainte —
+             * « erreur interne », rejouée sans fin, lait jamais compté.
+             *
+             * On fusionne : les traites ENVOYÉES remplacent celles du jour, les
+             * autres restent ; le magasin reçoit la DIFFÉRENCE. Un rejeu
+             * renvoie les mêmes valeurs : différence nulle, idempotent.
+             */
+            $duJour = \App\Models\MilkProduction::where('batch_id', $data['batch_id'])
+                ->whereDate('production_date', $data['production_date'])
+                ->lockForUpdate()->first();
+
+            if ($duJour) {
+                $avant = (float) $duJour->total_liters;
+                $duJour->update(array_filter([
+                    'morning_liters'  => $data['morning_liters'] ?? null,
+                    'evening_liters'  => $data['evening_liters'] ?? null,
+                    'unit_price'      => $data['unit_price'] ?? null,
+                    'milking_females' => $data['milking_females'] ?? null,
+                    'notes'           => $data['notes'] ?? null,
+                ], fn ($v) => $v !== null) + ['recorded_by' => Auth::id()]);
+
+                $ecart = (float) $duJour->total_liters - $avant;
+                if (abs($ecart) > 0.0001) {
+                    app(\App\Actions\Milk\SyncMilkStock::class)->execute(
+                        $ecart, $batch->code, isset($data['unit_price']) ? (float) $data['unit_price'] : null,
+                    );
+                }
+
+                Log::info("Sync: traite fusionnée à la fiche du jour, lot #{$duJour->batch_id} — {$duJour->total_liters} L.");
+
+                return ['status' => 'success', 'server_id' => $duJour->id];
+            }
+
             $milk = \App\Models\MilkProduction::create($data + [
                 'morning_liters' => $data['morning_liters'] ?? 0,
                 'evening_liters' => $data['evening_liters'] ?? 0,
@@ -1291,7 +1330,11 @@ class SyncService
     {
         $v = Validator::make($payload, [
             'uuid'                   => 'required|uuid',
-            'code'                   => 'required|string|max:50',
+            // Unique comme au web — sauf le lot lui-même (même uuid) : un code
+            // en double butait sur l'index unique, l'erreur était « interne »
+            // et le terrain retentait indéfiniment.
+            'code'                   => ['required', 'string', 'max:50',
+                \Illuminate\Validation\Rule::unique('batches', 'code')->ignore($payload['uuid'] ?? null, 'uuid')],
             'type'                   => 'required|string',
             // Le TYPE DE PRODUCTION exact (et donc l'espèce). Le slug « type »
             // seul était ambigu (« chair » : poulet, dinde, caille…) et
@@ -1303,7 +1346,8 @@ class SyncService
             'initial_quantity'       => 'required|integer|min:1',
             'current_quantity'       => 'required|integer|min:0',
             'status'                 => 'nullable|string|in:Actif,Terminé',
-            'arrival_date'           => 'required|date',
+            // Pas d'arrivée future — la règle du web (StoreBatchRequest).
+            'arrival_date'           => 'required|date|before_or_equal:today',
             // L'âge se compte depuis la naissance, pas depuis la réception : le
             // terrain met en lot des sujets qui peuvent avoir n'importe quel âge.
             'birth_date'             => 'nullable|date|before_or_equal:arrival_date',
@@ -1335,6 +1379,15 @@ class SyncService
         $validated['production_type_id'] = $productionType->id;
         $validated['species_id'] = $productionType->species_id;
 
+        // Bâtiment compatible avec l'espèce et le type — la règle du web : le
+        // terrain pouvait loger des moutons dans un poulailler.
+        $batiment = \App\Models\Building::withoutGlobalScopes()->find($validated['building_id']);
+        if ($batiment && ! \App\Models\Species::buildingIsCompatible($batiment, $productionType->species, $productionType->slug)) {
+            return $this->invalid(['building_id' => [
+                "Incompatibilité : type de lot '{$productionType->slug}', bâtiment de type '{$batiment->type}'.",
+            ]]);
+        }
+
         $serverBatch = Batch::withoutGlobalScopes()->where('uuid', $validated['uuid'])->first();
 
         // Permission selon la nature réelle de l'opération (module Élevage).
@@ -1355,6 +1408,38 @@ class SyncService
         }
 
         $price = (float) ($validated['buy_price_per_unit'] ?? 0);
+
+        // CRÉATION : la même action que le web. Le terrain créait le lot à part
+        // — sans contrôle de capacité (sous verrou), sans passer le bâtiment
+        // « Occupé » (il restait offert à une seconde bande), sans les valeurs
+        // par défaut. Un refus métier (capacité) sort en « À corriger ».
+        if (! $serverBatch) {
+            app(\App\Actions\Batch\CreateBatch::class)->execute([
+                'uuid'               => $validated['uuid'],
+                'code'               => $validated['code'],
+                'type'               => $productionType->slug,
+                'species_id'         => $validated['species_id'],
+                'production_type_id' => $validated['production_type_id'],
+                'building_id'        => $validated['building_id'],
+                'employee_id'        => $validated['employee_id'] ?? null,
+                'provider_id'        => $validated['provider_id'] ?? null,
+                // Convention du WEB : l'effectif initial est le VIVANT reçu, les
+                // morts du transport sont comptés à part (taux de mortalité
+                // d'arrivage). Le terrain envoie le livré (vivants + morts) en
+                // initial : la même bande avait deux effectifs selon la porte.
+                'qty_alive'          => $validated['current_quantity'],
+                'qty_dead'           => $validated['qty_dead'] ?? max(0, $validated['initial_quantity'] - $validated['current_quantity']),
+                'buy_price_per_unit' => $price,
+                'arrival_date'       => $validated['arrival_date'],
+                'birth_date'         => $validated['birth_date'] ?? null,
+                'is_synced'          => true,
+                'last_sync_at'       => now(),
+            ]);
+
+            Log::info("Sync: lot créé (uuid: {$validated['uuid']}, code: {$validated['code']}).");
+
+            return ['status' => 'success'];
+        }
 
         DB::transaction(function () use ($validated, $price) {
             Batch::withoutGlobalScopes()->updateOrCreate(
@@ -2314,12 +2399,16 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'         => 'required|uuid',
-            'zone'         => 'required|string|max:100',
+            // Les zones du PLAN de nettoyage, comme au web. Une zone libre
+            // (« salle d'abattage ») n'était jamais reconnue comme faite :
+            // l'alerte « zone non nettoyée » ne s'éteignait pas.
+            'zone'         => 'required|in:' . implode(',', array_keys(\App\Models\CleaningLog::ZONES)),
             'product_used' => 'required|string|max:100',
             'dosage'       => 'nullable|string|max:50',
             'notes'        => 'nullable|string|max:1000',
             'photo_path'   => 'nullable|string|max:255',
-            'done_at'      => 'required|date',
+            // Pas dans le futur — à la dérive d'horloge du téléphone près.
+            'done_at'      => 'required|date|before_or_equal:' . self::CLOCK_SKEW_TOLERANCE,
         ]);
 
         if ($v->fails()) {
@@ -2366,7 +2455,8 @@ class SyncService
             'quantity_kg'        => 'required|numeric|min:0.01',
             'destination'        => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),
             'notes'              => 'nullable|string|max:1000',
-            'collected_at'       => 'required|date',
+            // Pas dans le futur — à la dérive d'horloge du téléphone près.
+            'collected_at'       => 'required|date|before_or_equal:' . self::CLOCK_SKEW_TOLERANCE,
         ]);
 
         if ($v->fails()) {
