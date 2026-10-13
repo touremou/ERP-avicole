@@ -141,9 +141,9 @@ class EggAnalysisService
                 continue;
             }
 
-            // Calcul HDP (sur l'effectif vivant courant)
+            // Calcul HDP (sur l'effectif PONDEUR : les poules, pas les coqs)
             $totalCollected = (float) ($collection->total_eggs_collected ?? 0);
-            $hens = (int) $batch->current_quantity;
+            $hens = $batch->effectifPondeur();
             $hdp = ($hens > 0) ? round(($totalCollected / $hens) * 100, 1) : 0;
 
             // HDP de la veille

@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
  * Action : Enregistrement d'une collecte d'œufs brute.
  *
  * Gère plusieurs ramassages par jour par "Cumul" (additionne les œufs au lieu de créer des doublons).
- * Calcule le taux de ponte sur l'effectif vivant réel (current_quantity).
+ * Calcule le taux de ponte sur l'effectif PONDEUR (Batch::effectifPondeur).
  */
 class RecordEggCollection
 {
@@ -99,18 +99,20 @@ class RecordEggCollection
             }
 
             // 3.bis GARDE-FOU : taux de ponte cumulé ≤ 100 % (1 œuf/sujet/jour).
-            if ($batch->current_quantity > 0 && $newTotal > $batch->current_quantity) {
-                $rate = number_format(($newTotal / $batch->current_quantity) * 100, 1);
+            // Les POULES du lot (Batch::effectifPondeur), pas ses coqs.
+            $pondeuses = $batch->effectifPondeur();
+            if ($pondeuses > 0 && $newTotal > $pondeuses) {
+                $rate = number_format(($newTotal / $pondeuses) * 100, 1);
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'total_eggs_collected' => "Taux de ponte impossible : {$newTotal} œufs pour "
-                        . "{$batch->current_quantity} sujets = {$rate} %. Le maximum biologique est "
+                        . "{$pondeuses} pondeuses = {$rate} %. Le maximum biologique est "
                         . "100 % (1 œuf/sujet/jour). Vérifiez votre saisie.",
                 ]);
             }
 
             // 4. Recalcul du taux de ponte
-            $layingRate = $batch->current_quantity > 0
-                ? round(($newTotal / $batch->current_quantity) * 100, 2)
+            $layingRate = $pondeuses > 0
+                ? round(($newTotal / $pondeuses) * 100, 2)
                 : 0;
 
             // 5. Enregistrement

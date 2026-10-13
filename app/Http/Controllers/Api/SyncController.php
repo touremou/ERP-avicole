@@ -50,7 +50,9 @@ class SyncController extends Controller
             // + le TAUX DE MORTALITÉ du serveur (Batch::mortality_rate) : le
             // terrain affichait « morts du transport / effectif », une troisième
             // définition — ni celle de la fiche, ni celle des rapports.
-            'append'  => ['can_collect_eggs', 'mortality_rate'],
+            // + l'EFFECTIF PONDEUR (Batch::effectifPondeur) : les poules d'un lot
+            // de reproducteurs, sans ses coqs.
+            'append'  => ['can_collect_eggs', 'mortality_rate', 'effectif_pondeur'],
         ],
         'buildings' => [
             'model'   => Building::class,

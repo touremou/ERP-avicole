@@ -715,6 +715,29 @@ class Batch extends Model
     }
 
     /**
+     * EFFECTIF PONDEUR — les poules, pas les coqs.
+     *
+     * Le taux de ponte se rapporte aux femelles. Collecte, analyse, tableau de
+     * bord et liste divisaient par l'effectif VIVANT : pour un lot de
+     * reproducteurs (100 poules + 10 coqs), 90 œufs faisaient 82 % au lieu de
+     * 90 %, et le garde-fou « 1 œuf par sujet » laissait passer 110 œufs.
+     * L'effectif vivant est réparti selon la proportion de femelles à la mise
+     * en place ; un lot sans mâles déclarés reste entier.
+     */
+    public function effectifPondeur(): int
+    {
+        $vivants = (int) $this->current_quantity;
+        $males = (int) $this->qty_males;
+        $femelles = (int) $this->qty_females;
+
+        if ($males <= 0 || $femelles <= 0) {
+            return $vivants;
+        }
+
+        return (int) round($vivants * $femelles / ($males + $femelles));
+    }
+
+    /**
      * SEMAINE D'ÂGE de la bande (1 = jours 1 à 7) — UNE règle, celle des
      * courbes de normes (ceil(âge / 7), au moins 1). L'analyse HDP comptait en
      * floor : six jours sur sept, elle jugeait la ponte sur la norme de la

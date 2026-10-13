@@ -329,8 +329,9 @@ class EggProductionController extends Controller
         }
 
         // Même garde-fou biologique qu'à la saisie : 1 œuf/sujet/jour au plus.
-        if ($batch->current_quantity > 0 && $validated['total_eggs_collected'] > $batch->current_quantity) {
-            $taux = number_format(($validated['total_eggs_collected'] / $batch->current_quantity) * 100, 1);
+        $pondeuses = $batch->effectifPondeur();   // les poules, pas les coqs
+        if ($pondeuses > 0 && $validated['total_eggs_collected'] > $pondeuses) {
+            $taux = number_format(($validated['total_eggs_collected'] / $pondeuses) * 100, 1);
             return back()->withInput()->with('error',
                 "Taux de ponte impossible : {$validated['total_eggs_collected']} œufs pour "
                 . "{$batch->current_quantity} sujets = {$taux} %. Le maximum biologique est 100 %."
@@ -350,8 +351,8 @@ class EggProductionController extends Controller
             return back()->withInput()->with('error', $e->validator->errors()->first());
         }
 
-        $layingRate = $batch->current_quantity > 0
-            ? round(($validated['total_eggs_collected'] / $batch->current_quantity) * 100, 2)
+        $layingRate = $batch->effectifPondeur() > 0
+            ? round(($validated['total_eggs_collected'] / $batch->effectifPondeur()) * 100, 2)
             : 0;
 
         $eggProduction->update(array_merge($validated, ['laying_rate' => $layingRate]));
