@@ -34,7 +34,10 @@ beforeEach(function () {
     $this->chairPoulet = ProductionType::where('species_id', $this->poulet->id)->where('slug', 'chair')->first();
     $this->chairDinde = ProductionType::where('species_id', $this->dinde->id)->where('slug', 'chair')->first();
     $this->pontePoulet = ProductionType::where('species_id', $this->poulet->id)->where('slug', 'ponte')->first();
-    $this->batiment = Building::factory()->create(['type' => 'chair', 'capacity' => 10_000, 'farm_id' => session('current_farm_id')]);
+    // Bâtiment MIXTE : ces tests portent sur l'identité de la bande (type,
+    // espèce, souche, aliment), pas sur son logement — et le terrain applique
+    // désormais la compatibilité bâtiment/type du web.
+    $this->batiment = Building::factory()->create(['type' => 'mixte', 'capacity' => 10_000, 'farm_id' => session('current_farm_id')]);
 });
 
 function creerBande(object $t, array $extra = [])
