@@ -508,6 +508,18 @@ test('pull expose production_types et production_type_id sur les lots', function
     expect($response->json('entities.batches.upserts.0'))->toHaveKey('production_type_id');
 });
 
+test('pull sert la FAMILLE d’espèce des types : le terrain sait qui arrive à un jour', function () {
+    // Le formulaire terrain recopiait l'arrivée dans la naissance pour toutes
+    // les espèces : des béliers adultes y « naissaient » le jour de leur
+    // arrivée. Il lui faut la famille pour appliquer la règle du web.
+    Sanctum::actingAs($this->manager);
+
+    $types = collect($this->getJson('/api/v1/sync/pull')->assertOk()->json('entities.production_types.upserts'));
+
+    expect($types->first())->toHaveKeys(['species_id', 'species_family'])
+        ->and($types->pluck('species_family')->filter()->unique()->values()->all())->toContain('volaille');
+});
+
 test('téléversement de photo terrain : stockée sur le disque PRIVÉ', function () {
     // Les clichés du champ (autopsie, preuve de tâche, reçu) ne sont plus rangés
     // sur le disque servi en statique : ils y répondaient à /storage/… sans

@@ -17,6 +17,16 @@ class ProductionType extends Model
         'cycle_days_default' => 'integer',
     ];
 
+    /**
+     * Famille de l'espèce (volaille, petit_ruminant…) — servie au terrain pour
+     * qu'il applique la même règle que le web : la naissance ne suit l'arrivée
+     * que pour des sujets d'un jour (volaille hors reproducteurs).
+     */
+    public function speciesFamily(): ?string
+    {
+        return $this->species?->family;
+    }
+
     public function species(): BelongsTo
     {
         return $this->belongsTo(Species::class);
