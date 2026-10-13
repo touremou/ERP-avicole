@@ -58,6 +58,18 @@ export function NewBatchScreen() {
    */
   const [birthDate, setBirthDate] = useState(new Date().toISOString().slice(0, 10))
   const [birthTouched, setBirthTouched] = useState(false)
+  /*
+   * Sujets d'UN JOUR ? Volaille hors reproducteurs — même règle que le web.
+   * Un bélier, une truie, des reproducteurs arrivent adultes : préremplie à
+   * l'arrivée, leur naissance les faisait naître le jour même. Famille
+   * inconnue (référentiel pas encore resynchronisé) : comportement d'avant.
+   */
+  const sujetsDUnJour = !typeChoisi?.species_family
+    || (typeChoisi.species_family === 'volaille' && typeChoisi.slug !== 'reproducteur')
+
+  useEffect(() => {
+    if (!birthTouched) setBirthDate(sujetsDUnJour ? arrivalDate : '')
+  }, [sujetsDUnJour, arrivalDate, birthTouched])
   const [employeeId, setEmployeeId] = useState('')
   const [providerId, setProviderId] = useState('')
   const [buyPrice, setBuyPrice] = useState(0)
@@ -243,7 +255,6 @@ export function NewBatchScreen() {
         max={new Date().toISOString().slice(0, 10)}
         onChange={(e) => {
           setArrivalDate(e.target.value)
-          if (!birthTouched) setBirthDate(e.target.value)
         }}
         required
       />
@@ -260,7 +271,9 @@ export function NewBatchScreen() {
         }}
       />
       <p className="muted">
-        {t('Sur le bon du couvoir. Laisser égale à l’arrivée pour des sujets d’un jour.')}
+        {sujetsDUnJour
+          ? t('Sur le bon du couvoir. Laisser égale à l’arrivée pour des sujets d’un jour.')
+          : t("Ces animaux n'arrivent pas à un jour d'âge : indiquez leur date de naissance, même approximative — l'âge, les normes et les rations en dépendent.")}
       </p>
 
       <label htmlFor="provider">{t('Fournisseur')}</label>

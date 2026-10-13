@@ -181,7 +181,11 @@ class SyncController extends Controller
         // taxonomie. Table petite et stable.
         'production_types' => [
             'model'   => \App\Models\ProductionType::class,
-            'columns' => ['id', 'slug', 'name_fr', 'updated_at'],
+            'columns' => ['id', 'slug', 'name_fr', 'species_id', 'updated_at'],
+            // La famille de l'espèce : le terrain en déduit, comme le web, si
+            // les sujets arrivent à un jour (naissance = arrivée) ou non.
+            'with'    => ['species'],
+            'append'  => ['species_family'],
         ],
         // ── Phase 3 : cultures, abattoir, provenderie ──
         'plots' => [

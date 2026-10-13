@@ -1198,6 +1198,7 @@ export const en: Record<string, string> = {
   "Date d’arrivée": "Arrival date",
   "Date de naissance / éclosion": "Birth / hatch date",
   "Sur le bon du couvoir. Laisser égale à l’arrivée pour des sujets d’un jour.": "From the hatchery delivery note. Leave equal to arrival for day-old chicks.",
+  "Ces animaux n'arrivent pas à un jour d'âge : indiquez leur date de naissance, même approximative — l'âge, les normes et les rations en dépendent.": "These animals do not arrive at one day old: enter their date of birth, even approximate — age, norms and rations depend on it.",
   "Fournisseur": "Supplier",
   "— Non précisé —": "— Not specified —",
   "Prix d’achat par sujet (GNF)": "Purchase price per bird (GNF)",

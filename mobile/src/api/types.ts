@@ -676,6 +676,9 @@ export interface RefProductionType {
   id: number
   slug: string
   name_fr: string
+  species_id?: number | null
+  /** volaille, petit_ruminant, porcin… (cf. ProductionType::speciesFamily) */
+  species_family?: string | null
   updated_at: string
 }
 
