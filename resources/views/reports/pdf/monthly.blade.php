@@ -79,7 +79,7 @@
         @if(isset($monthlyData[$num]))
         @php
             $mRows  = $monthlyData[$num];
-            $mTotal = collect($mRows)->sum('health') + collect($mRows)->sum('feed_cost');
+            $mTotal = collect($mRows)->sum('health') + collect($mRows)->sum('feed_cost') + collect($mRows)->sum('acquisition_cost');
         @endphp
         <h2 class="section">
             {{ $name }}
@@ -127,7 +127,9 @@
                     <td class="amount">{{ number_format(collect($mRows)->sum('health'), 0, ',', ' ') }}</td>
                     <td class="amount">{{ number_format(collect($mRows)->sum('feed_cost'), 0, ',', ' ') }}</td>
                     <td class="amount">{{ number_format(collect($mRows)->sum('feed_qty'), 1) }}</td>
-                    <td class="amount" colspan="3"></td>
+                    <td class="amount">{{ number_format(collect($mRows)->sum('acquisition_cost'), 0, ',', ' ') }}</td>
+                    <td class="amount">{{ number_format($mTotal, 0, ',', ' ') }}</td>
+                    <td class="amount"></td>
                 </tr>
             </tbody>
         </table>

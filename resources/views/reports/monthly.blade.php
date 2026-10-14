@@ -210,7 +210,7 @@
                     @if(isset($monthlyData[$num]))
                     @php
                         $mRows     = $monthlyData[$num];
-                        $mTotal    = collect($mRows)->sum('health') + collect($mRows)->sum('feed_cost');
+                        $mTotal    = collect($mRows)->sum('health') + collect($mRows)->sum('feed_cost') + collect($mRows)->sum('acquisition_cost');
                         $mFeedQty  = collect($mRows)->sum('feed_qty');
                     @endphp
                     <div class="relative pl-12 border-l-4 border-slate-100 pb-20 last:pb-0 text-left">
