@@ -382,15 +382,18 @@ class Building extends Model
         return (float) $this->surface > 0 ? round($this->capacity / (float) $this->surface, 1) : null;
     }
 
+    /**
+     * Densité au sol de TOUS les sujets logés — currentOccupation(), comme le
+     * taux d'occupation ; le premier lot actif seul sous-estimait un bâtiment
+     * partagé.
+     */
     public function getCurrentDensityAttribute(): float
     {
-        $activeBatch = $this->batches()->active()->first();
-        
-        if (!$activeBatch || (float)$this->surface <= 0) {
+        if ((float) $this->surface <= 0) {
             return 0.0;
         }
 
-        return round($activeBatch->current_quantity / $this->surface, 2);
+        return round($this->currentOccupation() / (float) $this->surface, 2);
     }
 
     /**

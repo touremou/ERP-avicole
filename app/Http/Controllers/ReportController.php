@@ -724,7 +724,6 @@ class ReportController extends Controller
         $speciesFilter = $request->get('species', 'all');
         $dateFrom      = $request->get('date_from');
         $dateTo        = $request->get('date_to');
-        $bagWeight     = (float) setting('general.feed_bag_weight', 50);
 
         // Liste des espèces actives, pour le filtre "Espèce" (couvre toutes les
         // exploitations, pas seulement la volaille — cf. table species).
@@ -808,12 +807,12 @@ class ReportController extends Controller
             // CMUP aliment depuis les achats
             $totalFeedCostAll = 0;
             $totalFeedKgAll   = 0;
-            foreach ($batch->feedPurchases as $purchase) {
+            // Prix moyen de l'ALIMENT acheté : les achats de médicaments ou de
+            // matériel du lot (flacons, boîtes…) n'ont ni prix ni quantité au
+            // kilo. Le kilo d'un sac suit l'achat (poids propre, sinon réglage).
+            foreach ($batch->feedPurchases->filter(fn ($p) => $p->category === 'Aliment') as $purchase) {
                 $totalFeedCostAll += (float) $purchase->quantity * (float) $purchase->unit_price;
-                $kg = strtolower($purchase->unit ?? '') === 'sac'
-                    ? (float) $purchase->quantity * $bagWeight
-                    : (float) $purchase->quantity;
-                $totalFeedKgAll += $kg;
+                $totalFeedKgAll   += $purchase->normalized_quantity;
             }
             $avgPricePerKg = $totalFeedKgAll > 0 ? ($totalFeedCostAll / $totalFeedKgAll) : 0;
 
