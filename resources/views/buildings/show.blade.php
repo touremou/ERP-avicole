@@ -45,9 +45,7 @@
 
                 // Même définition que Batch::mortality_rate, agrégée : toutes les
                 // pertes (transport, troupeau, infirmerie) sur l'effectif livré.
-                $totalInitial = $activeBatches->sum(fn ($batch) => $batch->initial_quantity + ($batch->qty_dead ?? 0));
-                $totalMorts = $activeBatches->sum(fn ($batch) => $batch->total_mortality);
-                $tauxMortalite = ($totalInitial > 0) ? ($totalMorts / $totalInitial) * 100 : 0;
+                $tauxMortalite = \App\Models\Batch::tauxMortaliteDe($activeBatches);
 
                 $statusLabel = __("Repos / Disponible");
                 $statusClass = "from-emerald-500 to-emerald-600 shadow-emerald-500/20";

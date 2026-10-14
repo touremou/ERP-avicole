@@ -165,8 +165,9 @@ class NotificationHub
         $activeBatches = Batch::active()->live()->count();
 
         // Mortalité dernières 24h
-        $mortality24h = DailyCheck::where('check_date', '>=', now()->subDay())
-            ->sum('mortality');
+        $mortality24h = (int) DailyCheck::where('check_date', '>=', now()->subDay())
+            ->selectRaw('COALESCE(SUM(mortality), 0) + COALESCE(SUM(mortality_infirmary), 0) AS morts')
+            ->value('morts');   // infirmerie comprise, comme Batch::total_mortality
 
         // Stock aliment critique
         $criticalStocks = Stock::where('category', Stock::CAT_CONSO)

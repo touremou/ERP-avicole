@@ -214,8 +214,9 @@
                                             </td>
                                             <td class="px-4 py-5 text-center font-black text-red-500 italic">
                                                 @php
-                                                    $deaths = $batch->dailyChecks->sum('mortality');
-                                                    $rate = ($batch->initial_quantity > 0) ? ($deaths / $batch->initial_quantity) * 100 : 0;
+                                                    // Le taux de la fiche du lot — morts au transport compris :
+                                                    // c'est d'abord la livraison du fournisseur qu'il juge.
+                                                    $rate = $batch->mortality_rate;
                                                 @endphp
                                                 {{ number_format($rate, 1) }}%
                                             </td>

@@ -23,9 +23,9 @@ class BuildingController extends Controller
         if (Gate::denies('elevage.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $buildings = Building::physical() // 💡 Ton code devient très lisible
-            ->with(['batches' => function($query) {
-                $query->active()->with('dailyChecks');
-            }])
+            // Les pointages ne sont plus chargés : le taux de mortalité se lit
+            // en une requête par bâtiment (Batch::tauxMortaliteDe).
+            ->with(['batches' => fn ($query) => $query->active()])
             ->orderBy('name')
             ->get();
 
