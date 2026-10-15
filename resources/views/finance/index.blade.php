@@ -30,7 +30,7 @@
                 {{-- Charges de fonctionnement du mois + Δ vs mois précédent --}}
                 @can('depenses.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Charges (mois)") }}</p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Dépenses validées (mois)") }}</p>
                     <p class="text-2xl font-black text-amber-600 leading-none">{{ number_format($kpis['opex_month'], 0, ',', ' ') }}</p>
                     @if($kpis['opex_delta'] === null)
                         <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
@@ -62,7 +62,7 @@
                         <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ __("sans charge de réf.") }}</p>
                     @else
                         <p @class(['text-2xl font-black leading-none', 'text-rose-600' => $kpis['runway_months'] < 1, 'text-amber-600' => $kpis['runway_months'] >= 1 && $kpis['runway_months'] < 3, 'text-emerald-600' => $kpis['runway_months'] >= 3])>{{ number_format($kpis['runway_months'], 1, ',', ' ') }}</p>
-                        <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ __("mois de charges") }}</p>
+                        <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ __("mois de décaissements") }}</p>
                     @endif
                 </div>
                 @endcan

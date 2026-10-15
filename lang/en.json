@@ -5061,5 +5061,7 @@
     "Ces animaux n'arrivent pas à un jour d'âge : indiquez leur date de naissance, même approximative — l'âge, les normes et les rations en dépendent.": "These animals do not arrive at one day old: enter their date of birth, even approximate — age, norms and rations depend on it.",
     "Ration (MS) / lot / jour": "Ration (DM) / batch / day",
     "Valeur stock (au coût)": "Stock value (at cost)",
-    "Au prix de vente :": "At selling price:"
+    "Au prix de vente :": "At selling price:",
+    "Dépenses validées (mois)": "Validated expenses (month)",
+    "mois de décaissements": "months of cash outflows"
 }
