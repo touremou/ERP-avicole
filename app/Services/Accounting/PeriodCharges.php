@@ -253,7 +253,11 @@ class PeriodCharges
      * n'avait pas été figée. Aligner les deux écrans sur la moins complète
      * aurait corrigé la divergence en dégradant le chiffre juste.
      */
-    public static function feedConsumedCost(Carbon $from, Carbon $to): float
+    /**
+     * @param iterable<int>|null $batchIds  Restreint aux lots donnés (marge par
+     *        espèce) ; null = toute la ferme (compte de résultat).
+     */
+    public static function feedConsumedCost(Carbon $from, Carbon $to, ?iterable $batchIds = null): float
     {
         // Carte de repli : CMP courant par nom d'article / type d'aliment.
         $cmpByName = [];
@@ -277,6 +281,7 @@ class PeriodCharges
         $total = 0.0;
 
         \App\Models\DailyCheck::whereBetween('check_date', [$from, $to])
+            ->when($batchIds !== null, fn ($q) => $q->whereIn('batch_id', collect($batchIds)))
             ->where('feed_consumed', '>', 0)
             ->get(['feed_consumed', 'feed_unit_cost', 'feed_type'])
             ->each(function ($f) use (&$total, $cmpByName) {

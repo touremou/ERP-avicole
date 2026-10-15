@@ -10,7 +10,6 @@ use App\Models\HealthIncident;
 use App\Models\DailyCheck;
 use App\Models\SaleItem;
 use App\Models\MilkProduction;
-use App\Models\FeedPurchase;
 use App\Models\WaterReading;
 use App\Models\EnergyReading;
 use App\Models\Payslip;
@@ -203,21 +202,11 @@ class ReportController extends Controller
             $revenue[$this->productTypeLabel($type)] = (float) $total;
         }
 
-        // Production végétale : revenus des cycles CLÔTURÉS sur la période
-        // (reconnaissance à la clôture, cohérente avec l'imputation de leurs
-        // coûts ci-dessous — évite tout chevauchement de période).
-        // Cycles RÉELLEMENT clôturés : la date de clôture ne suffit pas comme
-        // critère. Un cycle rouvert la conservait et restait donc compté ici,
-        // tout en continuant d'accumuler récoltes et intrants — une période
-        // arrêtée qui bouge encore. La réouverture efface désormais cette date
-        // (CropCycleController::reopen) ; ce filtre de statut est la seconde
-        // barrière, pour que le rapport reste juste même si un autre chemin
-        // venait un jour à rouvrir un cycle sans l'effacer.
-        $closedCyclesQuery = CropCycle::archived()->whereBetween('closing_date', [$from, $to]);
-        $closedCycleIds = (clone $closedCyclesQuery)->pluck('id');
-        $cropRevenue = (float) (clone $closedCyclesQuery)->sum('total_revenue');
-        if ($cropRevenue > 0) {
-            $revenue['Production végétale'] = ($revenue['Production végétale'] ?? 0) + $cropRevenue;
+        // Production végétale : cycles CLÔTURÉS sur la période, recette et coût
+        // des marchandises vendues — déclaration partagée avec le tableau de bord.
+        $crops = PeriodRevenue::closedCropCycles($from, $to);
+        if ($crops['revenue'] > 0) {
+            $revenue['Production végétale'] = ($revenue['Production végétale'] ?? 0) + $crops['revenue'];
         }
 
         $totalRevenue = array_sum($revenue);
@@ -231,24 +220,8 @@ class ReportController extends Controller
         // carburant en poste dédié) vivent désormais dans PeriodCharges.
         $costs = \App\Services\Accounting\PeriodCharges::between($from, $to);
 
-        // Coûts des cycles végétaux clôturés sur la période : forfaits
-        // (acquisition + additionnels) + intrants itémisés. Cohérent avec la
-        // marge nette du cycle (cf. CropCycle::getNetMarginAttribute).
-        /*
-         * Même correction qu'à la marge par culture : on impute le coût des
-         * marchandises VENDUES, pas le coût engagé. La somme précédente valait
-         * exactement `CropCycle::total_cost` et ignorait donc les récoltes
-         * conservées, dont le coût suit la matière en inventaire.
-         *
-         * On passe par la déclaration du modèle plutôt que de la recopier : une
-         * seconde formule divergerait au premier ajustement.
-         */
-        $cropCost = (float) (clone $closedCyclesQuery)
-            ->with('inputs:id,crop_cycle_id,total_cost')
-            ->get()
-            ->sum(fn (CropCycle $c) => $c->costOfGoodsSold());
-        if ($cropCost > 0) {
-            $costs['Production végétale (cultures)'] = $cropCost;
+        if ($crops['cost'] > 0) {
+            $costs['Production végétale (cultures)'] = $crops['cost'];
         }
 
         $totalCosts = array_sum($costs);
@@ -317,7 +290,10 @@ class ReportController extends Controller
      */
     private function cropDirectMargin(Carbon $from, Carbon $to): array
     {
-        $cycles = CropCycle::whereBetween('closing_date', [$from, $to])
+        // Les mêmes cycles que le total du compte de résultat
+        // (PeriodRevenue::closedCropCycles) : réellement clôturés, pas
+        // seulement datés — un cycle rouvert figurait au détail, pas au total.
+        $cycles = CropCycle::archived()->whereBetween('closing_date', [$from, $to])
             ->with('inputs:id,crop_cycle_id,total_cost')
             ->get();
 
@@ -376,12 +352,21 @@ class ReportController extends Controller
             // litres deux fois, et gonflait la rentabilité de l'espèce laitière.
             $rev = PeriodRevenue::forBatches($batchIds, $from, $to);
 
-            $cost = (float) Batch::whereIn('id', $batchIds)->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
-            $cost += (float) FeedPurchase::whereIn('batch_id', $batchIds)->whereBetween('purchase_date', [$from, $to])
-                ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
+            /*
+             * LES RÈGLES DU COMPTE DE RÉSULTAT, RESTREINTES À L'ESPÈCE.
+             *
+             * Cette marge recomposait ses coûts à part : l'aliment ACHETÉ (et
+             * non consommé — un stock de fin de mois pesait sur l'espèce), sans
+             * le traitement des incidents sanitaires, et des lots archivés
+             * comme vivants. Le détail ne pouvait pas tomber sur le total.
+             */
+            $liveIds = Batch::live()->whereIn('id', $batchIds)->pluck('id');
+            $cost = (float) Batch::whereIn('id', $liveIds)->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
+            $cost += \App\Services\Accounting\PeriodCharges::feedConsumedCost($from, $to, $batchIds);
             $cost += (float) HealthCheck::whereIn('batch_id', $batchIds)->whereBetween('intervention_date', [$from, $to])->sum('cost');
+            $cost += (float) \App\Models\HealthIncident::whereIn('batch_id', $batchIds)->whereBetween('incident_date', [$from, $to])->sum('treatment_cost');
             $cost += (float) Expense::validated()->whereIn('batch_id', $batchIds)
-                ->whereBetween('expense_date', [$from, $to])->sum('amount');
+                ->betweenDates($from, $to)->sum('amount');
 
             if ($rev == 0 && $cost == 0) continue;
 
@@ -617,13 +602,15 @@ class ReportController extends Controller
             ->live()
             ->get();
 
-        $latestChecks = DailyCheck::select('batch_id', 'avg_weight', 'check_date')
+        // Les PESÉES de chaque lot (poids > 0), une requête. L'ancienne lecture
+        // prenait le DERNIER POINTAGE — sans pesée, le lot pesait 0 g — et sa
+        // sous-requête MAX(check_date) n'était pas corrélée au lot : un lot
+        // pouvait recevoir le pointage d'un autre jour que le sien.
+        $pesees = DailyCheck::select('batch_id', 'avg_weight', 'check_date')
             ->whereIn('batch_id', $activeBatches->pluck('id'))
-            ->whereIn('check_date', function ($query) {
-                $query->selectRaw('MAX(check_date)')
-                      ->from('daily_checks')
-                      ->groupBy('batch_id');
-            })->get()->keyBy('batch_id');
+            ->where('avg_weight', '>', 0)
+            ->orderBy('check_date')
+            ->get()->groupBy('batch_id');
 
         // ✅ setting() pour les seuils de mortalité
         // Seuils UNIQUES (cf. Batch::cumulativeMortalityThreshold) : ce rapport
@@ -632,10 +619,12 @@ class ReportController extends Controller
         $seuilCritique = \App\Models\Batch::cumulativeMortalityThreshold();
         $seuilAlerte = \App\Models\Batch::cumulativeMortalityWarningThreshold();
 
-        $stats = $activeBatches->map(function ($batch) use ($latestChecks, $seuilCritique, $seuilAlerte) {
+        $stats = $activeBatches->map(function ($batch) use ($pesees, $seuilCritique, $seuilAlerte) {
             $initial = $batch->initial_quantity;
             $totalMortalite = $batch->total_mortality ?? 0;
-            $current = $initial - $totalMortalite;
+            // L'effectif de la fiche. « initial − morts » ignorait les ventes et
+            // retranchait les morts au transport, absents de l'effectif initial.
+            $current = (int) $batch->current_quantity;
 
             // TAUX DE MORTALITÉ — implémentation UNIQUE sur le modèle
             // (Batch::mortality_rate), partagée avec la fiche hebdomadaire.
@@ -655,8 +644,8 @@ class ReportController extends Controller
             // donc un GMQ et des performances faux.
             $age = $batch->age;
 
-            $lastCheck = $latestChecks->get($batch->id);
-            $avgWeightGrams = $lastCheck ? ($lastCheck->avg_weight * 1000) : 0;
+            $peseesDuLot = $pesees->get($batch->id, collect());
+            $avgWeightGrams = $peseesDuLot->isNotEmpty() ? ((float) $peseesDuLot->last()->avg_weight * 1000) : 0;
 
             // FCR corrigé — implémentation UNIQUE sur le modèle (Batch::
             // fcr_corrected), partagée avec la fiche hebdomadaire par technicien.
@@ -675,7 +664,9 @@ class ReportController extends Controller
                 'mortality_count' => $totalMortalite,
                 'mortality_rate'  => round($tauxMortalite, 2),
                 'avg_weight'      => $avgWeightGrams,
-                'daily_gain'      => $age > 0 ? round($avgWeightGrams / $age, 1) : 0,
+                // Le GMQ de la fiche (Batch::gmq) : entre pesées, pas poids ÷ âge —
+                // un animal reçu adulte n'a pas pris tout son poids chez nous.
+                'daily_gain'      => $batch->gmq($peseesDuLot) ?? 0,
                 'status'          => $tauxMortalite > $seuilCritique ? 'Critique' : ($tauxMortalite > $seuilAlerte ? 'Alerte' : 'Normal'),
             ];
         });
