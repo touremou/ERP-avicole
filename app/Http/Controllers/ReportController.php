@@ -724,7 +724,6 @@ class ReportController extends Controller
         $speciesFilter = $request->get('species', 'all');
         $dateFrom      = $request->get('date_from');
         $dateTo        = $request->get('date_to');
-        $bagWeight     = (float) setting('general.feed_bag_weight', 50);
 
         // Liste des espèces actives, pour le filtre "Espèce" (couvre toutes les
         // exploitations, pas seulement la volaille — cf. table species).
@@ -808,12 +807,12 @@ class ReportController extends Controller
             // CMUP aliment depuis les achats
             $totalFeedCostAll = 0;
             $totalFeedKgAll   = 0;
-            foreach ($batch->feedPurchases as $purchase) {
+            // Prix moyen de l'ALIMENT acheté : les achats de médicaments ou de
+            // matériel du lot (flacons, boîtes…) n'ont ni prix ni quantité au
+            // kilo. Le kilo d'un sac suit l'achat (poids propre, sinon réglage).
+            foreach ($batch->feedPurchases->filter(fn ($p) => $p->category === 'Aliment') as $purchase) {
                 $totalFeedCostAll += (float) $purchase->quantity * (float) $purchase->unit_price;
-                $kg = strtolower($purchase->unit ?? '') === 'sac'
-                    ? (float) $purchase->quantity * $bagWeight
-                    : (float) $purchase->quantity;
-                $totalFeedKgAll += $kg;
+                $totalFeedKgAll   += $purchase->normalized_quantity;
             }
             $avgPricePerKg = $totalFeedKgAll > 0 ? ($totalFeedCostAll / $totalFeedKgAll) : 0;
 
@@ -845,6 +844,14 @@ class ReportController extends Controller
                 }
             }
 
+            // L'achat des animaux est un décaissement UNIQUE : il appartient au
+            // mois d'arrivée (ou à la plage qui contient l'arrivée), comme dans
+            // le compte de résultat. Le reporter sur chaque mois de présence
+            // comptait le même achat autant de fois que la bande durait.
+            $moisAchat = $useDateRange
+                ? ($arrivalDate->between($rangeStart, $rangeEnd) ? 0 : null)
+                : ($arrivalDate->year === $currentYear ? $arrivalDate->month : null);
+
             for ($m = $startMonth; $m <= $endMonth; $m++) {
                 if (! isset($monthlyData[$m][$batch->id])) {
                     $monthlyData[$m][$batch->id] = [
@@ -852,7 +859,7 @@ class ReportController extends Controller
                         'health'           => 0,
                         'feed_qty'         => 0,
                         'feed_cost'        => 0,
-                        'acquisition_cost' => $acquisitionCost,
+                        'acquisition_cost' => $m === $moisAchat ? $acquisitionCost : 0,
                         'avg_price_per_kg' => $avgPricePerKg,
                     ];
                 }
@@ -906,16 +913,16 @@ class ReportController extends Controller
                 $globalFeedCost   += $d['feed_cost'];
                 $globalHealthCost += $d['health'];
                 $globalFeedQty    += $d['feed_qty'];
+                $globalAcqCost    += $d['acquisition_cost'];   // porté par le seul mois d'arrivée
             }
         }
-        // Acquisition unique par batch (pas multiplié par mois)
+        // Effectif : chaque bande une fois, quel que soit le nombre de mois.
         $seenBatches = [];
         foreach ($monthlyData as $mData) {
             foreach ($mData as $bId => $d) {
                 if (! isset($seenBatches[$bId])) {
                     $seenBatches[$bId] = true;
-                    $globalAcqCost += $d['acquisition_cost'];
-                    $globalHeads   += $d['batch']->initial_quantity;
+                    $globalHeads += $d['batch']->initial_quantity;
                 }
             }
         }

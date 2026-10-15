@@ -40,12 +40,8 @@
                         $reste = max(0, $building->capacity - $occupation);
                         $percent = ($building->capacity > 0) ? ($occupation / $building->capacity) * 100 : 0;
                         
-                        $totalInitial = $activeBatches->sum('initial_quantity');
-                        $totalMorts = $activeBatches->sum(function($batch) {
-                            return ($batch->qty_dead ?? 0) + $batch->dailyChecks->sum('mortality');
-                        });
-                        
-                        $tauxMortalite = ($totalInitial > 0) ? ($totalMorts / $totalInitial) * 100 : 0;
+                        // La règle de la fiche du lot, agrégée (Batch::tauxMortaliteDe).
+                        $tauxMortalite = \App\Models\Batch::tauxMortaliteDe($activeBatches);
 
                         $mortalityClass = "text-emerald-500 bg-emerald-50 border-emerald-100";
                         if($tauxMortalite >= 2) $mortalityClass = "text-amber-500 bg-amber-50 border-amber-100";

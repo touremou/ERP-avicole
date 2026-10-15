@@ -443,7 +443,9 @@ class BatchController extends Controller
         $batch->load('building');
 
         $remainingBirds = (int) $batch->current_quantity;
-        $totalMortality = (int) ($batch->initial_quantity - $batch->current_quantity);
+        // Les morts, pas les sujets sortis : initial − actuel comptait aussi les
+        // ventes, les abattages et les isolés en infirmerie.
+        $totalMortality = $batch->total_mortality;
 
         // ═══ COÛTS DÉTAILLÉS ═══
 

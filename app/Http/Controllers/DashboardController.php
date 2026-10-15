@@ -54,22 +54,13 @@ class DashboardController extends Controller
         $activeLotsCount = $allActiveBatches->count();
 
         $totalBirds = $canElevage ? $allActiveBatches->sum('current_quantity') : 0;
-        $totalInitial = $allActiveBatches->sum('initial_quantity');
 
-        // Mortalité réelle = morts d'arrivage (qty_dead) + mortalité d'élevage
-        // (Σ daily_checks.mortality). L'ancien calcul (initial − current) était
-        // FAUX : current_quantity intègre aussi les quarantaines et les tris/
-        // ventes, qui ne sont pas des morts. La base inclut qty_dead, cohérente
-        // avec Batch::getMortalityRateAttribute().
+        // Mortalité réelle : la règle de la fiche du lot (Batch::mortality_rate),
+        // agrégée — transport, troupeau ET infirmerie, sur l'effectif livré.
+        // L'ancien calcul (initial − current) comptait les ventes et les
+        // quarantaines comme des morts ; le suivant oubliait l'infirmerie.
         $batchIds = $allActiveBatches->pluck('id');
-        $globalMortalityRate = 0;
-        if ($canElevage) {
-            $totalQtyDead = (int) $allActiveBatches->sum('qty_dead');
-            $totalElevageMortality = (int) DailyCheck::whereIn('batch_id', $batchIds)->sum('mortality');
-            $totalMortaliteCumulee = $totalQtyDead + $totalElevageMortality;
-            $mortalityBase = $totalInitial + $totalQtyDead;
-            $globalMortalityRate = $mortalityBase > 0 ? ($totalMortaliteCumulee / $mortalityBase) * 100 : 0;
-        }
+        $globalMortalityRate = $canElevage ? Batch::tauxMortaliteDe($allActiveBatches) : 0;
 
         // ---------------------------------------------------------
         // 2. TAUX DE PONTE (HDP) DU JOUR (production.L)

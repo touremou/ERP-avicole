@@ -305,7 +305,7 @@ class DashboardInsightsService
             DailyCheck::whereIn('batch_id', $batchIds)
                 ->where('check_date', '>=', $start->toDateString())
                 ->select('check_date',
-                    DB::raw('SUM(mortality) AS m'),
+                    DB::raw('SUM(mortality) + SUM(mortality_infirmary) AS m'),   // tous les morts du jour, infirmerie comprise
                     DB::raw('SUM(feed_consumed) AS f'))
                 ->groupBy('check_date')
                 ->get()
@@ -364,7 +364,7 @@ class DashboardInsightsService
             DailyCheck::whereIn('batch_id', $batchIds)
                 ->where('check_date', '>=', $start->toDateString())
                 ->select('check_date',
-                    DB::raw('SUM(mortality) AS m'),
+                    DB::raw('SUM(mortality) + SUM(mortality_infirmary) AS m'),   // tous les morts du jour, infirmerie comprise
                     DB::raw('SUM(water_consumed) AS w'))
                 ->groupBy('check_date')
                 ->get()

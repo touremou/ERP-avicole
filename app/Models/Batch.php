@@ -1114,6 +1114,30 @@ class Batch extends Model
         return round(($this->total_mortality / $base) * 100, 2);
     }
 
+    /**
+     * Taux de mortalité d'un GROUPE de bandes — la règle de mortality_rate,
+     * agrégée : toutes les pertes (transport, troupeau, infirmerie) sur
+     * l'effectif livré (vivants reçus + morts au transport).
+     *
+     * Tableau de bord, liste des bâtiments et fiche fournisseur avaient chacun
+     * la leur : sans les morts en infirmerie, ou sans les morts au transport,
+     * ou rapportées aux seuls vivants reçus. Un même lot y affichait trois taux.
+     */
+    public static function tauxMortaliteDe(iterable $bandes): float
+    {
+        $bandes = collect($bandes);
+        $base   = $bandes->sum(fn (self $b) => (int) $b->initial_quantity + (int) ($b->qty_dead ?? 0));
+        if ($base <= 0) {
+            return 0.0;
+        }
+
+        $enElevage = (int) DailyCheck::whereIn('batch_id', $bandes->pluck('id'))
+            ->selectRaw('COALESCE(SUM(mortality), 0) + COALESCE(SUM(mortality_infirmary), 0) AS morts')
+            ->value('morts');
+
+        return round(((int) $bandes->sum('qty_dead') + $enElevage) / $base * 100, 2);
+    }
+
     // ═══════════════════════════════════════════════
     // ACCESSEURS — PERFORMANCE ZOOTECHNIQUE
     // ═══════════════════════════════════════════════
@@ -1859,10 +1883,13 @@ class Batch extends Model
         // → toujours faux. L'inlining force une comparaison numérique sur MySQL ET
         // SQLite. COALESCE(qty_dead, 0) gère la colonne NULL (sinon « initial +
         // NULL = NULL » annulait tout le ratio → lot jamais détecté critique).
+        // Les morts en INFIRMERIE comptent, comme dans mortality_rate : le lot
+        // alerté (CumulativeMortalityAlert) et le lot filtré « critique » sont
+        // le même lot.
         return $query->where('initial_quantity', '>', 0)
             ->whereRaw(
                 '(COALESCE(qty_dead, 0) + COALESCE((
-                        SELECT SUM(dc.mortality)
+                        SELECT SUM(dc.mortality + COALESCE(dc.mortality_infirmary, 0))
                         FROM daily_checks dc
                         WHERE dc.batch_id = batches.id
                         AND dc.deleted_at IS NULL

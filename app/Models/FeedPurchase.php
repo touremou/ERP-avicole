@@ -73,7 +73,7 @@ class FeedPurchase extends Model
      */
     public function getNormalizedQuantityAttribute(): float
     {
-        if ($this->unit === 'Sac') {
+        if (\App\Services\UnitConverter::isSac($this->unit)) {   // la règle de l'entrée en stock
             return \App\Services\UnitConverter::sacksToKg((float) $this->quantity, $this->metadata['bag_weight'] ?? null);
         }
         return (float) $this->quantity;
@@ -97,7 +97,7 @@ class FeedPurchase extends Model
     public function getDisplayLabelAttribute(): string
     {
         $label = number_format($this->quantity, 1) . ' ' . ($this->unit ?? 'Units');
-        if ($this->unit === 'Sac') {
+        if (\App\Services\UnitConverter::isSac($this->unit)) {   // la règle de l'entrée en stock
             $label .= " (" . ($this->quantity * $this->bag_weight) . " KG)";
         }
         return $label;
