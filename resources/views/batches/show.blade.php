@@ -80,12 +80,10 @@
         $isGmqTracked  = $batch->isGmqTracked();
         $isVolaille    = $batch->isVolaille();
 
-        // Cible GMQ (g/j) selon l'espèce.
-        $gmqTarget = match ($batch->species?->slug) {
-            'chevre' => (float) setting('elevage.gmq_cible_caprin', 100),
-            'mouton' => (float) setting('elevage.gmq_cible_ovin', 120),
-            default  => (float) setting('elevage.gmq_cible_ovin', 120),
-        };
+        // Cible GMQ (g/j) : Batch::gmqCible — la même que le rapport GMQ. Null
+        // pour un adulte à l'entretien : pas de croissance attendue.
+        $gmqTarget = $isGmqTracked ? $batch->gmqCible($batch->dailyChecks) : null;
+        $gmqNiveau = \App\Models\Batch::niveauGmq($stats['gmq'] ?? null, $gmqTarget);
 
         // Suivi de la ponte : piloté par le type de production de l'espèce.
         $showPonte = $batch->tracksEggs();
@@ -466,15 +464,16 @@
                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("GMQ") }}</p>
                 @if($stats['gmq'] !== null)
                 <h4 @class(['text-xl font-black tracking-tighter',
-                    'text-emerald-600' => $stats['gmq'] >= $gmqTarget,
-                    'text-amber-600'   => $stats['gmq'] >= $gmqTarget * 0.6 && $stats['gmq'] < $gmqTarget,
-                    'text-rose-600'    => $stats['gmq'] < $gmqTarget * 0.6])>
+                    'text-emerald-600' => $gmqNiveau === 'bon',
+                    'text-amber-600'   => $gmqNiveau === 'moyen',
+                    'text-rose-600'    => $gmqNiveau === 'faible',
+                    'text-slate-700'   => $gmqNiveau === null])>
                     {{ number_format($stats['gmq'], 0) }} <small class="text-xs opacity-50">g/j</small>
                 </h4>
                 @else
                 <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
                 @endif
-                <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">{{ __("Gain Moyen Quotidien") }} <span class="opacity-60">/ {{ __("cible") }} {{ number_format($gmqTarget, 0) }}g</span></p>
+                <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">{{ __("Gain Moyen Quotidien") }}@if($gmqTarget !== null) <span class="opacity-60">/ {{ __("cible") }} {{ number_format($gmqTarget, 0) }}g</span>@endif</p>
             </div>
         </div>
         @endif

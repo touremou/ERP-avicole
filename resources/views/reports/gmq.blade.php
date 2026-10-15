@@ -72,11 +72,15 @@
                                 <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">GMQ</p>
                                 @if($gmq !== null)
                                 <p @class(['text-2xl font-black italic',
-                                    'text-emerald-600' => $gmq >= 150,
-                                    'text-amber-600'   => $gmq >= 80 && $gmq < 150,
-                                    'text-rose-600'    => $gmq < 80])>
+                                    'text-emerald-600' => $stat['gmq_niveau'] === 'bon',
+                                    'text-amber-600'   => $stat['gmq_niveau'] === 'moyen',
+                                    'text-rose-600'    => $stat['gmq_niveau'] === 'faible',
+                                    'text-slate-700'   => $stat['gmq_niveau'] === null])>
                                     {{ number_format($gmq, 0) }} <small class="text-[10px] opacity-60">{{ __("g/j") }}</small>
                                 </p>
+                                @if($stat['gmq_cible'] !== null)
+                                <p class="text-[8px] text-slate-400 font-black uppercase mt-1">{{ __("cible") }} {{ number_format($stat['gmq_cible'], 0) }} {{ __("g/j") }}</p>
+                                @endif
                                 @else
                                 <p class="text-slate-300 text-sm font-black uppercase">{{ __("Données insuffisantes") }}</p>
                                 @endif

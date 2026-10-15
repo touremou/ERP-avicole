@@ -1000,11 +1000,18 @@ class ReportController extends Controller
                 'weaning_rate'    => $totalBorn > 0 ? round(($totalWeaned / $totalBorn) * 100, 1) : null,
             ];
 
+            // Cible et niveau : la règle de la fiche du lot (Batch::gmqCible /
+            // niveauGmq), et non plus 150 / 80 g/j pour toutes les espèces.
+            $gmqLot   = $batch->gmq($checks);
+            $gmqCible = $batch->gmqCible($checks);
+            $cibles   = ['gmq_cible' => $gmqCible, 'gmq_niveau' => \App\Models\Batch::niveauGmq($gmqLot, $gmqCible)];
+
             if ($checks->count() < 2) {
                 return [
                     'batch'        => $batch,
                     // Poids d'arrivée + une pesée suffisent (Batch::gmq).
-                    'gmq'          => $batch->gmq($checks),
+                    'gmq'          => $gmqLot,
+                    ...$cibles,
                     'gmq_series'   => [],
                     'start_weight' => $batch->avg_weight_start,
                     'last_weight'  => $checks->last()?->avg_weight,
@@ -1015,7 +1022,7 @@ class ReportController extends Controller
 
             $first = $checks->first();
             $last  = $checks->last();
-            $gmq   = $batch->gmq($checks);   // g/jour — une règle : Batch::gmq
+            $gmq   = $gmqLot;   // g/jour — une règle : Batch::gmq
 
             // Series for sparkline: [date => weight]
             $series = $checks->mapWithKeys(fn($c) => [
@@ -1025,6 +1032,7 @@ class ReportController extends Controller
             return [
                 'batch'        => $batch,
                 'gmq'          => $gmq,
+                ...$cibles,
                 'gmq_series'   => $series,
                 'start_weight' => $first->avg_weight,
                 'last_weight'  => $last->avg_weight,
