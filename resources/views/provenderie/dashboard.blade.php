@@ -119,8 +119,8 @@
                                     <td class="p-6 text-right px-10">
                                         <p @class([
                                             'text-2xl font-black tracking-tighter italic leading-none',
-                                            'text-blue-600' => $feed->current_quantity > ($feed->alert_threshold ?? 0),
-                                            'text-red-500 animate-pulse' => $feed->current_quantity <= ($feed->alert_threshold ?? 0)
+                                            'text-blue-600' => ! $feed->is_low,
+                                            'text-red-500 animate-pulse' => $feed->is_low
                                         ])>
                                             {{ number_format($feed->current_quantity, 1, ',', ' ') }}
                                             <small class="text-[10px] uppercase text-slate-400 ml-1 italic">kg</small>

@@ -28,7 +28,7 @@
                 </div>
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
                     <p class="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 italic">{{ __("Alertes Rupture") }}</p>
-                    <p class="text-4xl font-black text-slate-900 tracking-tighter leading-none">{{ $materials->filter(fn($m) => $m->stock_qty <= $m->alert_threshold)->count() }}</p>
+                    <p class="text-4xl font-black text-slate-900 tracking-tighter leading-none">{{ $materials->filter(fn($m) => $m->is_low_stock)->count() }}</p>
                 </div>
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <p class="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2 italic">{{ __("Ingrédients Actifs") }}</p>
@@ -41,7 +41,7 @@
                 @forelse($materials as $material)
                     @php
                         $stockPercentage = ($material->alert_threshold > 0) ? ($material->stock_qty / ($material->alert_threshold * 4)) * 100 : 100;
-                        $isLow = $material->stock_qty <= $material->alert_threshold;
+                        $isLow = $material->is_low_stock;   // un seuil à zéro n'alerte pas
                     @endphp
                     <div class="bg-white p-8 rounded-[3.5rem] border-2 {{ $isLow ? 'border-red-100 shadow-red-50' : 'border-slate-50 shadow-sm' }} hover:shadow-2xl transition-all relative overflow-hidden group">
                         
