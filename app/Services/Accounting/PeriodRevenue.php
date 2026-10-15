@@ -2,6 +2,7 @@
 
 namespace App\Services\Accounting;
 
+use App\Models\CropCycle;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturnItem;
@@ -267,5 +268,33 @@ class PeriodRevenue
             ->whereBetween('sales.sale_date', [$from, $to])
             ->whereDate('sale_returns.return_date', '>', $to->toDateString())
             ->select('sale_return_items.*');
+    }
+    /**
+     * CYCLES DE CULTURE CLÔTURÉS SUR LA PÉRIODE — déclaration UNIQUE.
+     *
+     * Leur recette (récoltes vendues) et leur coût des marchandises vendues
+     * entrent dans le résultat de la période à la clôture. Le compte de
+     * résultat les comptait ; le tableau de bord, qui répond à la même question
+     * (« combien ai-je gagné ce mois-ci »), les ignorait : une ferme qui clôt
+     * une culture voyait deux résultats pour le même mois.
+     *
+     * Cycles RÉELLEMENT clôturés : un cycle rouvert garde parfois sa date de
+     * clôture, d'où le filtre de statut (archived) en plus de la date.
+     *
+     * @return array{revenue: float, cost: float}
+     */
+    public static function closedCropCycles(Carbon $from, Carbon $to): array
+    {
+        $cycles = CropCycle::archived()
+            ->whereBetween('closing_date', [$from, $to])
+            ->with('inputs:id,crop_cycle_id,total_cost')
+            ->get();
+
+        return [
+            'revenue' => (float) $cycles->sum('total_revenue'),
+            // Coût des marchandises VENDUES : la récolte conservée suit la
+            // matière en inventaire (CropCycle::costOfGoodsSold).
+            'cost'    => (float) $cycles->sum(fn (CropCycle $c) => $c->costOfGoodsSold()),
+        ];
     }
 }

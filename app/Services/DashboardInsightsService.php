@@ -216,7 +216,11 @@ class DashboardInsightsService
          * deux fois (cf. PeriodRevenue::milkCollectedValued).
          */
         $caLait  = \App\Services\Accounting\PeriodRevenue::milkCollectedValued($monthStart, $monthEnd);
-        $caTotal = $caVentes;
+
+        // Cultures clôturées dans le mois : recette ET coût, comme au compte de
+        // résultat — sans elles, les deux écrans donnaient deux résultats.
+        $crops   = \App\Services\Accounting\PeriodRevenue::closedCropCycles($monthStart, $monthEnd);
+        $caTotal = $caVentes + $crops['revenue'];
 
         /*
          * CHARGES DU MOIS — même déclaration que le compte de résultat.
@@ -258,7 +262,7 @@ class DashboardInsightsService
         // Le total vient de la déclaration commune, pas d'une addition refaite
         // ici : c'est la recomposition à la main qui avait laissé des postes de
         // côté.
-        $costTotal = (float) array_sum($charges);
+        $costTotal = (float) array_sum($charges) + $crops['cost'];
 
         // Trésorerie : encours clients (ventes non soldées).
         $receivables = (float) Sale::unpaid()->get()->sum(fn ($s) => $s->remaining_amount);
