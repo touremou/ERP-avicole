@@ -147,3 +147,12 @@ test('un produit SANS coût de revient n’invente pas de prix', function () {
 
     expect((float) (articleMagasin()->last_unit_price ?? 0))->toBe(0.0);
 });
+
+test('la « Valeur stock » des produits finis est au coût ; la valeur de vente est dite telle', function () {
+    produitFiniAbattoir($this->farm->id, 100, cout: 22_000, prixVente: 35_000);
+
+    $kpi = $this->get(route('slaughter.finished'))->assertOk()->viewData('kpi');
+
+    expect((float) $kpi['total_value'])->toBe(2_200_000.0)
+        ->and((float) $kpi['sale_value'])->toBe(3_500_000.0);
+});
