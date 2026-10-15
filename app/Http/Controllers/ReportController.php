@@ -602,13 +602,15 @@ class ReportController extends Controller
             ->live()
             ->get();
 
-        $latestChecks = DailyCheck::select('batch_id', 'avg_weight', 'check_date')
+        // Les PESÉES de chaque lot (poids > 0), une requête. L'ancienne lecture
+        // prenait le DERNIER POINTAGE — sans pesée, le lot pesait 0 g — et sa
+        // sous-requête MAX(check_date) n'était pas corrélée au lot : un lot
+        // pouvait recevoir le pointage d'un autre jour que le sien.
+        $pesees = DailyCheck::select('batch_id', 'avg_weight', 'check_date')
             ->whereIn('batch_id', $activeBatches->pluck('id'))
-            ->whereIn('check_date', function ($query) {
-                $query->selectRaw('MAX(check_date)')
-                      ->from('daily_checks')
-                      ->groupBy('batch_id');
-            })->get()->keyBy('batch_id');
+            ->where('avg_weight', '>', 0)
+            ->orderBy('check_date')
+            ->get()->groupBy('batch_id');
 
         // ✅ setting() pour les seuils de mortalité
         // Seuils UNIQUES (cf. Batch::cumulativeMortalityThreshold) : ce rapport
@@ -617,10 +619,12 @@ class ReportController extends Controller
         $seuilCritique = \App\Models\Batch::cumulativeMortalityThreshold();
         $seuilAlerte = \App\Models\Batch::cumulativeMortalityWarningThreshold();
 
-        $stats = $activeBatches->map(function ($batch) use ($latestChecks, $seuilCritique, $seuilAlerte) {
+        $stats = $activeBatches->map(function ($batch) use ($pesees, $seuilCritique, $seuilAlerte) {
             $initial = $batch->initial_quantity;
             $totalMortalite = $batch->total_mortality ?? 0;
-            $current = $initial - $totalMortalite;
+            // L'effectif de la fiche. « initial − morts » ignorait les ventes et
+            // retranchait les morts au transport, absents de l'effectif initial.
+            $current = (int) $batch->current_quantity;
 
             // TAUX DE MORTALITÉ — implémentation UNIQUE sur le modèle
             // (Batch::mortality_rate), partagée avec la fiche hebdomadaire.
@@ -640,8 +644,8 @@ class ReportController extends Controller
             // donc un GMQ et des performances faux.
             $age = $batch->age;
 
-            $lastCheck = $latestChecks->get($batch->id);
-            $avgWeightGrams = $lastCheck ? ($lastCheck->avg_weight * 1000) : 0;
+            $peseesDuLot = $pesees->get($batch->id, collect());
+            $avgWeightGrams = $peseesDuLot->isNotEmpty() ? ((float) $peseesDuLot->last()->avg_weight * 1000) : 0;
 
             // FCR corrigé — implémentation UNIQUE sur le modèle (Batch::
             // fcr_corrected), partagée avec la fiche hebdomadaire par technicien.
@@ -660,7 +664,9 @@ class ReportController extends Controller
                 'mortality_count' => $totalMortalite,
                 'mortality_rate'  => round($tauxMortalite, 2),
                 'avg_weight'      => $avgWeightGrams,
-                'daily_gain'      => $age > 0 ? round($avgWeightGrams / $age, 1) : 0,
+                // Le GMQ de la fiche (Batch::gmq) : entre pesées, pas poids ÷ âge —
+                // un animal reçu adulte n'a pas pris tout son poids chez nous.
+                'daily_gain'      => $batch->gmq($peseesDuLot) ?? 0,
                 'status'          => $tauxMortalite > $seuilCritique ? 'Critique' : ($tauxMortalite > $seuilAlerte ? 'Alerte' : 'Normal'),
             ];
         });

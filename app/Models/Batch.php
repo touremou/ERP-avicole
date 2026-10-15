@@ -1329,8 +1329,10 @@ class Batch extends Model
         $totalFeedKg = (float) $this->dailyChecks()->sum('feed_consumed');
         $mortality   = (int) $this->dailyChecks()->sum('mortality');
 
+        // Une PESÉE : poids > 0, comme le GMQ et le tableau de bord. Un « 0 »
+        // saisi pour « pas pesé » rendait l'indice introuvable.
         $lastCheck = $this->dailyChecks()
-            ->whereNotNull('avg_weight')
+            ->where('avg_weight', '>', 0)
             ->latest('check_date')
             ->first();
 
@@ -1375,7 +1377,7 @@ class Batch extends Model
         }
 
         $lastWeight = (float) ($this->dailyChecks()
-            ->whereNotNull('avg_weight')
+            ->where('avg_weight', '>', 0)
             ->latest('check_date')
             ->value('avg_weight') ?? 0); // kg
 
