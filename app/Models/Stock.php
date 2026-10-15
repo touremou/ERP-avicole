@@ -329,7 +329,7 @@ class Stock extends Model
 
     public function getIsExpiredAttribute(): bool
     {
-        return $this->expiry_date !== null && $this->expiry_date->isPast();
+        return \App\Support\Peremption::estPerime($this->expiry_date);
     }
 
     /** Jours restants avant péremption (négatif si déjà périmé), ou null. */

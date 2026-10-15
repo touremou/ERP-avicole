@@ -58,7 +58,7 @@ class FinishedProduct extends Model
      */
     public function getIsExpiringSoonAttribute(): bool
     {
-        if (! $this->expiry_date || $this->expiry_date->isPast()) {
+        if (! $this->expiry_date || $this->is_expired) {
             return false;
         }
 
@@ -67,7 +67,7 @@ class FinishedProduct extends Model
 
     public function getIsExpiredAttribute(): bool
     {
-        return $this->expiry_date && $this->expiry_date->isPast();
+        return \App\Support\Peremption::estPerime($this->expiry_date);
     }
 
     public function getTypeLabelAttribute(): string
