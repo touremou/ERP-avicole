@@ -112,3 +112,22 @@ test('la dette fournisseurs du hub est celle de l’écran des factures : un tro
     expect($hub['supplier_debt'])->toBe(100000.0)
         ->and($hub['supplier_debt'])->toEqual($factures['total_due']);
 });
+
+test('l’autonomie de caisse se mesure aux décaissements réels : règlements fournisseurs compris, transferts exclus', function () {
+    $caisse = TreasuryAccount::create([
+        'name' => 'Caisse', 'type' => 'caisse', 'opening_balance' => 0, 'current_balance' => 600000, 'is_active' => true,
+    ]);
+    $sortie = fn (string $categorie, float $montant) => App\Models\TreasuryTransaction::create([
+        'treasury_account_id' => $caisse->id, 'direction' => 'out', 'amount' => $montant,
+        'transaction_date' => now()->subDays(10)->toDateString(), 'category' => $categorie,
+    ]);
+    $sortie('depense', 60000);    // registre des dépenses
+    $sortie('achat', 540000);     // aliment réglé au fournisseur
+    $sortie('transfert', 900000); // caisse → banque : l'argent reste à la ferme
+    $caisse->update(['current_balance' => 600000]);
+
+    $kpis = $this->get(route('finance.index'))->assertOk()->viewData('kpis');
+
+    // 600 000 ÷ (600 000 / 3 mois) = 3 mois — et non 30, sur le seul registre.
+    expect($kpis['runway_months'])->toBe(3.0);
+});

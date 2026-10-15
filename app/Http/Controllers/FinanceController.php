@@ -39,12 +39,27 @@ class FinanceController extends Controller
         $opexPrev  = (float) Expense::validated()->betweenDates($prevStart, $prevEnd)->sum('amount');
         $opexDelta = $opexPrev > 0 ? round((($opexMonth - $opexPrev) / $opexPrev) * 100, 1) : null;
 
-        // Charge mensuelle moyenne sur 3 mois glissants → dénominateur stable
-        // pour l'autonomie de caisse (évite qu'un mois creux fausse le ratio).
+        /*
+         * AUTONOMIE DE CAISSE : ce qui SORT réellement de la trésorerie.
+         *
+         * Le dénominateur était le seul registre des dépenses. Or l'argent sort
+         * aussi par les règlements fournisseurs (l'aliment, les poussins) et la
+         * paie — les plus gros décaissements d'un élevage. Une ferme qui paie
+         * 30 M d'aliment par mois et 2 M de dépenses diverses se croyait
+         * couverte quinze fois plus longtemps qu'elle ne l'est.
+         *
+         * On lit donc le grand-livre de trésorerie : toutes les sorties, hors
+         * transferts entre comptes de la ferme (l'argent ne quitte pas la
+         * ferme). Moyenne sur 3 mois glissants : un mois creux ne fausse pas le
+         * ratio.
+         */
         $window      = 3;
         $windowStart = $today->copy()->subMonthsNoOverflow($window)->startOfDay();
-        $opex3m      = (float) Expense::validated()->betweenDates($windowStart, $today)->sum('amount');
-        $opexAvgMonth = $opex3m > 0 ? $opex3m / $window : 0.0;
+        $outflow3m   = (float) \App\Models\TreasuryTransaction::where('direction', 'out')
+            ->where('category', '!=', 'transfert')
+            ->whereBetween('transaction_date', [$windowStart->toDateString(), $today->toDateString()])
+            ->sum('amount');
+        $opexAvgMonth = $outflow3m > 0 ? $outflow3m / $window : 0.0;
 
         // ─── Trésorerie ───
         $treasury      = (float) TreasuryAccount::active()->sum('current_balance');
