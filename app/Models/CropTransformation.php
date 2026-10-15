@@ -94,7 +94,7 @@ class CropTransformation extends Model
 
     public function getIsExpiredAttribute(): bool
     {
-        return $this->expiry_date && $this->expiry_date->isPast();
+        return \App\Support\Peremption::estPerime($this->expiry_date);
     }
 
     /** Valeur estimée du produit fini au prix de vente VISÉ (sortie × prix). */
