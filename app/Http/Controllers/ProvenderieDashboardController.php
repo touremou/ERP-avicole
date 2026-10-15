@@ -30,7 +30,7 @@ class ProvenderieDashboardController extends Controller
             ->value('total') ?? 0;
 
         // 2. Alertes de rupture
-        $lowStockAlerts = RawMaterial::whereColumn('stock_qty', '<=', 'alert_threshold')
+        $lowStockAlerts = RawMaterial::critical()   // seuil réglé ET franchi
             ->where('is_active', true)
             ->orderBy('stock_qty', 'asc')
             ->get();

@@ -92,8 +92,10 @@ class RawMaterial extends Model
      */
     public function getIsLowStockAttribute(): bool
     {
-        if (!$this->alert_threshold) return false;
-        return $this->stock_qty <= $this->alert_threshold;
+        // En NOMBRE : le cast décimal rend « 0.00 », une chaîne que PHP tient
+        // pour vraie — la garde « pas de seuil » ne jouait donc jamais.
+        if ((float) $this->alert_threshold <= 0) return false;
+        return (float) $this->stock_qty <= (float) $this->alert_threshold;
     }
 
     /**
@@ -117,8 +119,15 @@ class RawMaterial extends Model
         return $query->where('is_active', true);
     }
 
+    /**
+     * Matières sous leur seuil — la règle de getIsLowStockAttribute (et de
+     * Stock::is_low) : un seuil à zéro n'est pas un seuil. Sans cette garde,
+     * toute matière épuisée SANS seuil réglé s'affichait en rupture au tableau
+     * de bord de la provenderie, quand sa fiche ne la signalait pas.
+     */
     public function scopeCritical($query)
     {
-        return $query->whereColumn('stock_qty', '<=', 'alert_threshold');
+        return $query->where('alert_threshold', '>', 0)
+            ->whereColumn('stock_qty', '<=', 'alert_threshold');
     }
 }
