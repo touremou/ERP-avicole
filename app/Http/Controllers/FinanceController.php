@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Expense;
 use App\Models\SupplierInvoice;
-use App\Models\SupplierPayment;
 use App\Models\TreasuryAccount;
 use App\Models\TreasuryTransaction;
 use Illuminate\Support\Facades\Gate;
@@ -57,10 +56,14 @@ class FinanceController extends Controller
         $runwayMonths = $opexAvgMonth > 0 ? round($treasury / $opexAvgMonth, 1) : null;
 
         // ─── Dettes fournisseurs (comptes à payer) ───
+        // Le reste dû de CHAQUE facture (SupplierInvoice::remaining_amount),
+        // comme l'écran des factures fournisseurs et comme l'encours clients.
+        // « Facturé − réglé » sur l'ensemble laissait le trop-perçu d'une
+        // facture — voire d'un autre fournisseur — effacer une dette réelle :
+        // deux écrans, deux dettes.
         $countedIds  = SupplierInvoice::counted()->pluck('id');
-        $apBilled    = (float) SupplierInvoice::whereIn('id', $countedIds)->sum('total_amount');
-        $apPaid      = (float) SupplierPayment::whereIn('supplier_invoice_id', $countedIds)->sum('amount');
-        $supplierDebt = round($apBilled - $apPaid, 2);
+        $supplierDebt = round((float) SupplierInvoice::whereIn('id', $countedIds)->with('payments')->get()
+            ->sum(fn (SupplierInvoice $i) => $i->remaining_amount), 2);
 
         // DPO — délai moyen de paiement fournisseurs (jours) : dette rapportée à
         // l'achat quotidien moyen des 90 derniers jours. Null si aucun achat de
