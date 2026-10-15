@@ -756,7 +756,11 @@ class SlaughterController extends Controller
         $kpi = [
             'total_kg'       => $products->sum('current_quantity_kg'),
             'total_pieces'   => $products->sum('current_quantity_pieces'),
-            'total_value'    => $products->sum(fn($p) => $p->current_quantity_kg * $p->unit_price),
+            // Un stock se valorise AU COÛT — comme tout l'inventaire (Stock::total_value,
+            // au coût moyen pondéré). Le prix de vente donne ce que le stock
+            // RAPPORTERAIT : une autre information, affichée comme telle.
+            'total_value'    => $products->sum(fn($p) => (float) $p->current_quantity_kg * (float) $p->unit_cost),
+            'sale_value'     => $products->sum(fn($p) => (float) $p->current_quantity_kg * (float) $p->unit_price),
             'expired_count'  => $products->filter(fn($p) => $p->is_expired)->count(),
             'types_count'    => $products->where('current_quantity_kg', '>', 0)->groupBy('product_type')->count(),
         ];

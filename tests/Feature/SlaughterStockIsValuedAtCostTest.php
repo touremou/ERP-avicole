@@ -147,3 +147,25 @@ test('un produit SANS coût de revient n’invente pas de prix', function () {
 
     expect((float) (articleMagasin()->last_unit_price ?? 0))->toBe(0.0);
 });
+
+test('la « Valeur stock » des produits finis est au coût ; la valeur de vente est dite telle', function () {
+    produitFiniAbattoir($this->farm->id, 100, cout: 22_000, prixVente: 35_000);
+
+    $kpi = $this->get(route('slaughter.finished'))->assertOk()->viewData('kpi');
+
+    expect((float) $kpi['total_value'])->toBe(2_200_000.0)
+        ->and((float) $kpi['sale_value'])->toBe(3_500_000.0);
+});
+
+test('un article ancien sans coût moyen reprend son prix saisi ; un coût tenu reste intact', function () {
+    $ancien = Stock::create(['farm_id' => $this->farm->id, 'category' => Stock::CAT_CONSO, 'item_name' => 'Ancien',
+        'unit' => 'KG', 'current_quantity' => 10, 'alert_threshold' => 0, 'unit_price' => 400]);
+    $tenu = Stock::create(['farm_id' => $this->farm->id, 'category' => Stock::CAT_CONSO, 'item_name' => 'Tenu',
+        'unit' => 'KG', 'current_quantity' => 10, 'alert_threshold' => 0, 'unit_price' => 400, 'last_unit_price' => 380]);
+    \Illuminate\Support\Facades\DB::table('stocks')->where('id', $ancien->id)->update(['last_unit_price' => 0]);
+
+    (require database_path('migrations/2026_10_15_000001_stock_cost_backfills_legacy_items.php'))->up();
+
+    expect($ancien->fresh()->total_value)->toBe(4000.0)
+        ->and((float) $tenu->fresh()->last_unit_price)->toBe(380.0);
+});

@@ -29,6 +29,7 @@ test('le bouton Export des stocks renvoie un CSV exploitable', function () {
         'current_quantity' => 120,
         'alert_threshold'  => 200,     // sous le seuil : la colonne doit le dire
         'unit_price'       => 1500,
+        'last_unit_price'  => 1500,   // le coût moyen, que l'export valorise
     ]);
 
     $response = $this->actingAs($this->adminUser)
@@ -42,7 +43,7 @@ test('le bouton Export des stocks renvoie un CSV exploitable', function () {
         // le fichier avec ses accents, sans assistant d'importation.
         ->and($csv)->toContain(';')
         ->and(substr($csv, 0, 3))->toBe("\xEF\xBB\xBF")
-        // Valeur = quantité × prix unitaire, calculée ici plutôt que dans le
+        // Valeur = quantité × coût moyen, calculée ici plutôt que dans le
         // tableur de l'utilisateur.
         ->and($csv)->toContain('180000')
         ->and($csv)->toContain('OUI');

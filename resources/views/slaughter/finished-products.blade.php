@@ -24,8 +24,9 @@
                     <p class="text-2xl font-black text-slate-900">{{ number_format($kpi['total_pieces']) }}</p>
                 </div>
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Valeur stock") }}</p>
+                    <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Valeur stock (au coût)") }}</p>
                     <p class="text-xl font-black text-emerald-600">{{ number_format($kpi['total_value'], 0, ',', '.') }} <small class="text-[8px]">{{ setting('general.currency', 'GNF') }}</small></p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ __("Au prix de vente :") }} {{ number_format($kpi['sale_value'], 0, ',', '.') }}</p>
                 </div>
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Types") }}</p>

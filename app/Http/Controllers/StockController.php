@@ -61,7 +61,7 @@ class StockController extends Controller
             fwrite($out, "\xEF\xBB\xBF");   // BOM UTF-8 : accents lisibles dans Excel
             \App\Support\CsvExport::putRow($out, [
                 'Article', 'Catégorie', 'Unité', 'Quantité', 'Seuil d\'alerte',
-                'Prix unitaire', 'Valeur', 'Lot', 'Péremption', 'Sous le seuil',
+                'Coût unitaire (CMP)', 'Valeur', 'Lot', 'Péremption', 'Sous le seuil',
             ], ';');
 
             foreach ($stocks as $s) {
@@ -71,8 +71,10 @@ class StockController extends Controller
                     $s->unit,
                     $s->current_quantity,
                     $s->alert_threshold,
-                    $s->unit_price,
-                    round((float) $s->current_quantity * (float) $s->unit_price),
+                    // Coût moyen pondéré et valeur : Stock::total_value, la valeur
+                    // que la fiche, le tableau de bord et la logistique affichent.
+                    $s->last_unit_price,
+                    round($s->total_value),
                     $s->lot_number,
                     $s->expiry_date?->format('d/m/Y'),
                     // Colonne explicite : c'est l'information qu'on vient chercher
