@@ -61,7 +61,7 @@
                 <td>{{ $stat['last_weight'] ? number_format($stat['last_weight'], 3).' kg' : '—' }}</td>
                 <td>
                     @if($gmq !== null)
-                        <span class="{{ $gmq >= 150 ? 'gmq-good' : ($gmq >= 80 ? 'gmq-mid' : 'gmq-bad') }}">{{ number_format($gmq, 0) }}</span>
+                        <span class="{{ ['bon' => 'gmq-good', 'moyen' => 'gmq-mid', 'faible' => 'gmq-bad'][$stat['gmq_niveau']] ?? '' }}">{{ number_format($gmq, 0) }}</span>@if($stat['gmq_cible'] !== null) <small>/ {{ number_format($stat['gmq_cible'], 0) }}</small>@endif
                     @else
                         <span class="muted">{{ __("N/A") }}</span>
                     @endif

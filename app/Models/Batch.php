@@ -1098,6 +1098,86 @@ class Batch extends Model
     }
 
     /**
+     * GMQ CIBLE (g/j) — une déclaration, lue par la fiche du lot et par le
+     * rapport GMQ (écran et PDF).
+     *
+     * Deux cibles coexistaient. La fiche prenait le réglage OVIN pour toute
+     * espèce autre que la chèvre : un porc à 700 g/j y dépassait « sa cible » de
+     * 120 g, un lapin à 35 g/j restait en rouge, un taureau à l'entretien aussi.
+     * Le rapport appliquait 150 / 80 g/j en dur, réglages ignorés : un agneau à
+     * 130 g/j, vert sur sa fiche, sortait orange au rapport.
+     *
+     *   1. Bande d'ENGRAISSEMENT ovine ou caprine : le réglage de la ferme
+     *      (elevage.gmq_cible_ovin / elevage.gmq_cible_caprin), inchangé.
+     *   2. Sinon : la pente de la courbe de la souche (ProductionNorm), prise sur
+     *      la MÊME fenêtre que le GMQ mesuré (première → dernière pesée) — une
+     *      moyenne se compare à une moyenne.
+     *   3. Courbe plate (adulte à l'entretien, laitière en production) ou
+     *      absente : null. Aucune croissance n'est attendue, rien à colorer.
+     *
+     * @param iterable<object{check_date: mixed, avg_weight: mixed}>|null $pesees
+     */
+    public function gmqCible(?iterable $pesees = null): ?float
+    {
+        if ($this->type === 'engraissement') {
+            $reglage = match ($this->species?->slug) {
+                'mouton' => setting('elevage.gmq_cible_ovin', 120),
+                'chevre' => setting('elevage.gmq_cible_caprin', 100),
+                default  => null,
+            };
+            if ((float) $reglage > 0) {
+                return (float) $reglage;
+            }
+        }
+
+        $courbe = ProductionNorm::courbePour($this);
+        if ($courbe->count() < 2) {
+            return null;
+        }
+
+        // La fenêtre du GMQ mesuré (cf. gmq()) : pesées > 0, poids d'arrivée
+        // en origine s'il n'y a qu'une pesée.
+        $dates = collect($pesees ?? ($this->relationLoaded('dailyChecks') ? $this->dailyChecks : $this->dailyChecks()->get()))
+            ->filter(fn ($c) => (float) ($c->avg_weight ?? 0) > 0)
+            ->map(fn ($c) => Carbon::parse($c->check_date)->startOfDay())
+            ->sort()
+            ->values();
+        if ($dates->count() === 1 && (float) $this->avg_weight_start > 0 && $this->arrival_date) {
+            $dates->prepend(Carbon::parse($this->arrival_date)->startOfDay());
+        }
+
+        $de = $dates->isNotEmpty() ? $this->semaineDuCycle($dates->first()) : $this->semaineDuCycle();
+        $a  = $dates->count() >= 2 ? $this->semaineDuCycle($dates->last()) : $de + 1;
+        if ($a <= $de) {
+            $a = $de + 1;
+        }
+
+        $poidsDe = ProductionNorm::interpoler($courbe, $de)['weight'];
+        $poidsA  = ProductionNorm::interpoler($courbe, $a)['weight'];
+        if ($poidsDe === null || $poidsA === null) {
+            return null;
+        }
+
+        // target_weight est en grammes : la pente se lit directement en g/j.
+        $pente = ($poidsA - $poidsDe) / (($a - $de) * 7);
+
+        return $pente > 0 ? round($pente) : null;
+    }
+
+    /**
+     * Niveau d'un GMQ face à sa cible — LA règle de couleur : au moins la cible
+     * « bon », au moins 60 % « moyen », en deçà « faible ». Null sans cible.
+     */
+    public static function niveauGmq(?float $gmq, ?float $cible): ?string
+    {
+        if ($gmq === null || $cible === null || $cible <= 0) {
+            return null;
+        }
+
+        return $gmq >= $cible ? 'bon' : ($gmq >= $cible * 0.6 ? 'moyen' : 'faible');
+    }
+
+    /**
      * Taux de mortalité cumulé (%).
      *
      * Base de calcul : mortalité totale / (initial_quantity + qty_dead)
