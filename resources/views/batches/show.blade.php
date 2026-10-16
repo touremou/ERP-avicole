@@ -27,13 +27,12 @@
         $type = strtolower($batch->type);
         $isChair = in_array($type, ['chair', 'poulet de chair']);
         
-        // Poids (depuis la collection eager-loaded)
-        $sortedChecks = $batch->dailyChecks->sortByDesc('check_date');
-        $lastCheck = $sortedChecks->first();
-        $prevCheck = $sortedChecks->skip(1)->first();
-        $currentWeight = $lastCheck ? ($lastCheck->avg_weight * 1000) : 0; 
-        $prevWeight = $prevCheck ? ($prevCheck->avg_weight * 1000) : 0;
-        $weightGain = ($currentWeight > 0 && $prevWeight > 0) ? ($currentWeight - $prevWeight) : 0;
+        // Poids : la DERNIÈRE PESÉE, jugée contre la cible de SA semaine
+        // (Batch::dernierePesee) — la règle de l'alerte « retard de croissance »
+        // du conseiller. Le dernier POINTAGE pesait 0 g un jour sans pesée.
+        $pesee = $batch->dernierePesee($batch->dailyChecks);
+        $currentWeight = $pesee['poids_g'] ?? 0;
+        $weightGain = ($pesee && $pesee['precedente_g'] !== null) ? round($pesee['poids_g'] - $pesee['precedente_g']) : 0;
 
         // Cibles INTERPOLÉES sur la courbe du lot (ProductionNorm::cibleA), comme le
         // conseiller affiché sur cette même page. La recherche à la semaine exacte
@@ -42,17 +41,17 @@
         $cible = \App\Models\ProductionNorm::cibleA($batch, $currentWeek);
 
         $currentPhase = $batch->current_phase;
-        $targetWeight = $cible['weight'] ?? 0;
         $targetLayingRate = $cible['laying'] ?? 0;
 
-        // Ovins (pas de norme ProductionNorm) : cible de poids = poids de vente Tabaski.
+        // Ovins sans courbe : cible de poids = poids de vente Tabaski.
         $tabaskiTarget = null;
-        if ($targetWeight <= 0 && $batch->species?->slug === 'mouton') {
+        $performanceWeight = $pesee['pct'] ?? null;
+        if ($pesee && $pesee['cible_g'] === null && $batch->species?->slug === 'mouton') {
             $tabaskiTarget = (float) setting('elevage.tabaski_target_weight', 35) * 1000; // kg -> g
-            $targetWeight = $tabaskiTarget;
+            $performanceWeight = round($pesee['poids_g'] / $tabaskiTarget * 100, 1);
         }
-
-        $performanceWeight = ($targetWeight > 0 && $currentWeight > 0) ? ($currentWeight / $targetWeight) * 100 : 100;
+        // Les seuils du conseiller (Batch::niveauPoids) : 90 % / 80 %.
+        $weightLevel = \App\Models\Batch::niveauPoids($performanceWeight);
 
         // FCR — l'accessor CANONIQUE (correction de mortalité comprise), le même
         // que le rapport technique, la fiche hebdomadaire et la vue consolidée.
@@ -100,14 +99,14 @@
         // du poids moyen de l'échantillon (guide de souche : viser ≥ 80 %).
         // Dérivé des dailyChecks DÉJÀ eager-loadés : zéro requête ajoutée,
         // aucun impact sur le temps de chargement (< 1 s garanti sans cache).
-        $lastUniformityCheck = $batch->dailyChecks
-            ->whereNotNull('uniformity_pct')
-            ->sortByDesc('check_date')
-            ->first();
-        $uniformityPct    = $lastUniformityCheck?->uniformity_pct;
-        $uniformityTarget = (float) ($norm->uniformity_target ?? 80);
+        // Mesure et cible : Batch::derniereUniformite, la même que le conseiller.
+        $uniformite       = $batch->derniereUniformite($batch->dailyChecks);
+        $uniformityGuide  = $batch->uniformiteGuide();
+        $uniformityPct    = $uniformite['pct'] ?? null;
+        // Sans guide de souche : la mesure s'affiche sans jugement (null).
+        $uniformityTarget = $uniformite['cible'] ?? $uniformityGuide;
         // Carte affichée si une mesure existe OU si la souche a une cible guide.
-        $showUniformity   = $uniformityPct !== null || ($norm->uniformity_target ?? null) !== null;
+        $showUniformity   = $uniformite !== null || $uniformityGuide !== null;
 
         // Carte fumier : affichée seulement si un ramassage a été enregistré.
         $showManure = ($stats['manure_collected_kg'] ?? 0) > 0;
@@ -356,25 +355,30 @@
                 <div class="text-left leading-none">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Poids Moyen") }}</p>
                     <div class="flex items-baseline gap-1">
-                        <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ number_format($currentWeight, 0) }}g</h4>
+                        <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ $pesee ? number_format($currentWeight, 0) . 'g' : '—' }}</h4>
                         @if($weightGain > 0)<span class="text-[9px] font-black text-emerald-500">+{{ $weightGain }}g</span>@endif
                     </div>
+                    @if($pesee)
+                    <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic">{{ __("Pesée du") }} {{ $pesee['date']->format('d/m') }}</p>
+                    @endif
                 </div>
             </div>
             <div class="flex items-center gap-2 mt-3 px-1">
                 <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div @class([
                         'h-full transition-all duration-1000',
-                        'bg-emerald-500' => $performanceWeight >= 95,
-                        'bg-orange-500' => $performanceWeight < 95 && $performanceWeight >= 85,
-                        'bg-red-500' => $performanceWeight < 85,
-                    ]) style="width: {{ min($performanceWeight, 100) }}%"></div>
+                        'bg-emerald-500' => $weightLevel === 'bon',
+                        'bg-orange-500'  => $weightLevel === 'moyen',
+                        'bg-red-500'     => $weightLevel === 'faible',
+                    ]) style="width: {{ min($performanceWeight ?? 0, 100) }}%"></div>
                 </div>
                 <span class="text-[7px] font-black uppercase text-slate-400">
                     @if($tabaskiTarget)
                         {{ __("Cible Tabaski") }} ({{ number_format($tabaskiTarget / 1000, 0) }}kg) : {{ number_format($performanceWeight, 0) }}%
-                    @else
+                    @elseif($performanceWeight !== null)
                         {{ __("Norme") }}: {{ number_format($performanceWeight, 0) }}%
+                    @else
+                        {{ __("Norme") }}: —
                     @endif
                 </span>
             </div>
@@ -384,7 +388,7 @@
         @php
             // Code couleur métier : vert ≥ cible, orange dans les 10 points
             // sous la cible, rouge au-delà (lot hétérogène — trier/peser).
-            $unifState = $uniformityPct === null ? 'none'
+            $unifState = ($uniformityPct === null || $uniformityTarget === null) ? 'none'
                 : ((float) $uniformityPct >= $uniformityTarget ? 'ok'
                 : ((float) $uniformityPct >= $uniformityTarget - 10 ? 'warn' : 'bad'));
         @endphp
@@ -395,7 +399,7 @@
                 'bg-amber-50 border-amber-200'           => $unifState === 'warn',
                 'bg-red-50 border-red-200 animate-pulse' => $unifState === 'bad',
             ])
-            title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon — saisie à la pesée (pointage). Cible guide :') }} ≥ {{ number_format($uniformityTarget, 0) }} %">
+            title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon — saisie à la pesée (pointage). Cible guide :') }} {{ $uniformityTarget !== null ? '≥ ' . number_format($uniformityTarget, 0) . ' %' : '—' }}">
             <div @class([
                 'w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg',
                 'bg-slate-300'   => $unifState === 'none',
@@ -404,15 +408,16 @@
                 'bg-red-600'     => $unifState === 'bad',
             ])><i class="fa-solid fa-scale-unbalanced text-lg"></i></div>
             <div class="text-left leading-none">
-                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Uniformité") }} <span class="opacity-60">/ ≥ {{ number_format($uniformityTarget, 0) }} %</span></p>
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Uniformité") }}@if($uniformityTarget !== null) <span class="opacity-60">/ ≥ {{ number_format($uniformityTarget, 0) }} %</span>@endif</p>
                 @if($uniformityPct !== null)
                 <h4 @class([
                     'text-xl font-black tracking-tighter',
                     'text-emerald-600' => $unifState === 'ok',
                     'text-amber-600'   => $unifState === 'warn',
                     'text-red-700'     => $unifState === 'bad',
+                    'text-slate-700'   => $unifState === 'none',
                 ])>{{ rtrim(rtrim(number_format((float) $uniformityPct, 1), '0'), '.') }} %</h4>
-                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic">{{ __("Pesée du") }} {{ $lastUniformityCheck->check_date->format('d/m') }}</p>
+                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic">{{ __("Pesée du") }} {{ $uniformite['date']->format('d/m') }}</p>
                 @else
                 <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
                 <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic">{{ __("À saisir à la pesée hebdo") }}</p>

@@ -1178,6 +1178,109 @@ class Batch extends Model
     }
 
     /**
+     * DERNIÈRE PESÉE ET SA CIBLE — la « performance pondérale », une déclaration
+     * pour la tuile poids de la fiche et l'alerte « retard de croissance » du
+     * conseiller.
+     *
+     * Toutes deux lisaient le DERNIER POINTAGE : un jour sans pesée, la tuile
+     * affichait 0 g et le conseiller se taisait. Et la pesée était comparée à la
+     * cible d'AUJOURD'HUI : pesé il y a deux semaines, un lot dans les clous
+     * paraissait en retard. La courbe de croissance de la même page compare
+     * déjà chaque pesée à la cible de SA semaine — c'est la règle retenue.
+     *
+     * @return array{date: Carbon, poids_g: float, precedente_g: ?float, cible_g: ?float, pct: ?float}|null
+     */
+    public function dernierePesee(?iterable $pointages = null): ?array
+    {
+        $pesees = collect($pointages ?? ($this->relationLoaded('dailyChecks') ? $this->dailyChecks : $this->dailyChecks()->get()))
+            ->filter(fn ($c) => (float) ($c->avg_weight ?? 0) > 0)
+            ->sortBy(fn ($c) => Carbon::parse($c->check_date)->timestamp)
+            ->values();
+
+        if ($pesees->isEmpty()) {
+            return null;
+        }
+
+        $derniere = $pesees->last();
+        $date     = Carbon::parse($derniere->check_date)->startOfDay();
+        $poids    = round((float) $derniere->avg_weight * 1000, 1);
+        $cible    = ProductionNorm::cibleA($this, $this->semaineDuCycle($date))['weight'] ?? null;
+        $cible    = $cible !== null && (float) $cible > 0 ? (float) $cible : null;
+
+        return [
+            'date'         => $date,
+            'poids_g'      => $poids,
+            'precedente_g' => $pesees->count() >= 2 ? round((float) $pesees[$pesees->count() - 2]->avg_weight * 1000, 1) : null,
+            'cible_g'      => $cible,
+            'pct'          => $cible !== null ? round($poids / $cible * 100, 1) : null,
+        ];
+    }
+
+    /**
+     * Niveau d'un poids rapporté à sa cible (%) — LA règle : au moins 90 %
+     * « bon », au moins 80 % « moyen », en deçà « faible ». Ce sont les seuils
+     * de l'alerte « retard de croissance » ; la tuile en avait d'autres
+     * (95 / 85) : orange sur la fiche, rien au conseiller.
+     */
+    public static function niveauPoids(?float $pct): ?string
+    {
+        if ($pct === null) {
+            return null;
+        }
+
+        return $pct >= 90 ? 'bon' : ($pct >= 80 ? 'moyen' : 'faible');
+    }
+
+    /**
+     * Cible d'uniformité (%) du guide de la souche à une date : la dernière
+     * valeur fixée par la courbe à cette semaine (ou la première, avant elle).
+     * Null quand la courbe n'en fixe aucune.
+     */
+    public function uniformiteGuide(\DateTimeInterface|string|null $date = null): ?float
+    {
+        $semaine = $this->semaineDuCycle($date);
+        $lignes  = ProductionNorm::courbePour($this)->filter(fn ($n) => $n->uniformity_target !== null)->values();
+
+        $ligne = $lignes->filter(fn ($n) => $n->week_number <= $semaine)->last() ?? $lignes->first();
+
+        return $ligne ? (float) $ligne->uniformity_target : null;
+    }
+
+    /**
+     * DERNIÈRE MESURE D'UNIFORMITÉ ET SA CIBLE — une déclaration pour la tuile
+     * de la fiche et le conseiller.
+     *
+     * La tuile lisait la dernière MESURE contre 80 % fixe (sa variable de norme
+     * n'était jamais définie) ; le conseiller, la cible du guide contre le
+     * pointage du JOUR — muet dès que ce jour-là n'avait pas de pesée. Pour une
+     * souche sans guide, le conseiller se taisait (décision : pas de bruit tant
+     * que la fiche officielle n'est pas intégrée) quand la tuile passait au
+     * rouge. La cible est désormais celle du guide, ou aucune : sans guide, la
+     * mesure s'affiche sans jugement, et rien n'alerte.
+     *
+     * @return array{date: Carbon, pct: float, cible: ?float}|null
+     */
+    public function derniereUniformite(?iterable $pointages = null): ?array
+    {
+        $mesure = collect($pointages ?? ($this->relationLoaded('dailyChecks') ? $this->dailyChecks : $this->dailyChecks()->get()))
+            ->filter(fn ($c) => $c->uniformity_pct !== null)
+            ->sortBy(fn ($c) => Carbon::parse($c->check_date)->timestamp)
+            ->last();
+
+        if (! $mesure) {
+            return null;
+        }
+
+        $date = Carbon::parse($mesure->check_date)->startOfDay();
+
+        return [
+            'date'  => $date,
+            'pct'   => (float) $mesure->uniformity_pct,
+            'cible' => $this->uniformiteGuide($date),
+        ];
+    }
+
+    /**
      * Taux de mortalité cumulé (%).
      *
      * Base de calcul : mortalité totale / (initial_quantity + qty_dead)

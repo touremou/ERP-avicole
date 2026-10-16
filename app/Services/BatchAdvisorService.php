@@ -101,7 +101,8 @@ class BatchAdvisorService
             'actual' => [
                 'feed_kg'  => $last ? (float) $last->feed_consumed : null,
                 'water_l'  => $last ? (float) $last->water_consumed : null,
-                'weight_g' => $last && $last->avg_weight ? (float) $last->avg_weight * 1000 : null,
+                // La dernière PESÉE (Batch::dernierePesee), pas le pointage du jour.
+                'weight_g' => $batch->dernierePesee()['poids_g'] ?? null,
             ],
         ];
     }
@@ -210,23 +211,24 @@ class BatchAdvisorService
                 }
             }
 
-            // Uniformité du lot mesurée à la pesée vs cible du guide (≥ 80 %).
-            if ($guideNorm->uniformity_target !== null && $lastCheck
-                && $lastCheck->uniformity_pct !== null) {
-                $measured = (float) $lastCheck->uniformity_pct;
-                $target   = (float) $guideNorm->uniformity_target;
+        }
 
-                if ($measured < $target) {
-                    $out[] = [
-                        'severity' => $measured < $target - 10 ? 'critique' : 'attention',
-                        'icon'     => 'fa-scale-unbalanced',
-                        'title'    => 'Uniformité du lot insuffisante',
-                        'message'  => "Uniformité mesurée {$measured} % contre ≥ {$target} % visés : lot hétérogène."
-                            . " Trier les sujets légers, vérifier l'accès aux mangeoires (longueur/nombre)"
-                            . " et densité — un lot homogène conditionne le pic de ponte.",
-                    ];
-                }
-            }
+        // Uniformité : la dernière MESURE et sa cible (Batch::derniereUniformite),
+        // celles de la tuile de la fiche. Lue au pointage du jour, l'alerte se
+        // taisait dès que ce jour-là n'avait pas de pesée.
+        $uniformite = $batch->derniereUniformite();
+        // Sans cible de guide : silence (souche sans fiche enrichie).
+        if ($uniformite !== null && $uniformite['cible'] !== null && $uniformite['pct'] < $uniformite['cible']) {
+            $measured = rtrim(rtrim(number_format($uniformite['pct'], 1, '.', ''), '0'), '.');
+            $target   = rtrim(rtrim(number_format($uniformite['cible'], 1, '.', ''), '0'), '.');
+            $out[] = [
+                'severity' => $uniformite['pct'] < $uniformite['cible'] - 10 ? 'critique' : 'attention',
+                'icon'     => 'fa-scale-unbalanced',
+                'title'    => 'Uniformité du lot insuffisante',
+                'message'  => "Uniformité mesurée {$measured} % (pesée du {$uniformite['date']->format('d/m')}) contre ≥ {$target} % visés : lot hétérogène."
+                    . " Trier les sujets légers, vérifier l'accès aux mangeoires (longueur/nombre)"
+                    . " et densité — un lot homogène conditionne le pic de ponte.",
+            ];
         }
 
         // 2. Aliment réel vs recommandé.
@@ -268,17 +270,20 @@ class BatchAdvisorService
             }
         }
 
-        // 4. Croissance vs objectif de poids.
-        $target = $reco['per_subject']['weight_target_g'];
-        $actualW = $reco['actual']['weight_g'];
-        if ($target > 0 && $actualW !== null && $actualW > 0) {
-            $perf = $actualW / $target * 100;
-            if ($perf < 90) {
+        // 4. Croissance vs objectif de poids : la dernière PESÉE contre la cible
+        //    de SA semaine, niveaux de Batch::niveauPoids — ceux de la tuile.
+        $pesee   = $batch->dernierePesee();
+        $target  = $pesee['cible_g'] ?? null;
+        $actualW = $pesee['poids_g'] ?? null;
+        if ($target !== null && $actualW !== null) {
+            $perf   = $pesee['pct'];
+            $niveau = Batch::niveauPoids($perf);
+            if ($niveau !== 'bon') {
                 $out[] = [
-                    'severity' => $perf < 80 ? 'critique' : 'attention',
+                    'severity' => $niveau === 'faible' ? 'critique' : 'attention',
                     'icon'     => 'fa-weight-scale',
                     'title'    => 'Retard de croissance',
-                    'message'  => 'Poids moyen ' . number_format($actualW) . ' g, soit ' . round($perf)
+                    'message'  => 'Poids moyen ' . number_format($actualW) . ' g (pesée du ' . $pesee['date']->format('d/m') . '), soit ' . round($perf)
                         . ' % de l\'objectif (' . number_format($target) . ' g) à cet âge. Revoir densité,'
                         . ' ration et programme sanitaire.',
                 ];
