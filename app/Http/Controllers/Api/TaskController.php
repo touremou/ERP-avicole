@@ -33,7 +33,7 @@ class TaskController extends Controller
 
         $today    = now()->toDateString();
         $horizon  = now()->addDays(7)->toDateString();
-        $doable   = ['a_faire', 'en_cours', 'en_retard'];
+        $doable   = TaskAssignment::STATUTS_OUVERTS;
 
         $tasks = TaskAssignment::query()
             ->with('claimant:id,name')
@@ -85,7 +85,7 @@ class TaskController extends Controller
             'tasks'   => $tasks,
             'summary' => [
                 'today'         => $tasks->filter(fn ($t) => $t->scheduled_date->toDateString() === $today)->count(),
-                'overdue'       => $tasks->filter(fn ($t) => $t->scheduled_date->toDateString() < $today)->count(),
+                'overdue'       => $tasks->filter(fn ($t) => $t->is_overdue)->count(),   // la règle du modèle
                 'upcoming'      => $tasks->filter(fn ($t) => $t->scheduled_date->toDateString() > $today)->count(),
                 'high_priority' => $tasks->whereIn('priority', ['haute', 'critique'])->count(),
                 'done_today'    => $doneToday,
