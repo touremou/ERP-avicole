@@ -171,11 +171,26 @@ class TaskAssignment extends Model
     public function scopeForDate($q, $date) { return $q->where('scheduled_date', $date); }
     public function scopePending($q) { return $q->whereIn('status', ['a_faire', 'en_retard']); }
     public function scopeCompleted($q) { return $q->where('status', 'fait'); }
-    public function scopeOverdue($q) { return $q->where('status', 'a_faire')->where('scheduled_date', '<', now()->toDateString()); }
+    /** Statuts d'une tâche NON TERMINÉE. */
+    public const STATUTS_OUVERTS = ['a_faire', 'en_cours', 'en_retard'];
+
+    /**
+     * TÂCHE EN RETARD — une déclaration : non terminée, prévue avant aujourd'hui.
+     *
+     * La règle exigeait le statut « à faire ». Or `tasks:generate` passe chaque
+     * matin (05:00) les tâches « à faire » des jours précédents au statut
+     * « en retard » : dès lors, la liste « tâches en retard » et le compteur du
+     * planning web les perdaient TOUTES, et affichaient zéro toute la journée.
+     * Le terrain (API) comptait, lui, toute tâche ouverte d'avant aujourd'hui.
+     */
+    public function scopeOverdue($q)
+    {
+        return $q->whereIn('status', self::STATUTS_OUVERTS)->where('scheduled_date', '<', now()->toDateString());
+    }
 
     public function getIsOverdueAttribute(): bool
     {
-        return $this->status === 'a_faire' && $this->scheduled_date->lt(now()->startOfDay());
+        return in_array($this->status, self::STATUTS_OUVERTS, true) && $this->scheduled_date->lt(now()->startOfDay());
     }
 
     public function getStatusLabelAttribute(): string

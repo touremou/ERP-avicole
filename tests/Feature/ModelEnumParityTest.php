@@ -74,6 +74,12 @@ test('aucune liste de valeurs d’un modèle ne diverge de l’ENUM de sa table'
         // quatre — « refuse » en est exclu à dessein, un congé refusé n'ayant
         // jamais eu lieu (cf. EmployeeLeave::overlapping()).
         'EmployeeLeave::OCCUPYING_STATUSES',
+
+        // Sous-ensemble VOLONTAIRE : les statuts d'une tâche NON TERMINÉE
+        // (à faire, en cours, en retard), base de la règle « en retard »
+        // (TaskAssignment::overdue()). « fait » et « annule » en sont exclus
+        // à dessein : une tâche close n'est jamais en retard.
+        'TaskAssignment::STATUTS_OUVERTS',
     ];
 
     $divergences = [];
