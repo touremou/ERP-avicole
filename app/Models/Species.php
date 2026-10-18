@@ -187,6 +187,59 @@ class Species extends Model
         return in_array($this->family, ['petit_ruminant', 'grand_ruminant', 'porcin', 'lagomorphe']);
     }
 
+    /**
+     * LE VOCABULAIRE DE L'ESPÈCE — une déclaration, à l'image de habitat_label.
+     *
+     * Les écrans communs à toutes les espèces parlaient volaille : la clôture
+     * d'un bassin de tilapias annonçait « Acquisition poussins » et « Vente
+     * volaille », le planning d'une bande de porcs « Poussins commandés ».
+     *
+     *   jeunes : ce que l'on met en place en démarrant une bande ;
+     *   vente  : ce que l'on vend vif à la clôture.
+     */
+    public const VOCABULAIRE = [
+        'poulet'  => ['jeunes' => 'poussins',     'vente' => 'volaille'],
+        'dinde'   => ['jeunes' => 'dindonneaux',  'vente' => 'volaille'],
+        'caille'  => ['jeunes' => 'cailleteaux',  'vente' => 'volaille'],
+        'pigeon'  => ['jeunes' => 'pigeonneaux',  'vente' => 'volaille'],
+        'pintade' => ['jeunes' => 'pintadeaux',   'vente' => 'volaille'],
+        'canard'  => ['jeunes' => 'canetons',     'vente' => 'volaille'],
+        'mouton'  => ['jeunes' => 'agneaux',      'vente' => 'ovins'],
+        'chevre'  => ['jeunes' => 'chevreaux',    'vente' => 'caprins'],
+        'vache'   => ['jeunes' => 'veaux',        'vente' => 'bovins'],
+        'tilapia' => ['jeunes' => 'alevins',      'vente' => 'poissons'],
+        'carpe'   => ['jeunes' => 'alevins',      'vente' => 'poissons'],
+        'silure'  => ['jeunes' => 'alevins',      'vente' => 'poissons'],
+        'lapin'   => ['jeunes' => 'lapereaux',    'vente' => 'lapins'],
+        'porc'    => ['jeunes' => 'porcelets',    'vente' => 'porcs'],
+    ];
+
+    /** Repli par famille, pour une espèce ajoutée par la ferme. */
+    private const VOCABULAIRE_FAMILLE = [
+        'volaille'       => ['jeunes' => 'poussins',  'vente' => 'volaille'],
+        'aquaculture'    => ['jeunes' => 'alevins',   'vente' => 'poissons'],
+        'petit_ruminant' => ['jeunes' => 'jeunes',    'vente' => 'animaux'],
+        'grand_ruminant' => ['jeunes' => 'veaux',     'vente' => 'bovins'],
+        'porcin'         => ['jeunes' => 'porcelets', 'vente' => 'porcs'],
+        'lagomorphe'     => ['jeunes' => 'lapereaux', 'vente' => 'lapins'],
+    ];
+
+    /** « poussins », « alevins », « porcelets »… — ce que l'on met en place. */
+    public function jeunes(): string
+    {
+        return self::VOCABULAIRE[$this->slug]['jeunes']
+            ?? self::VOCABULAIRE_FAMILLE[$this->family]['jeunes']
+            ?? 'jeunes';
+    }
+
+    /** « volaille », « poissons », « ovins »… — ce que l'on vend vif. */
+    public function vente(): string
+    {
+        return self::VOCABULAIRE[$this->slug]['vente']
+            ?? self::VOCABULAIRE_FAMILLE[$this->family]['vente']
+            ?? 'animaux';
+    }
+
     public function getFamilyLabelAttribute(): string
     {
         return match($this->family) {

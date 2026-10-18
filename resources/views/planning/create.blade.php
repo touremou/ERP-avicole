@@ -143,7 +143,7 @@
                             </div>
 
                             <div class="mt-6">
-                                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Fournisseur poussins") }}</label>
+                                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Fournisseur des animaux") }}</label>
                                 <select name="provider_id" class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-600 shadow-inner appearance-none italic outline-none">
                                     <option value="">{{ __("-- Optionnel --") }}</option>
                                     @foreach($providers as $p)
@@ -177,7 +177,7 @@
                                     <p class="text-sm font-black text-slate-900" id="dt_order">—</p>
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">
-                                    <div><p class="text-[8px] font-black text-emerald-500 uppercase">{{ __("Arrivée poussins") }}</p><p class="text-[8px] text-slate-400">J0</p></div>
+                                    <div><p class="text-[8px] font-black text-emerald-500 uppercase">{{ __("Arrivée des animaux") }}</p><p class="text-[8px] text-slate-400">J0</p></div>
                                     <p class="text-sm font-black text-emerald-600" id="dt_arrival">—</p>
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">

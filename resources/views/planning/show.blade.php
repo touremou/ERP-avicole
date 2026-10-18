@@ -56,7 +56,7 @@
                         'bg-slate-800 text-white' => $plan->status === 'termine',
                         'bg-red-100 text-red-500' => $plan->status === 'annule'])>
                         @if($plan->status === 'planifie') 📅 {{ __("Planifié") }}
-                        @elseif($plan->status === 'commande') 📞 {{ __("Poussins Commandés") }}
+                        @elseif($plan->status === 'commande') 📞 {{ __(':quoi commandés', ['quoi' => ucfirst(__($plan->species?->jeunes() ?? 'poussins'))]) }}
                         @elseif($plan->status === 'en_cours') 🐣 {{ __("Bande Active") }}
                         @elseif($plan->status === 'termine') ✅ {{ __("Terminé") }}
                         @elseif($plan->status === 'annule') ❌ {{ __("Annulé") }}
@@ -107,7 +107,7 @@
                         <i class="fa-solid fa-forward-step"></i> {{ __("Prochaine étape") }}
                     </h3>
                     <p class="text-[9px] text-blue-700 mb-6 normal-case">
-                        {{ __("Les poussins doivent être commandés au moins :n jours avant l'arrivée prévue.", ['n' => (int) setting('planning.order_lead_days', \App\Models\PlannedBatch::CHICK_ORDER_LEAD_DAYS)]) }}
+                        {{ __("Les :quoi doivent être commandés au moins :n jours avant l'arrivée prévue.", ['quoi' => __($plan->species?->jeunes() ?? 'poussins'), 'n' => (int) setting('planning.order_lead_days', \App\Models\PlannedBatch::CHICK_ORDER_LEAD_DAYS)]) }}
                         @if($plan->is_overdue)
                             <span class="text-red-600 font-black"> ⚠ {{ __("La date de commande est dépassée de") }} {{ \App\Support\Jours::entre($plan->chick_order_deadline) }} {{ __("jours !") }}</span>
                         @else
@@ -137,10 +137,10 @@
                 @if($plan->status === 'commande')
                 <div class="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-200">
                     <h3 class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-rocket"></i> {{ __("Poussins commandés — Prêt à activer") }}
+                        <i class="fa-solid fa-rocket"></i> {{ __(':quoi commandés — Prêt à activer', ['quoi' => ucfirst(__($plan->species?->jeunes() ?? 'poussins'))]) }}
                     </h3>
                     <p class="text-[9px] text-emerald-700 mb-6 normal-case">
-                        {{ __("Quand les poussins arrivent, cliquez sur \"Activer la bande\" pour saisir les données réelles (quantité reçue, mortalité transport, prix) et créer automatiquement le lot dans le système.") }}
+                        {{ __('Quand les :quoi arrivent, cliquez sur « Activer la bande » pour saisir les données réelles (quantité reçue, mortalité transport, prix) et créer automatiquement le lot dans le système.', ['quoi' => __($plan->species?->jeunes() ?? 'poussins')]) }}
                     </p>
                     <div class="flex gap-3">
                         @can('planning.M')
