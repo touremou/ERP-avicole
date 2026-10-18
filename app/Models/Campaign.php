@@ -162,19 +162,15 @@ class Campaign extends Model
     }
 
     /**
-     * Chiffre d'affaires réalisé : lignes de vente validées/livrées
-     * adossées aux lots de la campagne (animaux vifs, carcasses...).
+     * Chiffre d'affaires réalisé : la somme des recettes de ses lots
+     * (Batch::revenus — ventes nettes de remise, vente de réforme, cessions à
+     * l'abattoir). Il ne comptait que les lignes de vente, AVANT remise et
+     * sans la réforme : la marge de la campagne ne valait pas la somme des
+     * marges de ses lots.
      */
     public function getRealizedRevenueAttribute(): float
     {
-        $batchIds = $this->batches->pluck('id');
-        if ($batchIds->isEmpty()) {
-            return 0.0;
-        }
-
-        return (float) SaleItem::whereIn('batch_id', $batchIds)
-            ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre']))
-            ->sum('total');
+        return (float) $this->batches->sum(fn (Batch $b) => $b->revenus);
     }
 
     /** Marge réalisée = CA réalisé − coûts engagés. */

@@ -256,6 +256,38 @@ class PeriodRevenue
     }
 
     /**
+     * VENTES D'UNE VIE DE LOT — les lignes de vente adossées à chaque lot
+     * (animaux vifs, carcasses vendues du lot), ventes validées ou livrées,
+     * NETTES DE REMISE par la règle de forBatches. Le total d'une ligne tient
+     * déjà compte de ses retours. On ne lit que les ventes qui portent ces
+     * lots : pas le carnet de toute la ferme.
+     *
+     * @param  iterable<int>  $batchIds
+     * @return array<int, float>  lot → ventes nettes
+     */
+    public static function salesOfBatches(iterable $batchIds): array
+    {
+        $ids = collect($batchIds)->filter()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $lignes = SaleItem::whereIn('batch_id', $ids)
+            ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre']))
+            ->with('sale:id,subtotal,discount_amount')
+            ->get(['id', 'sale_id', 'batch_id', 'total']);
+
+        $parLot = [];
+        foreach ($lignes as $ligne) {
+            $sousTotal = (float) ($ligne->sale?->subtotal ?? 0);
+            $ratio = $sousTotal > 0 ? max(0.0, ($sousTotal - (float) $ligne->sale->discount_amount) / $sousTotal) : 1.0;
+            $parLot[$ligne->batch_id] = ($parLot[$ligne->batch_id] ?? 0.0) + (float) $ligne->total * $ratio;
+        }
+
+        return array_map(fn ($v) => round($v, 2), $parLot);
+    }
+
+    /**
      * Lignes de retour portant sur une vente de la période, mais survenues
      * APRÈS elle — celles, et seulement celles, qui réécrivaient le passé.
      */

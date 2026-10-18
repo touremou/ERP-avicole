@@ -110,9 +110,10 @@ class CloseBatch
 
             // ─── MARGE ───
             // Les sujets cédés à l'abattoir de la ferme comptent à leur coût de
-            // revient (Batch::cessions_abattoir) — comme dans net_margin.
+            // revient (Batch::cessions_abattoir) — comme Batch::revenus.
             // total_revenue reste la vente de réforme.
-            $margin = $totalRevenue + $batch->cessions_abattoir - $totalCost;
+            // Les ventes faites en cours de cycle (Batch::ventes_du_lot) aussi.
+            $margin = $totalRevenue + $batch->ventes_du_lot + $batch->cessions_abattoir - $totalCost;
 
             // ─── MISE À JOUR DU LOT ───
             $batch->update([
