@@ -188,6 +188,20 @@ class TaskAssignment extends Model
         return $q->whereIn('status', self::STATUTS_OUVERTS)->where('scheduled_date', '<', now()->toDateString());
     }
 
+    /**
+     * TAUX DE RÉALISATION d'un ensemble de tâches (%) — une déclaration, pour
+     * les statistiques du jour et le calendrier du planning : les tâches FAITES
+     * sur les tâches à faire, ANNULÉES exclues. Une tâche annulée n'était pas à
+     * faire : la compter abaissait le taux d'une journée sans rien d'oublié.
+     * Null quand rien n'était à faire.
+     */
+    public static function tauxDeRealisation(iterable $taches): ?int
+    {
+        $aFaire = collect($taches)->reject(fn ($t) => $t->status === 'annule');
+
+        return $aFaire->isEmpty() ? null : (int) round($aFaire->where('status', 'fait')->count() / $aFaire->count() * 100);
+    }
+
     public function getIsOverdueAttribute(): bool
     {
         return in_array($this->status, self::STATUTS_OUVERTS, true) && $this->scheduled_date->lt(now()->startOfDay());

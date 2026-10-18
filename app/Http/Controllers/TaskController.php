@@ -128,8 +128,10 @@ class TaskController extends Controller
                 $calendarData[$key] = [
                     'total' => $total,
                     'done'  => $done,
-                    'late'  => $dayTasks->where('status', 'en_retard')->count(),
-                    'rate'  => $total > 0 ? round($done / $total * 100) : null,
+                    // La règle « en retard » du modèle (non terminée, d'avant
+                    // aujourd'hui) — pas le seul statut posé par le passage du matin.
+                    'late'  => $dayTasks->filter(fn ($t) => $t->is_overdue)->count(),
+                    'rate'  => TaskAssignment::tauxDeRealisation($dayTasks),
                 ];
                 $cursor->addDay();
             }

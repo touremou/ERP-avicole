@@ -577,7 +577,8 @@ class TaskSchedulerService
             'done'        => $tasks->where('status', 'fait')->count(),
             'pending'     => $tasks->whereIn('status', ['a_faire'])->count(),
             'overdue'     => $overdueQuery->count(),
-            'rate'        => $tasks->count() > 0 ? round($tasks->where('status', 'fait')->count() / $tasks->count() * 100) : 0,
+            // Annulées exclues (TaskAssignment::tauxDeRealisation), comme au calendrier.
+            'rate'        => TaskAssignment::tauxDeRealisation($tasks) ?? 0,
             'by_category' => $tasks->groupBy('category')->map->count(),
             'by_employee' => $tasks->groupBy('employee_id')->map(fn($t) => [
                 'total' => $t->count(), 'done' => $t->where('status', 'fait')->count(),
