@@ -255,6 +255,31 @@ class Stock extends Model
         return $this->category === self::CAT_CONSO && $this->conso_type === 'Aliment';
     }
 
+    /**
+     * AUTONOMIE D'UN ALIMENT — une règle, celle du réglage de la ferme
+     * (stocks.critical_days_threshold, 3 jours par défaut).
+     *
+     * Le tableau de bord la lisait (« critique » à 3 jours ou moins) ; le
+     * conseiller du lot et le résumé du matin tenaient leurs seuils en dur
+     * (« critique » sous 3 jours, « attention » sous 7) : à 3 jours, critique
+     * ici, attention là, et un seuil modifié par la ferme n'agissait que sur
+     * un écran sur trois.
+     *
+     *   critique  : au plus le seuil ;
+     *   attention : au plus deux fois le seuil (6 jours par défaut, comme avant).
+     */
+    public static function seuilAutonomieCritique(): int
+    {
+        return max(0, (int) setting('stocks.critical_days_threshold', 3));
+    }
+
+    public static function niveauAutonomie(int $jours): ?string
+    {
+        $seuil = self::seuilAutonomieCritique();
+
+        return $jours <= $seuil ? 'critique' : ($jours <= 2 * $seuil ? 'attention' : null);
+    }
+
     public function getIsLowAttribute(): bool
     {
         if ((float) $this->alert_threshold <= 0) {
