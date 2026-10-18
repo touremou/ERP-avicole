@@ -564,13 +564,15 @@ class BatchController extends Controller
             'feed_price_kg'   => $totalFeed > 0 ? round($feedCost / $totalFeed) : 0,
             'health'          => round($healthCost),
             'energy'          => round($energyCost),
-            // Dépenses directes, achats non-aliment, frais annexes et traitement
-            // des incidents : comptés dans le total, donc nommés ici.
+            // Dépenses directes, achats hors aliment et hors santé (hygiène,
+            // litière, matériel) : comptés dans le total, donc nommés ici.
             'other'           => round($otherCosts),
             'total_known'     => round($totalKnownCosts),
             'duration_days'   => $durationDays,
             'feed_unlogged'   => round($feedUnlogged),
             'feed_unvalued_kg' => round($feedUnvaluedKg, 1),
+            // Sujets cédés à l'abattoir de la ferme (Batch::cessions_abattoir).
+            'cessions'        => round($batch->cessions_abattoir),
         ];
 
         return view('batches.close', compact(

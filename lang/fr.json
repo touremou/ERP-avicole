@@ -1139,5 +1139,8 @@
     "Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.": "Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.",
     "Coût du traitement, hors produits achetés": "Coût du traitement, hors produits achetés",
     "Produits de santé achetés": "Produits de santé achetés",
-    "Achats des lots (hygiène, litière, matériel)": "Achats des lots (hygiène, litière, matériel)"
+    "Achats des lots (hygiène, litière, matériel)": "Achats des lots (hygiène, litière, matériel)",
+    "Cession à l'abattoir": "Cession à l'abattoir",
+    "Sujets abattus, cédés à leur coût de revient": "Sujets abattus, cédés à leur coût de revient",
+    "Coût de revient du lot": "Coût de revient du lot"
 }

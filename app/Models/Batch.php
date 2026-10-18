@@ -1830,10 +1830,58 @@ class Batch extends Model
      */
     public function getNetMarginAttribute(): float
     {
-        // Revenus enregistrés sur le lot (vente de réforme calculée à la clôture).
-        $sellingRevenue = (float) ($this->total_revenue ?? 0);
+        // Revenus enregistrés sur le lot (vente de réforme calculée à la clôture)
+        // + les sujets CÉDÉS à l'abattoir de la ferme, à leur coût de revient.
+        $sellingRevenue = (float) ($this->total_revenue ?? 0) + $this->cessions_abattoir;
 
         return $sellingRevenue - $this->operating_cost - (float) ($this->total_acquisition_cost ?? 0);
+    }
+
+    public function slaughterOrders(): HasMany
+    {
+        return $this->hasMany(SlaughterOrder::class);
+    }
+
+    /**
+     * COÛT DE REVIENT PAR SUJET — acquisition + élevage (operating_cost :
+     * aliment consommé, santé, achats, eau, énergie, dépenses, frais), réparti
+     * sur les sujets élevés VIVANTS à ce jour : reçus moins morts (troupeau et
+     * infirmerie). Les morts pèsent sur les survivants, comme en élevage.
+     *
+     * C'est le prix auquel le lot cède ses sujets à l'abattoir de la ferme : la
+     * carcasse ne portait que le prix du poussin, quand celui-ci n'est qu'une
+     * part de ce qu'a coûté l'animal. Null sans sujet vivant à répartir.
+     */
+    public function coutDeRevientParSujet(): ?float
+    {
+        $morts = (int) $this->dailyChecks()->sum('mortality') + (int) $this->dailyChecks()->sum('mortality_infirmary');
+        $vivants = (int) $this->initial_quantity - $morts;
+        if ($vivants <= 0) {
+            return null;
+        }
+
+        $acquisition = (float) ($this->total_acquisition_cost ?: ((float) $this->buy_price_per_unit * (int) $this->initial_quantity));
+
+        return round(($acquisition + $this->operating_cost) / $vivants, 2);
+    }
+
+    /**
+     * CESSIONS À L'ABATTOIR — les sujets cédés à l'abattoir de la ferme, à leur
+     * coût de revient (SlaughterOrder::material_cost, figé à l'abattage).
+     *
+     * Pour le lot, c'est un PRODUIT. Sans lui, un lot abattu en interne
+     * clôturait « tous les coûts, aucune recette », pendant que la carcasse
+     * portait ces mêmes coûts : les deux marges les comptaient deux fois. Cédé
+     * au coût, le lot rend ses sujets sans gain ni perte, et la marge de la
+     * filière se lit à l'abattoir, à la vente de la viande.
+     */
+    public function getCessionsAbattoirAttribute(): float
+    {
+        return (float) $this->slaughterOrders()
+            ->where('status', 'termine')
+            ->where(fn ($q) => $q->whereNull('service_type')->orWhere('service_type', '!=', 'facon'))
+            ->whereNotNull('material_cost')
+            ->sum('material_cost');
     }
 
     /**
