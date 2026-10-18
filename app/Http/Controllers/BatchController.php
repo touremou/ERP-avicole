@@ -573,6 +573,12 @@ class BatchController extends Controller
             'feed_unvalued_kg' => round($feedUnvaluedKg, 1),
             // Sujets cédés à l'abattoir de la ferme (Batch::cessions_abattoir).
             'cessions'        => round($batch->cessions_abattoir),
+            // Ventes faites en cours de cycle (Batch::ventes_du_lot).
+            'ventes'          => round($batch->ventes_du_lot),
+            // Sujets élevés vivants : le diviseur du coût de revient par sujet
+            // (Batch::coutDeRevientParSujet), frais annexes saisis compris.
+            'heads_raised'    => max(0, (int) $batch->initial_quantity
+                - (int) $batch->dailyChecks()->sum('mortality') - (int) $batch->dailyChecks()->sum('mortality_infirmary')),
         ];
 
         return view('batches.close', compact(

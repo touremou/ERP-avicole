@@ -1830,11 +1830,31 @@ class Batch extends Model
      */
     public function getNetMarginAttribute(): float
     {
-        // Revenus enregistrés sur le lot (vente de réforme calculée à la clôture)
-        // + les sujets CÉDÉS à l'abattoir de la ferme, à leur coût de revient.
-        $sellingRevenue = (float) ($this->total_revenue ?? 0) + $this->cessions_abattoir;
+        return $this->revenus - $this->operating_cost - (float) ($this->total_acquisition_cost ?? 0);
+    }
 
-        return $sellingRevenue - $this->operating_cost - (float) ($this->total_acquisition_cost ?? 0);
+    /**
+     * RECETTES DU LOT — déclaration UNIQUE, lue par la fiche, les archives, la
+     * clôture et la campagne :
+     *   • la vente de réforme à la clôture (total_revenue : effectif restant ×
+     *     prix de cession) ;
+     *   • les VENTES en cours de cycle (animaux vifs, carcasses vendues du lot) ;
+     *   • les sujets CÉDÉS à l'abattoir de la ferme, à leur coût de revient.
+     *
+     * La marge du lot ne comptait que la vente de réforme : un lot de moutons
+     * vendus un à un pour la Tabaski clôturait « tous les coûts, aucune
+     * recette ». La campagne, elle, ne comptait que les ventes — sans la
+     * réforme, et avant remise. Trois recettes pour les mêmes lots.
+     */
+    public function getRevenusAttribute(): float
+    {
+        return (float) ($this->total_revenue ?? 0) + $this->ventes_du_lot + $this->cessions_abattoir;
+    }
+
+    /** Ventes adossées au lot, nettes de remise (PeriodRevenue::salesOfBatches). */
+    public function getVentesDuLotAttribute(): float
+    {
+        return \App\Services\Accounting\PeriodRevenue::salesOfBatches([$this->id])[$this->id] ?? 0.0;
     }
 
     public function slaughterOrders(): HasMany

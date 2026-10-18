@@ -85,7 +85,9 @@
                                 </td>
                                 <td class="px-4 py-6 text-center">
                                     <span class="text-xs font-bold text-slate-400 tracking-tighter">
-                                        {{ number_format($batch->total_revenue ?? 0, 0, ',', ' ') }}
+                                        {{-- Les recettes du lot (Batch::revenus) : réforme, ventes en cours
+                                             de cycle et cessions — celles de la marge à côté. --}}
+                                        {{ number_format($batch->revenus, 0, ',', ' ') }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-6 text-center">

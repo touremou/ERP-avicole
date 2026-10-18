@@ -150,6 +150,18 @@
                                             class="w-40 bg-white border border-emerald-200 rounded-xl p-2 text-sm font-black text-emerald-600 text-right outline-none focus:border-emerald-500">
                                     </div>
                                 </div>
+                                @if(($costs['ventes'] ?? 0) > 0)
+                                {{-- Ventes faites en cours de cycle (Batch::ventes_du_lot), nettes de remise. --}}
+                                <div class="space-y-2 ml-5 mt-2">
+                                    <div class="flex justify-between items-center p-3 bg-emerald-50/50 rounded-xl">
+                                        <div>
+                                            <span class="text-[10px] font-black text-slate-700">🧾 {{ __("Ventes en cours de cycle") }}</span>
+                                            <p class="text-[8px] text-slate-400">{{ __("Ventes validées adossées au lot, nettes de remise") }}</p>
+                                        </div>
+                                        <span class="text-sm font-black text-emerald-600">{{ number_format($costs['ventes'], 0, ',', '.') }} {{ currency() }}</span>
+                                    </div>
+                                </div>
+                                @endif
                                 @if(($costs['cessions'] ?? 0) > 0)
                                 {{-- Sujets cédés à l'abattoir de la ferme, à leur coût de revient
                                      (Batch::cessions_abattoir) : la carcasse porte ces coûts. --}}
@@ -247,13 +259,18 @@
             knownCosts: {{ $costs['total_known'] }},
             // Sujets cédés à l'abattoir de la ferme, à leur coût de revient.
             cessions: {{ $costs['cessions'] ?? 0 }},
+            // Ventes faites en cours de cycle, et sujets élevés vivants.
+            ventes: {{ $costs['ventes'] ?? 0 }},
+            headsRaised: {{ $costs['heads_raised'] ?? 0 }},
 
-            get revenue() { return this.sellPrice * this.remainingBirds + this.cessions; },
+            get revenue() { return this.sellPrice * this.remainingBirds + this.ventes + this.cessions; },
             get totalCharges() { return this.knownCosts + this.additionalCosts; },
             get netProfit() { return this.revenue - this.totalCharges; },
             get roi() { return this.totalCharges > 0 ? (this.netProfit / this.totalCharges) * 100 : 0; },
-            // Coût par sujet RESTANT : les coûts que les cessions n'ont pas emportés.
-            get costPerBird() { return this.remainingBirds > 0 ? (this.totalCharges - this.cessions) / this.remainingBirds : 0; },
+            // Coût de revient par sujet élevé — la règle de la cession à
+            // l'abattoir (Batch::coutDeRevientParSujet), frais annexes saisis
+            // compris : les sujets vendus ou cédés ont coûté comme les autres.
+            get costPerBird() { return this.headsRaised > 0 ? this.totalCharges / this.headsRaised : 0; },
             get marginPerBird() { return this.sellPrice - this.costPerBird; },
 
             formatGNF(v) { return new Intl.NumberFormat('fr-GN', { maximumFractionDigits: 0 }).format(Math.round(v)) + ' {{ currency() }}'; },
