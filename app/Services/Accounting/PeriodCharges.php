@@ -83,6 +83,8 @@ class PeriodCharges
             ->groupBy('category')
             ->pluck('total', 'category');
 
+        $achatsLots = self::achatsDesLots($from, $to);
+
         $costs = [
             'Achats animaux (lots)' => (float) Batch::live()
                 ->whereBetween('arrival_date', [$from, $to])
@@ -109,9 +111,16 @@ class PeriodCharges
              * Deux écrans qui chiffrent la même épidémie doivent la ranger dans
              * le même mois.
              */
+            // + les produits de santé ACHETÉS pour les lots, à la date d'achat :
+            // le médicament compte à l'achat (décision de l'exploitation). Ces
+            // achats directs, que la marge du lot comptait, n'apparaissaient
+            // nulle part ici — ni comme charge, ni comme dépense.
             'Santé / prophylaxie' =>
                 (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost')
-                + (float) HealthIncident::whereBetween('incident_date', [$from, $to])->sum('treatment_cost'),
+                + (float) HealthIncident::whereBetween('incident_date', [$from, $to])->sum('treatment_cost')
+                + $achatsLots['sante'],
+
+            'Achats des lots (hygiène, litière, matériel)' => $achatsLots['autres'],
 
             'Main d\'œuvre (paie)' => (float) Payslip::whereHas(
                 'period',
@@ -253,6 +262,30 @@ class PeriodCharges
      * n'avait pas été figée. Aligner les deux écrans sur la moins complète
      * aurait corrigé la divergence en dégradant le chiffre juste.
      */
+    /**
+     * ACHATS DIRECTS DES LOTS HORS ALIMENT, à la date d'achat — la règle de la
+     * marge du lot (Batch::operating_cost) : l'aliment se compte au consommé,
+     * le reste à l'achat. Ventilés en produits de santé et autres achats.
+     *
+     * @param iterable<int>|null $batchIds  Restreint aux lots donnés.
+     * @return array{sante: float, autres: float}
+     */
+    public static function achatsDesLots(Carbon $from, Carbon $to, ?iterable $batchIds = null): array
+    {
+        $achats = \App\Models\FeedPurchase::whereDate('purchase_date', '>=', $from)
+            ->whereDate('purchase_date', '<=', $to)
+            ->when($batchIds !== null, fn ($q) => $q->whereIn('batch_id', collect($batchIds)))
+            ->get(['id', 'batch_id', 'total_price', 'metadata'])
+            ->reject(fn ($p) => $p->isFeed());
+
+        $sante = (float) $achats->filter(fn ($p) => $p->category === 'Santé')->sum('total_price');
+
+        return [
+            'sante'  => round($sante, 2),
+            'autres' => round((float) $achats->sum('total_price') - $sante, 2),
+        ];
+    }
+
     /**
      * @param iterable<int>|null $batchIds  Restreint aux lots donnés (marge par
      *        espèce) ; null = toute la ferme (compte de résultat).

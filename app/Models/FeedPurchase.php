@@ -103,11 +103,32 @@ class FeedPurchase extends Model
         return $label;
     }
 
+    /** Nature d'un achat hors consommable (catégorie de stock « litieres » / « materiels »). */
+    public const NATURE_LITIERE  = 'Litière';
+    public const NATURE_MATERIEL = 'Matériel';
+
     /**
-     * Détermine si cet achat est un aliment, un médicament ou du matériel
+     * NATURE DE L'ACHAT — Aliment, Santé, Hygiène, Litière ou Matériel.
+     *
+     * Elle ne lisait que la nature du CONSOMMABLE (conso_type). Une litière ou
+     * un matériel n'en a pas — `CreateFeedPurchase` ne la pose que pour la
+     * catégorie « conso » — et retombait donc sur « Aliment » : la marge du lot,
+     * qui compte l'aliment au CONSOMMÉ et le reste à l'ACHAT, n'en comptait
+     * jamais rien. On lit d'abord la catégorie de stock de l'achat ; un achat
+     * ancien, sans catégorie, reste un consommable.
      */
     public function getCategoryAttribute(): string
     {
-        return $this->metadata['conso_type'] ?? 'Aliment';
+        return match ($this->metadata['category'] ?? null) {
+            'litieres'  => self::NATURE_LITIERE,
+            'materiels' => self::NATURE_MATERIEL,
+            default     => $this->metadata['conso_type'] ?? 'Aliment',
+        };
+    }
+
+    /** L'aliment se compte au CONSOMMÉ ; tout autre achat, à l'ACHAT. */
+    public function isFeed(): bool
+    {
+        return $this->category === 'Aliment';
     }
 }

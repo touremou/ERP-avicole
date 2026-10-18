@@ -1865,19 +1865,32 @@ class Batch extends Model
      * L'acquisition reste DEHORS : la campagne la présente sur sa propre ligne
      * (`acquisition_cost`), et l'y inclure ici la compterait deux fois.
      */
+    /**
+     * PRODUITS DE SANTÉ ACHETÉS POUR LE LOT (médicaments, vaccins, vitamines) —
+     * comptés à l'ACHAT, décision de l'exploitation. Une déclaration, lue par
+     * la clôture et le rapport sanitaire ; la marge les compte avec les autres
+     * achats non-aliment.
+     */
+    public function getHealthPurchasesCostAttribute(): float
+    {
+        return (float) $this->feedPurchases
+            ->filter(fn ($p) => $p->category === 'Santé')
+            ->sum('total_price');
+    }
+
     public function getOperatingCostAttribute(): float
     {
         $feedCost = $this->feed_cogs;
-        // Achats NON-aliment (médicaments, matériel…) : non captés par la
-        // consommation, donc comptés au prix d'achat. Le tri s'appuie sur
-        // l'accesseur category (metadata['conso_type'] ?? 'Aliment'), donc un
-        // conso_type absent est traité comme « Aliment » et exclu d'ici.
+        // Achats NON-aliment (produits de santé, hygiène, litière, matériel) :
+        // comptés à l'ACHAT — décision de l'exploitation pour le médicament,
+        // règle de toujours pour le reste. FeedPurchase::isFeed lit la nature.
         $nonFeedPurchases = (float) $this->feedPurchases
-            ->filter(fn ($p) => $p->category !== 'Aliment')
+            ->reject(fn ($p) => $p->isFeed())
             ->sum('total_price');
-        // Coût santé = actes du registre (vaccins/traitements) + coûts de
-        // traitement des INCIDENTS sanitaires (champ dédié, non capté ailleurs →
-        // aucun double comptage). Ferme la boucle financière incident → marge.
+        // Coût santé = actes du registre + traitement des INCIDENTS. Le
+        // PRODUIT est compté à l'achat (ci-dessus) : le coût saisi sur l'acte
+        // ou l'incident ne porte que ce qui ne passe pas par un achat
+        // (honoraires, produit payé sur place) — cf. les formulaires.
         $healthCost = (float) $this->healthChecks()->sum('cost')
             + (float) $this->healthIncidents()->sum('treatment_cost');
         $additionalCosts = (float) ($this->additional_costs ?? 0);

@@ -113,12 +113,15 @@
                         <p class="text-[9px] text-slate-400 font-black uppercase ml-2 italic">{{ __("Notice du produit — l'abattage du lot sera refusé avant l'échéance (résidus).") }}</p>
                     </div>
                     <div class="space-y-3">
-                        <label class="text-[10px] font-black text-emerald-600 uppercase ml-2 italic tracking-widest">{{ __("Coût de l'opération") }} ({{ currency() }})</label>
+                        <label class="text-[10px] font-black text-emerald-600 uppercase ml-2 italic tracking-widest">{{ __("Frais de l'intervention") }} ({{ currency() }})</label>
                         <div class="relative">
                             <input type="number" name="cost" value="{{ old('cost', 0) }}" min="0" step="0.01"
                                    class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-emerald-600 shadow-inner pl-16 focus:ring-4 focus:ring-emerald-500/10 transition italic">
                             <span class="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-300 text-[10px] font-black">{{ currency() }}</span>
                         </div>
+                        {{-- Le médicament compte à l'ACHAT (décision de l'exploitation) : ce
+                             champ ne porte que ce qui ne passe pas par un achat. --}}
+                        <p class="text-[9px] text-slate-400 font-black uppercase ml-2 italic">{{ __("Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.") }}</p>
                     </div>
                 </div>
 

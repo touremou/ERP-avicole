@@ -97,12 +97,13 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic tracking-widest leading-none">{{ __("Coût total") }} ({{ currency() }})</label>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic tracking-widest leading-none">{{ __("Frais de l'intervention") }} ({{ currency() }})</label>
                                     <div class="relative">
                                         <input type="number" name="cost" value="{{ old('cost', (float)$health->cost) }}" min="0" step="0.01" required
                                                class="w-full p-5 bg-slate-50 rounded-2xl font-black text-3xl border-none text-emerald-600 shadow-inner italic focus:ring-4 focus:ring-emerald-500/10 transition outline-none pr-16">
                                         <span class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 font-black italic uppercase leading-none text-xs">{{ currency() }}</span>
                                     </div>
+                                    <p class="text-[9px] text-slate-400 font-black uppercase mt-2 ml-2 italic">{{ __("Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.") }}</p>
                                 </div>
 
                                 <div class="md:col-span-2">

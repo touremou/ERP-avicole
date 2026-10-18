@@ -285,8 +285,12 @@ class BatchController extends Controller
 
         // Calculs de performance (S-02 corrigé : coût réel depuis feedPurchases)
         $totalFeedKg = $batch->dailyChecks->sum('feed_consumed');
-        $totalFeedCost = (float) $batch->feedPurchases->sum('total_price');
-        $totalHealthCost = (float) $batch->healthChecks->sum('cost');
+        // L'aliment au CONSOMMÉ (feed_cogs) ; la santé : produits achetés,
+        // frais des actes, traitement des incidents — la règle de la marge.
+        $totalFeedCost = (float) $batch->feed_cogs;
+        $totalHealthCost = $batch->health_purchases_cost
+            + (float) $batch->healthChecks->sum('cost')
+            + (float) $batch->healthIncidents()->sum('treatment_cost');
 
         $stats = [
             'total_feed'       => $totalFeedKg,
@@ -473,13 +477,13 @@ class BatchController extends Controller
         $totalFeed = (float) $batch->feedConsumptionLedger()->sum('qty');
         $feedCost  = (float) $batch->feed_cogs;
 
-        // 3. Coût santé / vétérinaire
-        $healthCost = 0;
-        if (\Illuminate\Support\Facades\Schema::hasTable('health_checks')) {
-            $healthCost = (float) \Illuminate\Support\Facades\DB::table('health_checks')
-                ->where('batch_id', $batch->id)
-                ->sum('cost');
-        }
+        // 3. Coût santé / vétérinaire : les produits ACHETÉS pour le lot
+        //    (comptés à l'achat — décision de l'exploitation), les frais des
+        //    actes et le traitement des incidents. L'écran ne retenait que les
+        //    actes : médicaments et épidémies tombaient en « autres coûts ».
+        $healthCost = $batch->health_purchases_cost
+            + (float) $batch->healthChecks()->sum('cost')
+            + (float) $batch->healthIncidents()->sum('treatment_cost');
 
         /*
          * 4. EAU + ÉNERGIE — les relevés facturés de SON bâtiment.
@@ -534,7 +538,8 @@ class BatchController extends Controller
          * consommation non saisie n'est pas une consommation), on le DIT, pour que
          * la clôture ne se fasse pas sur une marge qu'on croit constatée.
          */
-        $feedPurchased = (float) $batch->feedPurchases()->sum('total_price');
+        // L'ALIMENT seul : un médicament acheté n'est pas un aliment non pointé.
+        $feedPurchased = (float) $batch->feedPurchases->filter(fn ($p) => $p->isFeed())->sum('total_price');
         $feedUnlogged  = ($feedCost <= 0 && $feedPurchased > 0) ? $feedPurchased : 0.0;
 
         /*
