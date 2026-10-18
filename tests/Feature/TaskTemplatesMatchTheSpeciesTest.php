@@ -26,7 +26,7 @@ beforeEach(function () {
     $this->setUpRbac();
     $this->seed(SpeciesSeeder::class);
     $this->retournement = TaskTemplate::withoutGlobalScopes()->where('name', 'Retournement des œufs en incubation')->firstOrFail();
-    $this->retournement->update(['is_active' => true, 'frequency' => 'quotidien', 'days_of_week' => [0, 1, 2, 3, 4, 5, 6], 'farm_id' => null]);
+    $this->retournement->update(['is_active' => true, 'frequency' => 'quotidien', 'days_of_week' => [1, 2, 3, 4, 5, 6, 7]   /* ISO : 1 = lundi … 7 = dimanche (TaskTemplate::isDueOn) */, 'farm_id' => null]);
 });
 
 function batimentAvec(string $espece, string $type): Building
