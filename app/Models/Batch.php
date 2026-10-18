@@ -557,6 +557,29 @@ class Batch extends Model
         return $this->species?->name_fr ?? ucfirst($this->type ?? 'Inconnu');
     }
 
+    /**
+     * CE QUE LA BANDE A ACHETÉ, dans les mots de son espèce : des jeunes
+     * (« poussins », « alevins », « porcelets »…) ou des animaux faits.
+     *
+     * Âge à l'arrivée quand la naissance est connue (au-delà d'un mois, ce ne
+     * sont plus des jeunes) ; sinon le type : reproducteurs et laitières se
+     * mettent en place adultes.
+     */
+    public function libelleAcquisition(): string
+    {
+        $arriveJeune = $this->birth_date && $this->arrival_date
+            ? $this->ageLe($this->arrival_date) <= 30
+            : ! in_array($this->type, ['reproducteur', 'laitiere'], true);
+
+        return $arriveJeune ? ($this->species?->jeunes() ?? 'poussins') : 'animaux';
+    }
+
+    /** Ce que la bande vend vif : « volaille », « poissons », « ovins »… */
+    public function libelleVente(): string
+    {
+        return $this->species?->vente() ?? 'volaille';
+    }
+
     /** Indique si le lot suit des ruminants */
     public function isRuminant(): bool
     {

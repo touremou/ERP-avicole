@@ -61,7 +61,7 @@
                                 <div class="space-y-2 ml-5">
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">{{ __("🐣 Acquisition poussins") }}</span>
+                                            <span class="text-[10px] font-black text-slate-700">{{ $batch->species?->icon ?? '🐣' }} {{ __('Acquisition :quoi', ['quoi' => __($batch->libelleAcquisition())]) }}</span>
                                             <p class="text-[8px] text-slate-400">{{ number_format($batch->initial_quantity) }} × {{ number_format($batch->buy_price_per_unit ?? 0, 0, ',', '.') }} {{ currency() }}</p>
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['acquisition'], 0, ',', '.') }} {{ currency() }}</span>
@@ -143,7 +143,7 @@
                                 <div class="space-y-2 ml-5">
                                     <div class="flex justify-between items-center p-3 bg-emerald-50/50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">{{ __("💰 Vente volaille") }}</span>
+                                            <span class="text-[10px] font-black text-slate-700">💰 {{ __('Vente :quoi', ['quoi' => __($batch->libelleVente())]) }}</span>
                                             <p class="text-[8px] text-slate-400"><span x-text="remainingBirds"></span> {{ __("sujets × prix unitaire") }}</p>
                                         </div>
                                         <input type="number" name="actual_sell_price_per_unit" x-model.number="sellPrice" value="{{ old('actual_sell_price_per_unit') }}" min="0" required placeholder="{{ __("Prix/sujet") }}"

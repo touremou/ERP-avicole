@@ -672,7 +672,7 @@
             @if($isGmqTracked && (($stats['total_born'] ?? 0) > 0 || ($stats['total_weaned'] ?? 0) > 0))
             <div class="mb-8 bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6 flex flex-wrap gap-8 items-center">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-lg">🐣</div>
+                    <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-lg">{{ $batch->species?->icon ?? '🐣' }}</div>
                     <div>
                         <p class="text-2xl font-black text-emerald-800">{{ number_format($stats['total_born'] ?? 0) }}</p>
                         <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Naissances cumulées") }}</p>
