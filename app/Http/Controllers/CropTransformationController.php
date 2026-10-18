@@ -22,7 +22,7 @@ class CropTransformationController extends Controller
             return back()->with('error', 'Accès restreint.');
         }
 
-        $transformations = CropTransformation::with(['cropCycle:id,crop_name,code', 'employee:id,first_name,last_name'])
+        $transformations = CropTransformation::with(['cropCycle:id,crop_name,code', 'employee:id,first_name,last_name', 'recipe:id,expected_yield_percent'])
             ->orderByDesc('production_date')
             ->paginate((int) setting('general.items_per_page', 20));
 
