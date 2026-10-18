@@ -21,6 +21,8 @@ class SyscohadaMapper
         'Aliment'                        => ['602', 'Achats de matières premières et fournitures liées'],
         'Production végétale (cultures)' => ['602', 'Achats de matières premières et fournitures liées'],
         'Santé / prophylaxie'            => ['604', 'Achats stockés de matières et fournitures consommables'],
+        // Achats directs des lots hors aliment et santé (hygiène, litière, matériel).
+        'Achats des lots (hygiène, litière, matériel)' => ['604', 'Achats stockés de matières et fournitures consommables'],
         'Eau'                            => ['605', 'Autres achats (eau, énergie, carburant)'],
         'Énergie réseau (EDG)'           => ['605', 'Autres achats (eau, énergie, carburant)'],
         'Carburant'                      => ['605', 'Autres achats (eau, énergie, carburant)'],

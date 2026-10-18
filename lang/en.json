@@ -5091,5 +5091,10 @@
     ":quoi commandés — Prêt à activer": ":quoi ordered — Ready to activate",
     "Quand les :quoi arrivent, cliquez sur « Activer la bande » pour saisir les données réelles (quantité reçue, mortalité transport, prix) et créer automatiquement le lot dans le système.": "When the :quoi arrive, click “Activate the batch” to enter the actual data (quantity received, transport mortality, price) and automatically create the batch in the system.",
     "Fournisseur des animaux": "Animal supplier",
-    "Arrivée des animaux": "Animal arrival"
+    "Arrivée des animaux": "Animal arrival",
+    "Frais de l'intervention": "Intervention fees",
+    "Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.": "Fees, travel, product paid on the spot. A product bought for the batch is already counted at purchase: do not enter it again.",
+    "Coût du traitement, hors produits achetés": "Treatment cost, excluding purchased products",
+    "Produits de santé achetés": "Health products purchased",
+    "Achats des lots (hygiène, litière, matériel)": "Batch purchases (hygiene, litter, equipment)"
 }

@@ -1134,5 +1134,10 @@
     ":quoi commandés — Prêt à activer": ":quoi commandés — Prêt à activer",
     "Quand les :quoi arrivent, cliquez sur « Activer la bande » pour saisir les données réelles (quantité reçue, mortalité transport, prix) et créer automatiquement le lot dans le système.": "Quand les :quoi arrivent, cliquez sur « Activer la bande » pour saisir les données réelles (quantité reçue, mortalité transport, prix) et créer automatiquement le lot dans le système.",
     "Fournisseur des animaux": "Fournisseur des animaux",
-    "Arrivée des animaux": "Arrivée des animaux"
+    "Arrivée des animaux": "Arrivée des animaux",
+    "Frais de l'intervention": "Frais de l'intervention",
+    "Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.": "Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.",
+    "Coût du traitement, hors produits achetés": "Coût du traitement, hors produits achetés",
+    "Produits de santé achetés": "Produits de santé achetés",
+    "Achats des lots (hygiène, litière, matériel)": "Achats des lots (hygiène, litière, matériel)"
 }

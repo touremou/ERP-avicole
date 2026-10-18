@@ -78,7 +78,7 @@
                                  vient pas du registre des actes. En dur ici, ce dernier
                                  n'aurait jamais paru — et les pourcentages, calculés sur
                                  un total qui l'inclut, n'auraient plus fait 100 %. --}}
-                            @php $colors = ['Vaccin' => 'bg-indigo-600', 'Traitement' => 'bg-rose-600', 'Vitamine' => 'bg-amber-400', 'Désinfection' => 'bg-slate-500', 'Incident sanitaire' => 'bg-red-700']; @endphp
+                            @php $colors = ['Vaccin' => 'bg-indigo-600', 'Traitement' => 'bg-rose-600', 'Vitamine' => 'bg-amber-400', 'Désinfection' => 'bg-slate-500', 'Incident sanitaire' => 'bg-red-700', 'Produits de santé achetés' => 'bg-emerald-600']; @endphp
                             @foreach($costTypes as $type)
                                 @php 
                                     $amount = $typeBreakdown[$type] ?? 0;

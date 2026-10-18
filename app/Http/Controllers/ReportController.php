@@ -30,6 +30,9 @@ class ReportController extends Controller
     /** Poste des coûts d'incident, qui ne vient pas du registre des actes. */
     private const TYPE_INCIDENT = 'Incident sanitaire';
 
+    /** Ligne du rapport sanitaire : les produits de santé ACHETÉS pour les lots. */
+    private const TYPE_ACHAT_SANTE = 'Produits de santé achetés';
+
     /**
      * HUB DES RAPPORTS
      *
@@ -363,6 +366,10 @@ class ReportController extends Controller
             $liveIds = Batch::live()->whereIn('id', $batchIds)->pluck('id');
             $cost = (float) Batch::whereIn('id', $liveIds)->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
             $cost += \App\Services\Accounting\PeriodCharges::feedConsumedCost($from, $to, $batchIds);
+            // Les achats directs hors aliment (santé — compté à l'achat —,
+            // hygiène, litière, matériel), à leur date : la règle du total.
+            $achats = \App\Services\Accounting\PeriodCharges::achatsDesLots($from, $to, $batchIds);
+            $cost += $achats['sante'] + $achats['autres'];
             $cost += (float) HealthCheck::whereIn('batch_id', $batchIds)->whereBetween('intervention_date', [$from, $to])->sum('cost');
             $cost += (float) \App\Models\HealthIncident::whereIn('batch_id', $batchIds)->whereBetween('incident_date', [$from, $to])->sum('treatment_cost');
             $cost += (float) Expense::validated()->whereIn('batch_id', $batchIds)
@@ -505,10 +512,23 @@ class ReportController extends Controller
             }
         };
 
+        // Le médicament compte à l'ACHAT (décision de l'exploitation) : les
+        // produits de santé achetés pour un lot entrent ici à leur date
+        // d'achat, comme dans la marge du lot et le compte de résultat.
+        $healthPurchaseQuery = function ($query) use ($period) {
+            if ($period === 'month') {
+                $query->whereMonth('purchase_date', now()->month)
+                      ->whereYear('purchase_date', now()->year);
+            } elseif ($period === 'year') {
+                $query->whereYear('purchase_date', now()->year);
+            }
+        };
+
         $query = Batch::with([
             'building',
             'healthChecks'    => $healthCheckQuery,
             'healthIncidents' => $healthIncidentQuery,
+            'feedPurchases'   => $healthPurchaseQuery,
         ])->live();
 
         if ($statusFilter === 'actif') {
@@ -531,6 +551,14 @@ class ReportController extends Controller
             }
 
             $coutIncidents = (float) $batch->healthIncidents->sum('treatment_cost');
+
+            // Produits de santé achetés sur la période (Batch::health_purchases_cost
+            // sur les achats chargés, bornés à la période).
+            $coutAchats = $batch->health_purchases_cost;
+            if ($coutAchats > 0) {
+                $typeBreakdown[self::TYPE_ACHAT_SANTE] = ($typeBreakdown[self::TYPE_ACHAT_SANTE] ?? 0) + $coutAchats;
+                $coutLot += $coutAchats;
+            }
 
             if ($coutIncidents > 0) {
                 $typeBreakdown[self::TYPE_INCIDENT] = ($typeBreakdown[self::TYPE_INCIDENT] ?? 0) + $coutIncidents;
@@ -557,7 +585,7 @@ class ReportController extends Controller
         // Postes affichés : les types du référentiel PLUS la ligne des incidents,
         // servis par le contrôleur. Le gabarit en tenait la liste en dur et
         // n'aurait donc jamais montré un poste nouveau.
-        $costTypes = array_merge(self::HEALTH_CHECK_TYPES, [self::TYPE_INCIDENT]);
+        $costTypes = array_merge(self::HEALTH_CHECK_TYPES, [self::TYPE_ACHAT_SANTE, self::TYPE_INCIDENT]);
 
         return compact(
             'batches', 'totalGlobalCost', 'averageCostPerHead',
@@ -801,7 +829,7 @@ class ReportController extends Controller
             // Prix moyen de l'ALIMENT acheté : les achats de médicaments ou de
             // matériel du lot (flacons, boîtes…) n'ont ni prix ni quantité au
             // kilo. Le kilo d'un sac suit l'achat (poids propre, sinon réglage).
-            foreach ($batch->feedPurchases->filter(fn ($p) => $p->category === 'Aliment') as $purchase) {
+            foreach ($batch->feedPurchases->filter(fn ($p) => $p->isFeed()) as $purchase) {
                 $totalFeedCostAll += (float) $purchase->quantity * (float) $purchase->unit_price;
                 $totalFeedKgAll   += $purchase->normalized_quantity;
             }

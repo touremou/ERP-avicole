@@ -210,8 +210,9 @@
                 </div>
 
                 <div>
-                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Coût du traitement ({{ currency() }})</label>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Coût du traitement, hors produits achetés") }} ({{ currency() }})</label>
                     <input type="number" name="treatment_cost" min="0" step="any" placeholder="0" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-slate-800 shadow-inner focus:ring-2 focus:ring-blue-500">
+                    <p class="text-[8px] text-slate-400 font-black uppercase mt-1 italic">{{ __("Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.") }}</p>
                 </div>
 
                 <div class="pt-2">
