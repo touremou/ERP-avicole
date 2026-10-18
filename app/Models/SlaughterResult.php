@@ -91,11 +91,27 @@ class SlaughterResult extends Model
         return $this->belongsTo(SlaughterOrder::class, 'slaughter_order_id')->withTrashed();
     }
 
+    /**
+     * NIVEAU DU RENDEMENT CARCASSE — jugé dans la bande de SON espèce et de SA
+     * présentation (ButcheryNomenclature::presentationYieldBand), celle du
+     * message de fin d'abattage et des statistiques par famille.
+     *
+     * Cet accesseur, et le tableau de bord de l'abattoir, jugeaient tout
+     * rendement aux seuils de la VOLAILLE (70 / 65 %) : un mouton à 48 %, un
+     * rendement normal pour un petit ruminant, sortait en rouge.
+     *
+     *   bon : au moins la cible basse ; acceptable : au moins le seuil d'alerte ;
+     *   faible : en deçà.
+     */
     public function getYieldStatusAttribute(): string
     {
-        if ($this->carcass_yield_percent >= 73) return 'excellent';
-        if ($this->carcass_yield_percent >= 70) return 'bon';
-        if ($this->carcass_yield_percent >= 65) return 'acceptable';
-        return 'faible';
+        $bande = \App\Services\ButcheryNomenclature::presentationYieldBand($this->presentation, $this->order?->batch?->species);
+        $rendement = (float) $this->carcass_yield_percent;
+
+        return match (true) {
+            $rendement >= $bande['target_min'] => 'bon',
+            $rendement >= $bande['alert_min']  => 'acceptable',
+            default                            => 'faible',
+        };
     }
 }

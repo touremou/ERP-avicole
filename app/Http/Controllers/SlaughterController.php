@@ -33,7 +33,7 @@ class SlaughterController extends Controller
         // cycle sur chaque résultat : Découper (carcasse restante en gamme
         // brut) → Clôturer (checklist HACCP/déchets) → Clôturé ✓.
         $recentResults = SlaughterOrder::where('status', 'termine')
-            ->with(['batch', 'result', 'cuttingSessions'])
+            ->with(['batch.species', 'result.order.batch.species', 'cuttingSessions'])
             ->latest('actual_date')
             ->take((int) setting('general.items_per_page', 10))
             ->get();

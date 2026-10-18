@@ -299,11 +299,13 @@
                             <td class="px-4 py-3 text-right text-[10px] font-black text-slate-600">{{ $order->result ? number_format($order->result->total_carcass_weight_kg, 1) . ' kg' : '—' }}</td>
                             <td class="px-4 py-3 text-center">
                                 @if($order->result)
-                                {{-- ⚙️ PARAMÉTRAGE DYNAMIQUE : Seuils Rendement Tableau --}}
+                                {{-- La bande de l'espèce et de la présentation (SlaughterResult::yield_status),
+                                     et non plus les seuils volaille pour tout animal. --}}
+                                @php $niveauRendement = $order->result->yield_status; @endphp
                                 <span @class(['text-[10px] font-black px-2 py-1 rounded-full',
-                                    'bg-emerald-50 text-emerald-600' => $order->result->carcass_yield_percent >= setting('abattoir.yield_target_min', 70),
-                                    'bg-amber-50 text-amber-600' => $order->result->carcass_yield_percent >= setting('abattoir.yield_alert_min', 65) && $order->result->carcass_yield_percent < setting('abattoir.yield_target_min', 70),
-                                    'bg-red-50 text-red-600' => $order->result->carcass_yield_percent < setting('abattoir.yield_alert_min', 65)])>
+                                    'bg-emerald-50 text-emerald-600' => $niveauRendement === 'bon',
+                                    'bg-amber-50 text-amber-600' => $niveauRendement === 'acceptable',
+                                    'bg-red-50 text-red-600' => $niveauRendement === 'faible'])>
                                     {{ $order->result->carcass_yield_percent }}%
                                 </span>
                                 @endif
