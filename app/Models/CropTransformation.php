@@ -97,6 +97,28 @@ class CropTransformation extends Model
         return \App\Support\Peremption::estPerime($this->expiry_date);
     }
 
+    /**
+     * NIVEAU DU RENDEMENT — jugé contre le rendement ATTENDU de sa recette :
+     * au moins l'attendu « bon », au moins 95 % de l'attendu « moyen »,
+     * en deçà « faible » ; null sans recette ni attendu (rien à juger).
+     *
+     * La liste jugeait tout produit à 50 % : un séchage de mangue à 12 %
+     * (normal) sortait en alerte, un décorticage à 60 % pour 70 % attendus
+     * sortait en vert. La recette porte pourtant son rendement attendu, et le
+     * formulaire de transformation de l'abattoir juge déjà ainsi.
+     */
+    public function getNiveauRendementAttribute(): ?string
+    {
+        $attendu = (float) ($this->recipe?->expected_yield_percent ?? 0);
+        if ($attendu <= 0 || $this->yield_percent === null) {
+            return null;
+        }
+
+        $rendement = (float) $this->yield_percent;
+
+        return $rendement >= $attendu ? 'bon' : ($rendement >= $attendu * 0.95 ? 'moyen' : 'faible');
+    }
+
     /** Valeur estimée du produit fini au prix de vente VISÉ (sortie × prix). */
     public function getEstimatedValueAttribute(): float
     {

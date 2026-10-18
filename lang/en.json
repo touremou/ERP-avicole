@@ -5100,5 +5100,6 @@
     "Cession à l'abattoir": "Transfer to the slaughterhouse",
     "Sujets abattus, cédés à leur coût de revient": "Slaughtered animals, transferred at their production cost",
     "Ventes en cours de cycle": "Sales during the cycle",
-    "Ventes validées adossées au lot, nettes de remise": "Validated sales linked to the batch, net of discount"
+    "Ventes validées adossées au lot, nettes de remise": "Validated sales linked to the batch, net of discount",
+    "Attendu": "Expected"
 }

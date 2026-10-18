@@ -493,8 +493,10 @@ class BatchAdvisorService
             'stock_kg'   => round($totalKg, 1),
             'daily_kg'   => round($dailyKg, 1),
             'days'       => $days,
-            'is_critical' => $days < 3,
-            'is_warning' => $days < 7,
+            // Les seuils du réglage de la ferme (Stock::niveauAutonomie), ceux
+            // du tableau de bord ; « attention » englobe « critique ».
+            'is_critical' => Stock::niveauAutonomie($days) === 'critique',
+            'is_warning' => Stock::niveauAutonomie($days) !== null,
             'item_names' => $matched->pluck('item_name')->join(', '),
         ];
     }

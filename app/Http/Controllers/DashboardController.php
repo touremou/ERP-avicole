@@ -149,7 +149,7 @@ class DashboardController extends Controller
         // autres réunis et déclenche de fausses alertes « épuisé ».
         // Seuils paramétrables (Réglages) — valeurs par défaut conservées.
         $periodDays            = (int) setting('stocks.autonomy_period_days', 30);
-        $criticalDaysThreshold = (int) setting('stocks.critical_days_threshold', 3);
+        $criticalDaysThreshold = Stock::seuilAutonomieCritique();   // la règle du conseiller du lot
         // Plancher absolu : un décès isolé sur un petit lot dépasse mécaniquement
         // le seuil en % (ex. 1/195 = 0,51 % > 0,5 %) sans constituer un vrai pic.
         // On exige donc un minimum de morts en valeur absolue AVANT d'évaluer le %.

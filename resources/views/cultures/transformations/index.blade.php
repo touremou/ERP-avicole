@@ -55,7 +55,13 @@
                                 <td class="p-5 text-center text-[10px] font-bold text-slate-500">{{ $t->production_date?->format('d/m/Y') }}</td>
                                 <td class="p-5 text-right text-[10px] font-black text-slate-700">{{ number_format($t->input_quantity, 0, ',', ' ') }} {{ $t->input_unit }}</td>
                                 <td class="p-5 text-right text-[10px] font-black text-green-600">{{ number_format($t->output_quantity, 0, ',', ' ') }} {{ $t->output_unit }}</td>
-                                <td class="p-5 text-center"><span class="px-3 py-1 rounded-full text-[8px] font-black uppercase {{ $t->yield_percent >= 50 ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600' }}">{{ number_format($t->yield_percent, 1, ',', ' ') }}%</span></td>
+                                {{-- Jugé contre le rendement attendu de SA recette (CropTransformation::niveau_rendement). --}}
+                                <td class="p-5 text-center"><span @class(['px-3 py-1 rounded-full text-[8px] font-black uppercase',
+                                    'bg-green-50 text-green-600' => $t->niveau_rendement === 'bon',
+                                    'bg-amber-50 text-amber-600' => $t->niveau_rendement === 'moyen',
+                                    'bg-red-50 text-red-600'     => $t->niveau_rendement === 'faible',
+                                    'bg-slate-50 text-slate-600' => $t->niveau_rendement === null])
+                                    @if($t->recipe?->expected_yield_percent) title="{{ __('Attendu') }} {{ number_format($t->recipe->expected_yield_percent, 0) }} %" @endif>{{ number_format($t->yield_percent, 1, ',', ' ') }}%</span></td>
                             </tr>
                         @empty
                             <tr><td colspan="6" class="p-16 text-center text-slate-300 text-[10px] font-black uppercase italic">{{ __("Aucune transformation enregistrée") }}</td></tr>
