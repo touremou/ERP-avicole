@@ -174,6 +174,10 @@ class SlaughterService
                 $materialCost = $this->materialCost($order, $batch, $actualQty);
                 $costPerKg = $carcassWeight > 0 ? $materialCost / $carcassWeight : 0;
 
+                // FIGÉ sur l'ordre : la découpe et le dossier de lot liront ce
+                // chiffre, et le lot le compte comme cession à l'abattoir.
+                $order->forceFill(['material_cost' => $materialCost])->save();
+
                 $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais', $costPerKg);
             }
 
@@ -655,24 +659,23 @@ class SlaughterService
         }
     }
 
+    /**
+     * Coût matière d'un ordre : SlaughterOrder::coutMatiere — une déclaration.
+     * À l'exécution (rien encore de figé), un lot interne cède ses sujets à leur
+     * coût de REVIENT (Batch::coutDeRevientParSujet), plus seulement au prix
+     * d'achat du poussin.
+     */
     private function materialCost(SlaughterOrder $order, ?Batch $batch, int $actualQty): float
     {
-        $reception = $order->reception;
-        if ($reception && $reception->origin === 'achat' && $reception->purchase_total_cost) {
-            return (float) $reception->purchase_total_cost;
-        }
-
-        if ($batch) {
-            $perBird = (float) ($batch->buy_price_per_unit ?? 0);
-            if ($perBird <= 0) {
-                $init = (int) ($batch->initial_quantity ?? 0);
-                $perBird = $init > 0 ? (float) $batch->total_acquisition_cost / $init : 0;
+        if ($order->material_cost === null && ! $order->isFacon() && $batch
+            && ! ($order->reception && $order->reception->origin === 'achat' && $order->reception->purchase_total_cost)) {
+            $parSujet = $batch->coutDeRevientParSujet();
+            if ($parSujet !== null) {
+                return round($parSujet * $actualQty, 2);
             }
-
-            return round($perBird * $actualQty, 2);
         }
 
-        return 0.0;
+        return $order->coutMatiere($actualQty);
     }
 
     private function carcassProductName(?Batch $batch): string

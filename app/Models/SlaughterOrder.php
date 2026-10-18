@@ -45,6 +45,9 @@ class SlaughterOrder extends Model
         'planned_date'         => 'date',
         'actual_date'          => 'date',
         'total_live_weight_kg' => 'decimal:2',
+        // Coût des animaux pris au lot, FIGÉ à l'abattage (hors fillable :
+        // posé par SlaughterService, jamais par un formulaire).
+        'material_cost'        => 'decimal:2',
         'blocked_at'           => 'datetime',
         'released_at'          => 'datetime',
         'closed_at'            => 'datetime',
@@ -130,14 +133,56 @@ class SlaughterOrder extends Model
     }
 
     /**
+     * COÛT MATIÈRE DE L'ORDRE — une déclaration, lue par l'entrée en stock de
+     * la carcasse, la découpe et le dossier de lot.
+     *
+     *   • achat vif : le prix payé (réception) ;
+     *   • lot interne : le coût de REVIENT des sujets (Batch::coutDeRevientParSujet
+     *     — acquisition ET élevage : aliment, santé, eau, énergie, frais),
+     *     et non plus leur seul prix d'achat : une carcasse de poulet nourri
+     *     42 jours ne coûte pas le prix du poussin. Figé à l'abattage
+     *     (material_cost) ; un ordre exécuté avant garde l'ancien calcul.
+     *   • façon : rien — les animaux sont au client.
+     */
+    public function coutMatiere(?int $quantite = null): float
+    {
+        if ($this->isFacon()) {
+            return 0.0;
+        }
+
+        if ($this->material_cost !== null) {
+            return (float) $this->material_cost;
+        }
+
+        if ($this->reception && $this->reception->origin === 'achat' && $this->reception->purchase_total_cost) {
+            return (float) $this->reception->purchase_total_cost;
+        }
+
+        if (! $this->batch) {
+            return 0.0;
+        }
+
+        $quantite ??= (int) ($this->actual_quantity ?: $this->planned_quantity);
+
+        // Avant le coût figé : le seul prix d'achat par sujet (historique).
+        $perBird = (float) ($this->batch->buy_price_per_unit ?? 0);
+        if ($perBird <= 0) {
+            $init = (int) ($this->batch->initial_quantity ?? 0);
+            $perBird = $init > 0 ? (float) $this->batch->total_acquisition_cost / $init : 0;
+        }
+
+        return round($perBird * $quantite, 2);
+    }
+
+    /**
      * Résultat économique du lot d'abattage (marge directe) :
      *
      *  - façon : les produits appartiennent au client (RG-07) — le « produit »
      *    est la PRESTATION facturée (service_fee), sans coût matière ;
      *  - achat : coût = achat vif (reception.purchase_total_cost) ; produit =
      *    valeur des découpes valorisées (Σ quantity_kg × unit_price) ;
-     *  - interne : coût d'acquisition suivi au niveau du LOT (P&L) — non
-     *    reventilé ici ; on n'affiche que la valeur produite.
+     *  - interne : coût de revient des sujets pris au lot (coutMatiere) —
+     *    acquisition et élevage, figé à l'abattage.
      *
      * `has_unpriced` signale des produits de découpe sans prix (valeur
      * partielle — la marge est un plancher, pas un chiffre définitif).
@@ -153,21 +198,14 @@ class SlaughterOrder extends Model
             ];
         }
 
-        // ─── Coût matière vif : achat OU lot interne (prorata sujets abattus) ───
-        $cost = 0.0; $costLabel = null; $mode = 'interne';
+        // ─── Coût matière : celui que la carcasse a porté en stock (coutMatiere) ───
+        $cost = $this->coutMatiere();
+        $costLabel = null; $mode = 'interne';
         if ($this->reception && $this->reception->origin === 'achat' && $this->reception->purchase_total_cost) {
-            $cost = (float) $this->reception->purchase_total_cost;
             $costLabel = 'Achat vif';
             $mode = 'achat';
         } elseif ($this->batch) {
-            $qty = (int) ($this->actual_quantity ?: $this->planned_quantity);
-            $perBird = (float) ($this->batch->buy_price_per_unit ?? 0);
-            if ($perBird <= 0) {
-                $init = (int) ($this->batch->initial_quantity ?? 0);
-                $perBird = $init > 0 ? (float) $this->batch->total_acquisition_cost / $init : 0;
-            }
-            $cost = round($perBird * $qty, 2);
-            $costLabel = 'Coût du lot (acquisition)';
+            $costLabel = $this->material_cost !== null ? 'Coût de revient du lot' : 'Coût du lot (acquisition)';
         }
 
         $carcassKg = (float) ($this->result?->total_carcass_weight_kg ?? 0);

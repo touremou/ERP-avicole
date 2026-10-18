@@ -109,7 +109,10 @@ class CloseBatch
             $totalCost = $acquisitionCost + $batch->fresh()->operating_cost;
 
             // ─── MARGE ───
-            $margin = $totalRevenue - $totalCost;
+            // Les sujets cédés à l'abattoir de la ferme comptent à leur coût de
+            // revient (Batch::cessions_abattoir) — comme dans net_margin.
+            // total_revenue reste la vente de réforme.
+            $margin = $totalRevenue + $batch->cessions_abattoir - $totalCost;
 
             // ─── MISE À JOUR DU LOT ───
             $batch->update([

@@ -43,7 +43,10 @@ class BatchFactory extends Factory
             'arrival_date'           => fake()->dateTimeBetween('-60 days', 'now'),
             'expected_end_date'      => fake()->dateTimeBetween('+30 days', '+180 days'),
             'buy_price_per_unit'     => fake()->numberBetween(2000, 5000),
-            'total_acquisition_cost' => $qty * fake()->numberBetween(2000, 5000),
+            // Cohérent avec l'effectif et le prix RETENUS (surcharges comprises) :
+            // tiré à part, il ne disait plus ce qu'un lot de 100 sujets à 20 000
+            // avait coûté — et le coût de revient d'un sujet en dépend.
+            'total_acquisition_cost' => fn (array $a) => (int) $a['initial_quantity'] * (float) $a['buy_price_per_unit'],
             'is_synced'              => true,
             'production_phase'       => 'demarrage',
             'arrival_mortality_rate' => 0,

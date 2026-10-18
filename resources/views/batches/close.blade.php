@@ -150,6 +150,19 @@
                                             class="w-40 bg-white border border-emerald-200 rounded-xl p-2 text-sm font-black text-emerald-600 text-right outline-none focus:border-emerald-500">
                                     </div>
                                 </div>
+                                @if(($costs['cessions'] ?? 0) > 0)
+                                {{-- Sujets cédés à l'abattoir de la ferme, à leur coût de revient
+                                     (Batch::cessions_abattoir) : la carcasse porte ces coûts. --}}
+                                <div class="space-y-2 ml-5 mt-2">
+                                    <div class="flex justify-between items-center p-3 bg-emerald-50/50 rounded-xl">
+                                        <div>
+                                            <span class="text-[10px] font-black text-slate-700">🔪 {{ __("Cession à l'abattoir") }}</span>
+                                            <p class="text-[8px] text-slate-400">{{ __("Sujets abattus, cédés à leur coût de revient") }}</p>
+                                        </div>
+                                        <span class="text-sm font-black text-emerald-600">{{ number_format($costs['cessions'], 0, ',', '.') }} {{ currency() }}</span>
+                                    </div>
+                                </div>
+                                @endif
                                 <div class="flex justify-between items-center mt-3 p-4 bg-emerald-100 rounded-2xl ml-5">
                                     <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest">{{ __("Chiffre d'Affaires") }}</span>
                                     <span class="text-lg font-black text-emerald-700" x-text="formatGNF(revenue)"></span>
@@ -190,7 +203,9 @@
                                 </div>
                                 <div class="p-4 bg-white/5 rounded-2xl text-center">
                                     <p class="text-[7px] font-black text-slate-500 uppercase">IC (Feed Conv.)</p>
-                                    <p class="text-lg font-black text-blue-400" x-text="ic.toFixed(2)"></p>
+                                    {{-- L'indice de la fiche (Batch::fcr_corrected, pesées réelles) — et non
+                                         plus un poids estimé à 2,2 kg (chair) ou 1,8 kg (tout le reste). --}}
+                                    <p class="text-lg font-black text-blue-400">{{ $batch->fcr_corrected !== null ? number_format($batch->fcr_corrected, 2) : '—' }}</p>
                                     <p class="text-[7px] text-slate-500">kg aliment/kg vif</p>
                                 </div>
                             </div>
@@ -230,20 +245,16 @@
             additionalCosts: {{ old('additional_costs', 0) }},
             remainingBirds: {{ $remainingBirds }},
             knownCosts: {{ $costs['total_known'] }},
-            totalFeedKg: {{ $totalFeed }},
+            // Sujets cédés à l'abattoir de la ferme, à leur coût de revient.
+            cessions: {{ $costs['cessions'] ?? 0 }},
 
-            get revenue() { return this.sellPrice * this.remainingBirds; },
+            get revenue() { return this.sellPrice * this.remainingBirds + this.cessions; },
             get totalCharges() { return this.knownCosts + this.additionalCosts; },
             get netProfit() { return this.revenue - this.totalCharges; },
             get roi() { return this.totalCharges > 0 ? (this.netProfit / this.totalCharges) * 100 : 0; },
-            get costPerBird() { return this.remainingBirds > 0 ? this.totalCharges / this.remainingBirds : 0; },
+            // Coût par sujet RESTANT : les coûts que les cessions n'ont pas emportés.
+            get costPerBird() { return this.remainingBirds > 0 ? (this.totalCharges - this.cessions) / this.remainingBirds : 0; },
             get marginPerBird() { return this.sellPrice - this.costPerBird; },
-            get ic() {
-                // Indice de consommation : kg aliment / kg poids vif estimé
-                const avgWeight = {{ $batch->type === 'chair' ? setting('elevage.avg_weight_chair', 2.2) : setting('elevage.avg_weight_ponte', 1.8) }}; // kg estimé
-                const totalLiveWeight = this.remainingBirds * avgWeight;
-                return totalLiveWeight > 0 ? this.totalFeedKg / totalLiveWeight : 0;
-            },
 
             formatGNF(v) { return new Intl.NumberFormat('fr-GN', { maximumFractionDigits: 0 }).format(Math.round(v)) + ' {{ currency() }}'; },
         }

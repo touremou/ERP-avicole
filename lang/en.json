@@ -5096,5 +5096,7 @@
     "Honoraires, déplacement, produit payé sur place. Un produit acheté pour le lot est déjà compté à l'achat : ne le ressaisissez pas.": "Fees, travel, product paid on the spot. A product bought for the batch is already counted at purchase: do not enter it again.",
     "Coût du traitement, hors produits achetés": "Treatment cost, excluding purchased products",
     "Produits de santé achetés": "Health products purchased",
-    "Achats des lots (hygiène, litière, matériel)": "Batch purchases (hygiene, litter, equipment)"
+    "Achats des lots (hygiène, litière, matériel)": "Batch purchases (hygiene, litter, equipment)",
+    "Cession à l'abattoir": "Transfer to the slaughterhouse",
+    "Sujets abattus, cédés à leur coût de revient": "Slaughtered animals, transferred at their production cost"
 }
