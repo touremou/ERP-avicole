@@ -508,7 +508,8 @@ export function SaleScreen() {
             <div className="chip-row">
               {([
                 ['especes', `💵 ${t('Espèces')}`],
-                ['mobile_money', `📱 ${t('Mobile Money')}`],
+                // La langue des ventes (Payment::METHODES) — comme l'écran de règlement.
+                ['orange_money', `📱 ${t('Orange Money')}`],
                 ['virement', `🏦 ${t('Virement')}`],
                 ['cheque', `🧾 ${t('Chèque')}`],
               ] as const).map(([value, lbl]) => (

@@ -1077,12 +1077,17 @@ class SyncService
             return $this->denied();
         }
 
+        // Même langue que les ventes (Payment::normaliserMethode).
+        if (array_key_exists('method', $payload)) {
+            $payload['method'] = \App\Models\Payment::normaliserMethode($payload['method']);
+        }
+
         $v = Validator::make($payload, [
             'uuid'         => 'required|uuid',
             'sale_id'      => ['required', 'integer', $this->farmScopedExists('sales')],
             'amount'       => 'required|numeric|min:1',
             'payment_date' => 'required|date|before_or_equal:today',
-            'method'       => 'required|in:especes,orange_money,virement,cheque',
+            'method'       => ['required', Rule::in(\App\Models\Payment::METHODES)],
             'reference'    => 'nullable|string|max:100',
             'notes'        => 'nullable|string|max:500',
         ]);
@@ -1198,22 +1203,44 @@ class SyncService
             return $this->denied();
         }
 
+        /*
+         * LA VENTE DU TERRAIN DANS LA LANGUE DU BUREAU, ET SOUS SES RÈGLES.
+         *
+         * Les unités arrivent dans le vocabulaire du stock (« Unité »,
+         * « Alvéole », « KG ») : on les traduit en codes de vente, que
+         * SaleItem::stockInputUnit() sait convertir (sinon « Unité » valait
+         * « KG », et des œufs vendus à la pièce sortaient en alvéoles). Le mode
+         * « mobile_money » de l'écran de vente devient « orange_money ». Puis
+         * les référentiels FERMÉS du formulaire du bureau : types, unités,
+         * modes, taux de TVA, et un lot DE LA FERME.
+         */
+        if (isset($payload['items']) && is_array($payload['items'])) {
+            foreach ($payload['items'] as $i => $ligne) {
+                if (is_array($ligne) && array_key_exists('unit', $ligne)) {
+                    $payload['items'][$i]['unit'] = \App\Models\SaleItem::normaliserUnite($ligne['unit']);
+                }
+            }
+        }
+        if (array_key_exists('payment_method', $payload)) {
+            $payload['payment_method'] = \App\Models\Payment::normaliserMethode($payload['payment_method']);
+        }
+
         $v = Validator::make($payload, [
             'uuid'                 => 'required|uuid',
             'client_id'            => ['required', 'integer', $this->farmScopedExists('clients')],
             'sale_date'            => 'required|date|before_or_equal:today',
             'type'                 => 'required|in:bon_livraison,facture',
-            'tax_rate'             => 'nullable|numeric|min:0',
+            'tax_rate'             => 'nullable|numeric|in:0,' . setting('general.tva_rate', 18),
             'notes'                => 'nullable|string|max:1000',
             'immediate_payment'    => 'nullable|numeric|min:0',
-            'payment_method'       => 'nullable|string|max:50',
+            'payment_method'       => ['nullable', Rule::in(\App\Models\Payment::METHODES)],
             'items'                => 'required|array|min:1',
-            'items.*.product_type' => 'required|string|max:40',
+            'items.*.product_type' => ['required', Rule::in(\App\Models\SaleItem::typesAdmis())],
             'items.*.product_name' => 'required|string|max:255',
             'items.*.product_id'   => 'nullable|integer',
-            'items.*.batch_id'     => 'nullable|integer',
+            'items.*.batch_id'     => ['nullable', 'integer', $this->farmScopedExists('batches')],
             'items.*.quantity'     => 'required|numeric|min:0.01',
-            'items.*.unit'         => 'required|string|max:20',
+            'items.*.unit'         => ['required', Rule::in(\App\Models\SaleItem::UNITES)],
             'items.*.unit_price'   => 'required|numeric|min:0',
         ]);
 

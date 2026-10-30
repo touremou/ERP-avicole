@@ -30,6 +30,21 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'received_by');
     }
 
+    /** Modes d'encaissement d'une vente — ceux du bureau, du terrain et des libellés ci-dessous. */
+    public const METHODES = ['especes', 'orange_money', 'virement', 'cheque'];
+
+    /**
+     * Le mode d'encaissement dans la langue des ventes. L'écran de vente du
+     * terrain proposait « mobile_money » quand l'écran de règlement, le bureau
+     * et ce modèle disent « orange_money » : l'encaissement passait, mais sans
+     * libellé, et hors du total « Orange Money du jour ». Les opérations déjà en
+     * file sur les téléphones sont traduites ici.
+     */
+    public static function normaliserMethode(?string $methode): ?string
+    {
+        return $methode === 'mobile_money' ? 'orange_money' : $methode;
+    }
+
     public function getMethodLabelAttribute(): string
     {
         return match ($this->method) {
