@@ -1143,7 +1143,7 @@ class SyncService
             'uuid'            => 'required|uuid',
             'sale_id'         => ['required', 'integer', $this->farmScopedExists('sales')],
             'reason'          => 'nullable|string|max:500',
-            'refund_method'   => 'required|in:especes,orange_money,virement,cheque',
+            'refund_method'   => ['required', \Illuminate\Validation\Rule::in(\App\Models\Payment::METHODES)],
             'lines'           => 'required|array|min:1',
             'lines.*.sale_item_id' => 'required|integer',
             'lines.*.quantity'     => 'required|numeric|min:0.01',

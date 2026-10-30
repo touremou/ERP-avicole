@@ -97,7 +97,7 @@ class PosController extends Controller
         $data = $request->validate([
             'client_id'          => ['nullable', \App\Support\Ferme::existe('clients')],
             'seller_employee_id' => 'nullable|exists:employees,id', // vendeur nominatif (façon balance)
-            'payment_method'     => 'required|in:especes,orange_money,virement,cheque',
+            'payment_method'     => ['required', \Illuminate\Validation\Rule::in(\App\Models\Payment::METHODES)],
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
             'items.*.quantity'   => 'required|numeric|min:0.01',
@@ -235,7 +235,7 @@ class PosController extends Controller
         }
 
         $data = $request->validate([
-            'method' => 'required|in:especes,orange_money,virement,cheque',
+            'method' => ['required', \Illuminate\Validation\Rule::in(\App\Models\Payment::METHODES)],
         ]);
 
         $remaining = (float) $sale->remaining_amount;

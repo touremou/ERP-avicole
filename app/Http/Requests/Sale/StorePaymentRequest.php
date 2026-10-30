@@ -19,7 +19,7 @@ class StorePaymentRequest extends FormRequest
             'sale_id'      => ['required', \App\Support\Ferme::existe('sales')],
             'amount'       => 'required|numeric|min:1',
             'payment_date' => 'required|date|before_or_equal:today',
-            'method'       => 'required|in:especes,orange_money,virement,cheque',
+            'method'       => ['required', \Illuminate\Validation\Rule::in(\App\Models\Payment::METHODES)],
             'treasury_account_id' => 'nullable|exists:treasury_accounts,id',
             'reference'    => 'nullable|string|max:100',
             'notes'        => 'nullable|string|max:500',

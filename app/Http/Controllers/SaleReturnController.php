@@ -128,7 +128,7 @@ class SaleReturnController extends Controller
 
         $data = $request->validate([
             'reason'        => 'nullable|string|max:500',
-            'refund_method' => 'required|in:especes,orange_money,virement,cheque',
+            'refund_method' => ['required', \Illuminate\Validation\Rule::in(\App\Models\Payment::METHODES)],
             'returns'       => 'required|array',
             'returns.*'     => 'nullable|numeric|min:0',
         ]);
