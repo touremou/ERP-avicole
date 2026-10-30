@@ -165,7 +165,7 @@ class RawMaterialController extends Controller
         $request->validate([
             'added_qty'      => 'required|numeric|min:0.01',
             'purchase_price' => 'required|numeric|min:0',
-            'provider_id'    => 'nullable|exists:providers,id',
+            'provider_id'    => ['nullable', \App\Support\Ferme::existe('providers')],
             // Même exigence que la sortie : une correction d'inventaire sans
             // motif est inaudible trois mois plus tard.
             'reason'         => 'required|string|max:255',

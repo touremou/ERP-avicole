@@ -16,7 +16,7 @@ class StorePaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'sale_id'      => 'required|exists:sales,id',
+            'sale_id'      => ['required', \App\Support\Ferme::existe('sales')],
             'amount'       => 'required|numeric|min:1',
             'payment_date' => 'required|date|before_or_equal:today',
             'method'       => 'required|in:especes,orange_money,virement,cheque',

@@ -83,7 +83,7 @@ class HaccpRegisterController extends Controller
 
         $validated = $request->validate([
             'ccp'                 => 'required|in:' . implode(',', CcpRecord::CCPS),
-            'slaughter_order_id'  => 'nullable|integer|exists:slaughter_orders,id',
+            'slaughter_order_id'  => ['nullable', 'integer', \App\Support\Ferme::existe('slaughter_orders')],
             'equipment_ref'       => 'nullable|string|max:50',
             'corrective_action'   => 'nullable|string|max:2000',
             // Mesures selon le CCP (le serveur ne garde que celles du CCP choisi)
@@ -392,7 +392,7 @@ class HaccpRegisterController extends Controller
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'slaughter_order_id'   => 'nullable|integer|exists:slaughter_orders,id',
+            'slaughter_order_id'   => ['nullable', 'integer', \App\Support\Ferme::existe('slaughter_orders')],
             'rows'                 => 'required|array',
             'rows.*.quantity_kg'   => 'nullable|numeric|min:0.01',
             'rows.*.destination'   => 'nullable|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),
@@ -435,7 +435,7 @@ class HaccpRegisterController extends Controller
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'slaughter_order_id' => 'nullable|integer|exists:slaughter_orders,id',
+            'slaughter_order_id' => ['nullable', 'integer', \App\Support\Ferme::existe('slaughter_orders')],
             'type'               => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::TYPES)),
             'quantity_kg'        => 'required|numeric|min:0.01',
             'destination'        => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),

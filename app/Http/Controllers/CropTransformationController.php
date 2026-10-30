@@ -67,11 +67,11 @@ class CropTransformationController extends Controller
         }
 
         $validated = $request->validate([
-            'crop_cycle_id'       => 'nullable|exists:crop_cycles,id',
+            'crop_cycle_id'       => ['nullable', \App\Support\Ferme::existe('crop_cycles')],
             // Récolte précise engagée (T1) : porte la traçabilité au lot ET le
             // coût matière le plus juste (coût de production de SON cycle).
-            'harvest_id'          => 'nullable|exists:harvests,id',
-            'crop_recipe_id'      => 'nullable|exists:crop_recipes,id',
+            'harvest_id'          => ['nullable', \App\Support\Ferme::existe('harvests')],
+            'crop_recipe_id'      => ['nullable', \App\Support\Ferme::existe('crop_recipes')],
             'employee_id'         => 'nullable|exists:employees,id',
             'input_product'       => 'required|string|max:255',
             'output_product'      => 'required|string|max:255',
@@ -166,7 +166,7 @@ class CropTransformationController extends Controller
         }
 
         $validated = $request->validate([
-            'crop_cycle_id'       => 'nullable|exists:crop_cycles,id',
+            'crop_cycle_id'       => ['nullable', \App\Support\Ferme::existe('crop_cycles')],
             'employee_id'         => 'nullable|exists:employees,id',
             'input_product'       => 'required|string|max:255',
             'output_product'      => 'required|string|max:255',

@@ -20,7 +20,7 @@ class StoreSaleRequest extends FormRequest
         $tvaRate = setting('general.tva_rate', 18);
 
         return [
-            'client_id'              => 'required|exists:clients,id',
+            'client_id'              => ['required', \App\Support\Ferme::existe('clients')],
             'sale_date'              => 'required|date|before_or_equal:today',
             'type'                   => 'required|in:bon_livraison,facture',
             // 👈 Injection du taux dynamique
@@ -41,7 +41,7 @@ class StoreSaleRequest extends FormRequest
             'items.*.product_name'   => 'required|string|max:255',
             'items.*.product_id'     => 'nullable|integer',
             'items.*.product_ref_id' => 'nullable|integer|exists:products,id',
-            'items.*.batch_id'       => 'nullable|integer|exists:batches,id',
+            'items.*.batch_id'       => ['nullable', 'integer', \App\Support\Ferme::existe('batches')],
             'items.*.quantity'       => 'required|numeric|min:0.01',
             'items.*.unit'           => 'required|in:alveole,unite,kg,piece,sac,voyage,tete,litre',
             'items.*.unit_price'     => 'required|numeric|min:0',

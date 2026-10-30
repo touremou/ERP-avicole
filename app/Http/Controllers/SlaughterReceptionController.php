@@ -48,7 +48,7 @@ class SlaughterReceptionController extends Controller
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'provider_id'          => 'required|integer|exists:providers,id',
+            'provider_id'          => ['required', 'integer', \App\Support\Ferme::existe('providers')],
             'reception_date'       => 'required|date|before_or_equal:today',
             'announced_quantity'   => 'nullable|integer|min:0',
             'received_quantity'    => 'required|integer|min:1',

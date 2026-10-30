@@ -96,7 +96,7 @@ class CropCycleController extends Controller
         }
 
         $validated = $request->validate([
-            'plot_id' => 'required|exists:plots,id',
+            'plot_id' => ['required', \App\Support\Ferme::existe('plots')],
             'campaign_id' => 'nullable|exists:crop_campaigns,id',
             'crop_protocol_id' => 'nullable|exists:crop_protocols,id',
             'employee_id' => 'nullable|exists:employees,id',
@@ -218,7 +218,7 @@ class CropCycleController extends Controller
             'unit' => 'nullable|string|max:20',
             'notes' => 'nullable|string|max:500',
             'record_as_input' => 'nullable|boolean',
-            'consume_stock_id' => 'nullable|exists:stocks,id',
+            'consume_stock_id' => ['nullable', \App\Support\Ferme::existe('stocks')],
         ]);
 
         $completedAt = isset($data['completed_at']) ? Carbon::parse($data['completed_at']) : now();
@@ -521,7 +521,7 @@ class CropCycleController extends Controller
             // qu'il court. Absent de la validation web jusqu'ici, il ne pouvait
             // donc pas être saisi au bureau — seul le mobile l'envoyait.
             'preharvest_days' => 'nullable|integer|min:0|max:365',
-            'provider_id' => 'nullable|exists:providers,id',
+            'provider_id' => ['nullable', \App\Support\Ferme::existe('providers')],
             'synced_to_stock' => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:500',
@@ -732,7 +732,7 @@ class CropCycleController extends Controller
              * seule déclaration du délai, trois portes qui l'appliquent.
              */
             'preharvest_days' => 'nullable|integer|min:0|max:365',
-            'provider_id' => 'nullable|exists:providers,id',
+            'provider_id' => ['nullable', \App\Support\Ferme::existe('providers')],
             'notes' => 'nullable|string|max:500',
         ]);
 

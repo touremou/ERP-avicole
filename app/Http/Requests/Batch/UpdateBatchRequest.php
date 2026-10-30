@@ -43,9 +43,9 @@ class UpdateBatchRequest extends FormRequest
         return [
             'type'               => ['required', Rule::in($validTypes)],
             'model_name'         => 'nullable|string|max:100',
-            'building_id'        => 'required|integer|exists:buildings,id',
+            'building_id'        => ['required', 'integer', \App\Support\Ferme::existe('buildings')],
             'employee_id'        => 'nullable|integer|exists:employees,id',
-            'provider_id'        => 'nullable|integer|exists:providers,id',
+            'provider_id'        => ['nullable', 'integer', \App\Support\Ferme::existe('providers')],
             'protocol_id'        => 'nullable|integer|exists:protocols,id',
             'allocated_surface'  => 'nullable|numeric|min:0.1',
             'buy_price_per_unit' => 'required|numeric|min:0',

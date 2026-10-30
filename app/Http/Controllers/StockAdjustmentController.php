@@ -66,7 +66,7 @@ class StockAdjustmentController extends Controller
         if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
 
         $data = $request->validate([
-            'stock_id'         => 'required|exists:stocks,id',
+            'stock_id'         => ['required', \App\Support\Ferme::existe('stocks')],
             'counted_quantity' => 'required|numeric|min:0',
             'reason'           => 'required|in:' . implode(',', array_keys(StockAdjustment::REASONS)),
             'adjustment_date'  => 'required|date|before_or_equal:today',

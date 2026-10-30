@@ -285,7 +285,7 @@ class TaskController extends Controller
             // qui rendait la tâche invisible de tous les filtres.
             'category'        => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'employee_id'     => 'nullable|exists:employees,id',
-            'building_id'     => 'nullable|exists:buildings,id',
+            'building_id'     => ['nullable', \App\Support\Ferme::existe('buildings')],
             'scheduled_date'  => 'required|date',
             'scheduled_time'  => 'nullable|date_format:H:i',
             'priority'        => 'required|in:basse,normale,haute,critique',
@@ -346,7 +346,7 @@ class TaskController extends Controller
             // qui rendait la tâche invisible de tous les filtres.
             'category'        => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'employee_id'     => 'nullable|exists:employees,id',
-            'building_id'     => 'nullable|exists:buildings,id',
+            'building_id'     => ['nullable', \App\Support\Ferme::existe('buildings')],
             'scheduled_date'  => 'required|date',
             'scheduled_time'  => 'nullable',
             'priority'        => 'required|in:basse,normale,haute,critique',

@@ -83,8 +83,8 @@ class StoredLotController extends Controller
         }
 
         $data = $request->validate([
-            'stock_id'               => 'required|exists:stocks,id',
-            'harvest_id'             => 'nullable|exists:harvests,id',
+            'stock_id'               => ['required', \App\Support\Ferme::existe('stocks')],
+            'harvest_id'             => ['nullable', \App\Support\Ferme::existe('harvests')],
             'crop_transformation_id' => 'nullable|exists:crop_transformations,id',
             'label'                  => 'required|string|max:255',
             'quantity_initial'       => 'required|numeric|min:0.001',

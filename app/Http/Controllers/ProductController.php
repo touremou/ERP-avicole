@@ -109,7 +109,7 @@ class ProductController extends Controller
             'name'         => 'required|string|max:255',
             'sku'          => 'nullable|string|max:100',
             'product_type' => 'required|in:' . implode(',', array_keys(self::TYPES)),
-            'stock_id'     => 'nullable|exists:stocks,id',
+            'stock_id'     => ['nullable', \App\Support\Ferme::existe('stocks')],
             'unit'         => 'required|string|max:30',
             'base_price'   => 'required|numeric|min:0',
             'notes'        => 'nullable|string|max:500',

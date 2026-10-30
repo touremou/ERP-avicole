@@ -230,7 +230,7 @@ class EggProductionController extends Controller
 
         $validated = $request->validate([
             'lines'            => 'required|array|min:1',
-            'lines.*.batch_id' => 'required|integer|exists:batches,id',
+            'lines.*.batch_id' => ['required', 'integer', \App\Support\Ferme::existe('batches')],
             'lines.*.trays'    => 'nullable|integer|min:0',
             'lines.*.units'    => 'nullable|integer|min:0|max:' . ($perTray - 1),
         ]);
