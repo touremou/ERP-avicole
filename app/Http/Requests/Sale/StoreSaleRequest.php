@@ -37,18 +37,19 @@ class StoreSaleRequest extends FormRequest
             'items'                  => 'required|array|min:1',
             'discount_type'          => 'nullable|in:none,percent,amount',
             'discount_value'         => 'nullable|numeric|min:0',
-            'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,litieres,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
+            // Les référentiels partagés avec la vente du terrain (SyncService::saleCreate).
+            'items.*.product_type'   => ['required', \Illuminate\Validation\Rule::in(\App\Models\SaleItem::typesAdmis())],
             'items.*.product_name'   => 'required|string|max:255',
             'items.*.product_id'     => 'nullable|integer',
             'items.*.product_ref_id' => 'nullable|integer|exists:products,id',
             'items.*.batch_id'       => ['nullable', 'integer', \App\Support\Ferme::existe('batches')],
             'items.*.quantity'       => 'required|numeric|min:0.01',
-            'items.*.unit'           => 'required|in:alveole,unite,kg,piece,sac,voyage,tete,litre',
+            'items.*.unit'           => ['required', \Illuminate\Validation\Rule::in(\App\Models\SaleItem::UNITES)],
             'items.*.unit_price'     => 'required|numeric|min:0',
 
             // Paiement immédiat (optionnel)
             'immediate_payment'      => 'nullable|numeric|min:0',
-            'payment_method'         => 'nullable|in:especes,orange_money,virement,cheque',
+            'payment_method'         => ['nullable', \Illuminate\Validation\Rule::in(\App\Models\Payment::METHODES)],
             'payment_reference'      => 'nullable|string|max:100',
         ];
     }

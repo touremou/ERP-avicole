@@ -80,6 +80,42 @@ class SaleItem extends Model
         'autre'          => 'Autre',
     ];
 
+    /** Unités de vente — les codes du formulaire du bureau, et la langue de stockInputUnit(). */
+    public const UNITES = ['alveole', 'unite', 'kg', 'piece', 'sac', 'voyage', 'tete', 'litre'];
+
+    /** Types de ligne admis à la vente : le catalogue, plus les deux types volaille historiques. */
+    public static function typesAdmis(): array
+    {
+        return [...array_keys(self::SELLABLE_TYPE_LABELS), 'volaille_vivante', 'volaille_abattue'];
+    }
+
+    /**
+     * L'UNITÉ DE VENTE DANS LA LANGUE DU BUREAU.
+     *
+     * Le bureau envoie un code (« unite », « alveole », « tete ») ; le terrain,
+     * l'unité de l'article de stock (« Unité », « Alvéole », « KG », « Tête »).
+     * stockInputUnit() ne connaissait que les codes : « Unité » tombait dans
+     * « KG », et 300 œufs vendus à la pièce depuis le terrain sortaient 300
+     * ALVÉOLES du stock — le défaut que stockInputUnit() dit avoir corrigé, rouvert
+     * par la seconde porte. Toute unité de comptage inconnue (boîte, flacon,
+     * paquet) est une pièce : c'est ce que le stock en faisait déjà.
+     */
+    public static function normaliserUnite(?string $unite): string
+    {
+        $u = \Illuminate\Support\Str::of((string) $unite)->ascii()->lower()->trim()->toString();
+
+        return match ($u) {
+            'kg', 'kilo', 'kilos', 'kilogramme', 'kilogrammes' => 'kg',
+            'alveole', 'alveoles', 'plateau', 'plateaux'      => 'alveole',
+            'piece', 'pieces'                                 => 'piece',
+            'tete', 'tetes'                                   => 'tete',
+            'sac', 'sacs'                                     => 'sac',
+            'litre', 'litres', 'l'                            => 'litre',
+            'voyage', 'voyages'                               => 'voyage',
+            default                                           => 'unite',
+        };
+    }
+
     /**
      * Types de lignes adossées à un lot d'animaux vivants (toute espèce).
      * `animal_vif`/`carcasse` sont génériques ; `volaille_vivante`/

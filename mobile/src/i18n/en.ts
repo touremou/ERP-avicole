@@ -270,6 +270,7 @@ export const en: Record<string, string> = {
   'Mode de paiement': 'Payment method',
   'Espèces': 'Cash',
   'Mobile Money': 'Mobile Money',
+  'Orange Money': 'Orange Money',
   'Virement': 'Bank transfer',
   'Chèque': 'Cheque',
   'Poids net pesé (kg) — optionnel': 'Net weighed (kg) — optional',
