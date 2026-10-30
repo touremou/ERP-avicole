@@ -167,11 +167,11 @@ class SlaughterController extends Controller
         // nôtre) → réception obligatoire, client et modèle de facturation
         // obligatoires, tarif figé sur l'ordre.
         $validated = $request->validate([
-            'batch_id'         => 'required_without:reception_id|nullable|exists:batches,id',
+            'batch_id'         => ['required_without:reception_id', 'nullable', \App\Support\Ferme::existe('batches')],
             'reception_id'     => 'nullable|integer|exists:slaughter_receptions,id',
             'planned_date'     => 'required|date',
             'planned_quantity' => 'required|integer|min:1',
-            'client_id'        => 'nullable|exists:clients,id',
+            'client_id'        => ['nullable', \App\Support\Ferme::existe('clients')],
             'notes'            => 'nullable|string|max:1000',
             'service_type'     => 'nullable|in:propre,facon',
             'billing_model'    => 'required_if:service_type,facon|nullable|in:' . implode(',', array_keys(SlaughterOrder::BILLING_MODELS)),
@@ -670,7 +670,7 @@ class SlaughterController extends Controller
         $validated = $request->validate([
             'product_source'  => 'required|string|max:255',
             // Rattachement optionnel à l'ordre d'origine (traçabilité cascade).
-            'slaughter_order_id' => 'nullable|exists:slaughter_orders,id',
+            'slaughter_order_id' => ['nullable', \App\Support\Ferme::existe('slaughter_orders')],
             // Liste dérivée de Transformation::TYPES : ajouter un procédé au
             // modèle suffit, la validation et le formulaire suivent.
             'type'            => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\Transformation::TYPES))],

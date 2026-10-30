@@ -109,7 +109,7 @@ class SalePriceListController extends Controller
     {
         if (Gate::denies('commerce.L')) abort(403);
 
-        $data = $request->validate(['client_id' => 'nullable|exists:clients,id']);
+        $data = $request->validate(['client_id' => ['nullable', \App\Support\Ferme::existe('clients')]]);
         $client = ! empty($data['client_id']) ? Client::find($data['client_id']) : null;
 
         $prices = \App\Models\Product::active()->with('stock')->get()
@@ -140,9 +140,9 @@ class SalePriceListController extends Controller
         if (Gate::denies('commerce.L')) abort(403);
 
         $data = $request->validate([
-            'client_id'    => 'nullable|exists:clients,id',
+            'client_id'    => ['nullable', \App\Support\Ferme::existe('clients')],
             'product_id'   => 'nullable|exists:products,id',
-            'stock_id'     => 'nullable|exists:stocks,id',
+            'stock_id'     => ['nullable', \App\Support\Ferme::existe('stocks')],
             'product_type' => 'required_without_all:product_id,stock_id|nullable|string',
         ]);
 

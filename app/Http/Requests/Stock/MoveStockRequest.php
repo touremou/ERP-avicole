@@ -16,7 +16,7 @@ class MoveStockRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'stock_id' => 'required|exists:stocks,id',
+            'stock_id' => ['required', \App\Support\Ferme::existe('stocks')],
             'type'     => 'required|in:in,out,adjustment',
             'quantity' => 'required|numeric|min:0.001',
             'notes'    => 'nullable|string|max:500'

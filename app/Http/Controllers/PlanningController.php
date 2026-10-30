@@ -70,7 +70,7 @@ class PlanningController extends Controller
         if (Gate::denies('planning.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'building_id'          => 'required|exists:buildings,id',
+            'building_id'          => ['required', \App\Support\Ferme::existe('buildings')],
             // batch_type = slug du type de production (multiespèces) ; plus de
             // liste figée volaille. species_id/production_type_id portent l'espèce.
             'batch_type'           => 'required|string|max:50',
@@ -79,7 +79,7 @@ class PlanningController extends Controller
             'model_name'           => 'nullable|string|max:100',
             'planned_quantity'     => 'required|integer|min:1',
             'planned_arrival_date' => 'required|date|after_or_equal:today',
-            'provider_id'          => 'nullable|exists:providers,id',
+            'provider_id'          => ['nullable', \App\Support\Ferme::existe('providers')],
             'protocol_id'          => 'nullable|exists:protocols,id',
             'notes'                => 'nullable|string|max:1000',
         ]);

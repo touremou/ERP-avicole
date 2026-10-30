@@ -15,9 +15,9 @@ class StoreMillProductionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'formula_id'    => 'required|integer|exists:formulas,id',
+            'formula_id'    => ['required', 'integer', \App\Support\Ferme::existe('formulas')],
             'machine_ids'   => 'required|array|min:1',
-            'machine_ids.*' => 'integer|exists:mill_machines,id',
+            'machine_ids.*' => ['integer', \App\Support\Ferme::existe('mill_machines')],
             'nb_bags'       => 'required|integer|min:1',
             'supervisor_id' => 'required|integer|exists:employees,id',
         ];

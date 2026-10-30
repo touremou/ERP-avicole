@@ -95,7 +95,7 @@ class PosController extends Controller
         }
 
         $data = $request->validate([
-            'client_id'          => 'nullable|exists:clients,id',
+            'client_id'          => ['nullable', \App\Support\Ferme::existe('clients')],
             'seller_employee_id' => 'nullable|exists:employees,id', // vendeur nominatif (façon balance)
             'payment_method'     => 'required|in:especes,orange_money,virement,cheque',
             'items'              => 'required|array|min:1',

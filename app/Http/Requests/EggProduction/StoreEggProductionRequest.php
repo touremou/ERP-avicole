@@ -16,7 +16,7 @@ class StoreEggProductionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'batch_id'             => 'required|integer|exists:batches,id',
+            'batch_id'             => ['required', 'integer', \App\Support\Ferme::existe('batches')],
             'production_date'      => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'total_eggs_collected' => 'required|integer|min:0',
             'broken_eggs'          => 'nullable|integer|min:0',

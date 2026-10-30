@@ -52,7 +52,7 @@ class TransferBatchRequest extends FormRequest
         }
 
         return [
-            'target_building_id' => 'required|integer|exists:buildings,id',
+            'target_building_id' => ['required', 'integer', \App\Support\Ferme::existe('buildings')],
             'new_protocol_id'    => 'required|integer|exists:protocols,id',
             'new_phase'          => ['required', Rule::in($allowedPhases)],
             'transfer_date'      => 'required|date',

@@ -172,7 +172,7 @@ class MilkProductionController extends Controller
     private function validateData(Request $request, ?MilkProduction $existing = null): array
     {
         return $request->validate([
-            'batch_id'        => 'required|exists:batches,id',
+            'batch_id'        => ['required', \App\Support\Ferme::existe('batches')],
             'production_date' => 'required|date|before_or_equal:today',
             'morning_liters'  => 'nullable|numeric|min:0',
             'evening_liters'  => 'nullable|numeric|min:0',

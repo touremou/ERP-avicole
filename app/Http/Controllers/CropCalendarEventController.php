@@ -56,7 +56,7 @@ class CropCalendarEventController extends Controller
             'event_date'    => 'required|date',
             'end_date'      => 'nullable|date|after_or_equal:event_date',
             'notes'         => 'nullable|string|max:1000',
-            'crop_cycle_id' => 'nullable|exists:crop_cycles,id',
+            'crop_cycle_id' => ['nullable', \App\Support\Ferme::existe('crop_cycles')],
             'color'         => 'nullable|string|max:20',
         ]);
 
@@ -91,7 +91,7 @@ class CropCalendarEventController extends Controller
             'event_date'    => 'required|date',
             'end_date'      => 'nullable|date|after_or_equal:event_date',
             'notes'         => 'nullable|string|max:1000',
-            'crop_cycle_id' => 'nullable|exists:crop_cycles,id',
+            'crop_cycle_id' => ['nullable', \App\Support\Ferme::existe('crop_cycles')],
             'color'         => 'nullable|string|max:20',
         ]);
 

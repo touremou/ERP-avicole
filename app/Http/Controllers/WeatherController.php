@@ -64,7 +64,7 @@ class WeatherController extends Controller
         }
 
         $validated = $request->validate([
-            'plot_id'         => 'nullable|exists:plots,id',
+            'plot_id'         => ['nullable', \App\Support\Ferme::existe('plots')],
             'reading_date'    => 'required|date|before_or_equal:today',
             'temperature_min' => 'nullable|numeric|min:-10|max:60',
             'temperature_max' => 'nullable|numeric|min:-10|max:60',
@@ -132,7 +132,7 @@ class WeatherController extends Controller
         }
 
         $validated = $request->validate([
-            'plot_id'         => 'nullable|exists:plots,id',
+            'plot_id'         => ['nullable', \App\Support\Ferme::existe('plots')],
             'reading_date'    => 'required|date|before_or_equal:today',
             'temperature_min' => 'nullable|numeric|min:-10|max:60',
             'temperature_max' => 'nullable|numeric|min:-10|max:60',

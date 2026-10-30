@@ -83,7 +83,7 @@ class SupplierInvoiceController extends Controller
         if (Gate::denies('depenses.C')) return back()->with('error', 'Création d\'achat non autorisée.');
 
         $data = $request->validate([
-            'provider_id'  => 'required|exists:providers,id',
+            'provider_id'  => ['required', \App\Support\Ferme::existe('providers')],
             'invoice_date' => 'required|date',
             'due_date'     => 'nullable|date|after_or_equal:invoice_date',
             'category'     => 'required|string|max:50',

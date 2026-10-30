@@ -17,7 +17,7 @@ class StoreFeedPurchaseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'batch_id'      => 'required|exists:batches,id',
+            'batch_id'      => ['required', \App\Support\Ferme::existe('batches')],
             'purchase_date' => 'required|date|before_or_equal:today',
             'feed_type'     => 'required|string|max:255',
             'quantity'      => 'required|numeric|min:0.001',

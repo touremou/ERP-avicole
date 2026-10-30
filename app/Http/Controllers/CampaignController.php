@@ -127,7 +127,7 @@ class CampaignController extends Controller
         }
 
         $validated = $request->validate([
-            'batch_id' => 'required|exists:batches,id',
+            'batch_id' => ['required', \App\Support\Ferme::existe('batches')],
         ]);
 
         $batch = Batch::findOrFail($validated['batch_id']);

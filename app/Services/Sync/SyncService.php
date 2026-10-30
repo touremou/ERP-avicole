@@ -2808,16 +2808,10 @@ class SyncService
         });
     }
 
+    /** La règle des deux portes : App\Support\Ferme::existe (le bureau la lit aussi). */
     private function farmScopedExists(string $table): \Illuminate\Validation\Rules\Exists
     {
-        $rule = Rule::exists($table, 'id');
-        $farmId = session('current_farm_id');
-
-        if ($farmId) {
-            $rule->where('farm_id', $farmId);
-        }
-
-        return $rule;
+        return \App\Support\Ferme::existe($table);
     }
 
     /**

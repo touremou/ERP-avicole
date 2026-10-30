@@ -17,7 +17,7 @@ class StoreHealthCheckRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'batch_id'            => ['required', 'exists:batches,id'],
+            'batch_id'            => ['required', \App\Support\Ferme::existe('batches')],
             'intervention_date'   => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'type'                => ['required', 'in:Vaccin,Traitement,Vitamine,Désinfection'],
             'product_name'        => ['required', 'string', 'max:255'],

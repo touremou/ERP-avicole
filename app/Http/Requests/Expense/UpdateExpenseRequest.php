@@ -22,7 +22,7 @@ class UpdateExpenseRequest extends FormRequest
             'amount'         => 'required|numeric|min:1',
             'expense_date'   => 'required|date|before_or_equal:today',
             'payment_method' => ['required', 'string', Rule::in(array_keys(Expense::PAYMENT_METHODS))],
-            'batch_id'       => 'nullable|integer|exists:batches,id',
+            'batch_id'       => ['nullable', 'integer', \App\Support\Ferme::existe('batches')],
             'supplier_name'  => 'nullable|string|max:255',
             'notes'          => 'nullable|string|max:2000',
             'justificatif'   => 'nullable|file|mimes:pdf,jpeg,jpg,png|max:5120',

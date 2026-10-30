@@ -113,8 +113,8 @@ class UtilityController extends Controller
         if (Gate::denies('ressources.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'water_source_id'        => 'required|exists:water_sources,id',
-            'building_id'            => 'nullable|exists:buildings,id',
+            'water_source_id'        => ['required', \App\Support\Ferme::existe('water_sources')],
+            'building_id'            => ['nullable', \App\Support\Ferme::existe('buildings')],
             'reading_date'           => 'required|date|before_or_equal:today',
             'volume_consumed_liters' => 'required|numeric|min:0',
             'volume_added_liters'    => 'nullable|numeric|min:0',
@@ -318,8 +318,8 @@ class UtilityController extends Controller
         if (Gate::denies('ressources.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'energy_source_id'    => 'required|exists:energy_sources,id',
-            'building_id'         => 'nullable|exists:buildings,id',
+            'energy_source_id'    => ['required', \App\Support\Ferme::existe('energy_sources')],
+            'building_id'         => ['nullable', \App\Support\Ferme::existe('buildings')],
             'reading_date'        => 'required|date|before_or_equal:today',
             'hours_run'           => 'required|numeric|min:0|max:24',
             'fuel_consumed_liters' => 'nullable|numeric|min:0',
@@ -356,8 +356,8 @@ class UtilityController extends Controller
         if (Gate::denies('ressources.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'energy_source_id'  => 'required|exists:energy_sources,id',
-            'building_id'       => 'nullable|exists:buildings,id',
+            'energy_source_id'  => ['required', \App\Support\Ferme::existe('energy_sources')],
+            'building_id'       => ['nullable', \App\Support\Ferme::existe('buildings')],
             'purchase_date'     => 'required|date|before_or_equal:today',
             'quantity_liters'   => 'required|numeric|min:1',
             'unit_price'        => 'required|numeric|min:0',
@@ -518,7 +518,7 @@ class UtilityController extends Controller
          * L'écran de correction étant le seul recours, l'erreur était définitive.
          */
         $validated = $request->validate([
-            'energy_source_id'  => 'required|exists:energy_sources,id',
+            'energy_source_id'  => ['required', \App\Support\Ferme::existe('energy_sources')],
             'purchase_date'     => 'required|date|before_or_equal:today',
             'quantity_liters'   => 'required|numeric|min:1',
             'unit_price'        => 'required|numeric|min:0',

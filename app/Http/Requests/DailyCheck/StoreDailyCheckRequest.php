@@ -23,7 +23,7 @@ class StoreDailyCheckRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'batch_id'          => 'required|integer|exists:batches,id',
+            'batch_id'          => ['required', 'integer', \App\Support\Ferme::existe('batches')],
             'check_date'        => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'mortality'         => 'required|integer|min:0',
             'feed_consumed'     => 'required|numeric|min:0',

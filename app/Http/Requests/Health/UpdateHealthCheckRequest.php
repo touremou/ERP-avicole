@@ -22,7 +22,7 @@ class UpdateHealthCheckRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'batch_id'            => ['required', 'exists:batches,id'],
+            'batch_id'            => ['required', \App\Support\Ferme::existe('batches')],
             // Corriger la date d'une intervention ancienne reste possible ;
             // la reporter dans le FUTUR ne l'est pas, pas plus qu'à la saisie
             // (une intervention future n'a pas eu lieu : c'est un rappel du

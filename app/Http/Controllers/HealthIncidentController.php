@@ -54,7 +54,7 @@ class HealthIncidentController extends Controller
         //    Symptômes : checklist standardisée (symptom_tags[]) et/ou texte
         //    libre — au moins l'un des deux (compat API/sync : symptoms seul).
         $validated = $request->validate([
-            'batch_id'        => 'required|exists:batches,id',
+            'batch_id'        => ['required', \App\Support\Ferme::existe('batches')],
             'daily_check_id'  => 'nullable|exists:daily_checks,id', // pointage d'origine (traçabilité)
             'mortality_count' => 'required|integer|min:1',
             'severity'        => 'nullable|in:mineur,modere,critique',

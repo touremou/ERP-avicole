@@ -44,7 +44,7 @@ class StartIncubationRequest extends FormRequest
 
         // 💡 LOGIQUE CONDITIONNELLE
         if ($this->source_type === 'internal') {
-            $rules['batch_id'] = ['required', 'exists:batches,id'];
+            $rules['batch_id'] = ['required', \App\Support\Ferme::existe('batches')];
 
             /*
              * QUEL CALIBRE EST PRÉLEVÉ AU MAGASIN.
@@ -69,7 +69,7 @@ class StartIncubationRequest extends FormRequest
                 $rules['new_provider_type']  = ['required', 'in:Poussins,Aliment,Santé,Matériel,Autre'];
             } else {
                 // Sinon, c'est un ID existant
-                $rules['provider_id'][] = 'exists:providers,id';
+                $rules['provider_id'][] = \App\Support\Ferme::existe('providers');
             }
         }
 

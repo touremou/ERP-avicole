@@ -186,7 +186,7 @@ class BatchController extends Controller
         $query = Batch::with(['building', 'provider'])->archived();
 
         if ($request->filled('building_id')) {
-            $request->validate(['building_id' => 'integer|exists:buildings,id']);
+            $request->validate(['building_id' => ['integer', \App\Support\Ferme::existe('buildings')]]);
             $query->where('building_id', $request->building_id);
         }
 
