@@ -89,3 +89,15 @@ test('un lot d’un autre site ou un type inconnu sont refusés, comme au bureau
         ->toBe('validation_failed')
         ->and(venteDuTerrain($this, $this->farm->id, ['product_type' => 'bijoux'])['status'])->toBe('validation_failed');
 });
+
+test('un achat du terrain d’une nature inconnue est refusé, comme au bureau', function () {
+    $lot = Batch::factory()->create(['farm_id' => $this->farm->id]);
+    $achat = fn (array $meta) => $this->postJson('/api/v1/sync/push', ['operations' => [[
+        'op_uuid' => (string) Str::uuid(), 'type' => 'feed_purchase.create',
+        'payload' => ['uuid' => (string) Str::uuid(), 'batch_id' => $lot->id, 'purchase_date' => now()->toDateString(),
+            'feed_type' => 'Vaccin', 'quantity' => 1, 'unit' => 'Boite', 'unit_price' => 1000, 'metadata' => $meta],
+    ]]], ['X-Farm-Id' => (string) $this->farm->id])->assertOk()->json('results.0.status');
+
+    expect($achat(['conso_type' => 'Médicament']))->toBe('validation_failed')
+        ->and($achat(['conso_type' => 'Santé']))->toBe('success');
+});

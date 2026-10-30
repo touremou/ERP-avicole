@@ -1032,7 +1032,11 @@ class SyncService
             'unit'          => ['required', \Illuminate\Validation\Rule::in(\App\Models\FeedPurchase::UNITES)],
             'supplier'      => 'nullable|string|max:255',
             'payment_mode'  => 'nullable|in:comptant,credit',
+            // Les référentiels du formulaire du bureau : la nature décide si
+            // l'achat se compte au consommé (aliment) ou à l'achat (santé…).
+            'category'      => ['nullable', \Illuminate\Validation\Rule::in(\App\Models\FeedPurchase::CATEGORIES)],
             'metadata'      => 'nullable|array',
+            'metadata.conso_type' => ['nullable', \Illuminate\Validation\Rule::in(\App\Models\FeedPurchase::NATURES)],
         ]);
 
         if ($v->fails()) {
