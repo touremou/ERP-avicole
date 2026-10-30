@@ -104,7 +104,9 @@ class CropCycleController extends Controller
             'crop_name' => 'required|string|max:255',
             'variety' => 'nullable|string|max:255',
             'area_used_ha' => 'required|numeric|min:0.001',
-            'planting_date' => 'required|date',
+            // Un cycle naît « semé, en croissance » (aucun statut « prévu ») : un
+            // semis futur contredit son propre statut. La règle du terrain.
+            'planting_date' => 'required|date|before_or_equal:today',
             'expected_harvest_date' => 'nullable|date|after_or_equal:planting_date',
             'seed_quantity' => 'nullable|numeric|min:0',
             'seed_unit' => 'nullable|string|max:20',
@@ -380,7 +382,9 @@ class CropCycleController extends Controller
             'variety' => 'nullable|string|max:255',
             'employee_id' => 'nullable|exists:employees,id',
             'area_used_ha' => 'required|numeric|min:0.001',
-            'planting_date' => 'required|date',
+            // Un cycle naît « semé, en croissance » (aucun statut « prévu ») : un
+            // semis futur contredit son propre statut. La règle du terrain.
+            'planting_date' => 'required|date|before_or_equal:today',
             'expected_harvest_date' => 'nullable|date|after_or_equal:planting_date',
             'seed_quantity' => 'nullable|numeric|min:0',
             'seed_unit' => 'nullable|string|max:20',

@@ -464,3 +464,18 @@ test('le revenu d\'une récolte en caisses repose sur le poids net (prix au kg)'
 
     expect((float) $cycle->fresh()->total_revenue)->toBe(1800000.0); // 600 × 3000
 });
+
+test('un semis daté de demain est refusé au bureau, comme au terrain', function () {
+    // Un cycle naît « semé, en croissance » : la synchronisation refusait déjà
+    // un semis futur (before_or_equal:today), le formulaire du bureau non.
+    $plot = makePlot($this->farm->id);
+
+    $this->actingAs($this->operatorUser)
+        ->post(route('crop-cycles.store'), [
+            'plot_id' => $plot->id, 'crop_name' => 'Maïs', 'area_used_ha' => 1.0,
+            'planting_date' => now()->addDay()->toDateString(),
+        ])
+        ->assertSessionHasErrors('planting_date');
+
+    expect(CropCycle::count())->toBe(0);
+});

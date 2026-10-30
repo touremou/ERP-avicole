@@ -89,3 +89,32 @@ test('un lot d’un autre site ou un type inconnu sont refusés, comme au bureau
         ->toBe('validation_failed')
         ->and(venteDuTerrain($this, $this->farm->id, ['product_type' => 'bijoux'])['status'])->toBe('validation_failed');
 });
+
+test('un achat du terrain d’une nature inconnue est refusé, comme au bureau', function () {
+    $lot = Batch::factory()->create(['farm_id' => $this->farm->id]);
+    $achat = fn (array $meta) => $this->postJson('/api/v1/sync/push', ['operations' => [[
+        'op_uuid' => (string) Str::uuid(), 'type' => 'feed_purchase.create',
+        'payload' => ['uuid' => (string) Str::uuid(), 'batch_id' => $lot->id, 'purchase_date' => now()->toDateString(),
+            'feed_type' => 'Vaccin', 'quantity' => 1, 'unit' => 'Boite', 'unit_price' => 1000, 'metadata' => $meta],
+    ]]], ['X-Farm-Id' => (string) $this->farm->id])->assertOk()->json('results.0.status');
+
+    expect($achat(['conso_type' => 'Médicament']))->toBe('validation_failed')
+        ->and($achat(['conso_type' => 'Santé']))->toBe('success');
+});
+
+test('à la caisse aussi : 300 œufs vendus à l’unité sortent 10 alvéoles', function () {
+    // La caisse (POS) recopiait l'unité de l'article (« Unité »), comme le terrain.
+    App\Models\Product::create(['name' => 'Œufs M', 'product_type' => 'oeufs', 'stock_id' => $this->oeufs->id,
+        'unit' => 'Unité', 'base_price' => 50, 'is_active' => true]);
+    // Product aligne son unité sur celle du stock : on la repose telle que la caisse la recopie.
+    App\Models\Product::where('stock_id', $this->oeufs->id)->update(['unit' => 'Unité']);
+
+    $this->actingAs($this->adminUser)->post(route('cash-register.open'), ['opening_float' => 0]);
+    $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
+        'payment_method' => 'especes',
+        'items' => [['product_id' => App\Models\Product::where('stock_id', $this->oeufs->id)->value('id'), 'quantity' => 300, 'unit_price' => 50]],
+    ])->assertSessionHasNoErrors();
+
+    expect(SaleItem::latest('id')->value('unit'))->toBe('unite')
+        ->and((float) $this->oeufs->fresh()->current_quantity)->toEqual(990.0);
+});

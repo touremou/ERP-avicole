@@ -80,6 +80,22 @@ class SaleItem extends Model
         'autre'          => 'Autre',
     ];
 
+    /**
+     * Toute ligne s'enregistre dans la langue des ventes, quelle que soit sa
+     * porte : le formulaire du bureau envoie des codes, mais la CAISSE (POS)
+     * et le terrain recopiaient l'unité de l'article (« Unité », « Alvéole ») —
+     * que stockInputUnit() lisait comme des kilos.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $ligne) {
+            if ($ligne->unit !== null && ! in_array($ligne->unit, self::UNITES, true)
+                && ($code = self::uniteConnue($ligne->unit)) !== null) {
+                $ligne->unit = $code;   // une unité de service (« forfait ») reste telle quelle
+            }
+        });
+    }
+
     /** Unités de vente — les codes du formulaire du bureau, et la langue de stockInputUnit(). */
     public const UNITES = ['alveole', 'unite', 'kg', 'piece', 'sac', 'voyage', 'tete', 'litre'];
 
@@ -102,6 +118,16 @@ class SaleItem extends Model
      */
     public static function normaliserUnite(?string $unite): string
     {
+        return self::uniteConnue($unite) ?? 'unite';
+    }
+
+    /**
+     * Le code de vente d'une unité RECONNUE (« Unité », « Alvéole », « KG »…),
+     * ou null. Une unité de service (« forfait » d'une prestation d'abattage à
+     * façon) n'est pas une unité de marchandise : on ne la traduit pas.
+     */
+    public static function uniteConnue(?string $unite): ?string
+    {
         $u = \Illuminate\Support\Str::of((string) $unite)->ascii()->lower()->trim()->toString();
 
         return match ($u) {
@@ -112,7 +138,8 @@ class SaleItem extends Model
             'sac', 'sacs'                                     => 'sac',
             'litre', 'litres', 'l'                            => 'litre',
             'voyage', 'voyages'                               => 'voyage',
-            default                                           => 'unite',
+            'unite', 'unites', 'u', 'boite', 'boites', 'flacon', 'flacons', 'paquet', 'paquets' => 'unite',
+            default                                           => null,
         };
     }
 
