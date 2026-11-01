@@ -911,7 +911,11 @@ class Batch extends Model
             ->pluck('batch_id')
             ->all();
 
+        // Un lot VIRTUEL (œufs externes en transit, effectif nul) n'est jamais
+        // une bande de ponte : son type « reproducteur » suit les œufs, et le
+        // résumé du matin lui réclamait une collecte dès l'âge de ponte passé.
         return $lots
+            ->reject(fn (self $lot) => $lot->isVirtual())
             ->filter(fn (self $lot) => $lot->canCollectEggs() || in_array($lot->id, $ontPondu, true))
             ->values();
     }
