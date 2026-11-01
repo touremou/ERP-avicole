@@ -51,7 +51,9 @@ class UpdateBatchRequest extends FormRequest
             'buy_price_per_unit' => 'required|numeric|min:0',
             'arrival_date'       => 'required|date|before_or_equal:today',
             'birth_date'       => 'nullable|date|before_or_equal:arrival_date',
-            'status'             => ['required', Rule::in(Batch::EDITABLE_STATUSES)],
+            // Les statuts que CE lot peut prendre par une modification
+            // (Batch::statutsModifiables) : ni clôture ni réouverture ici.
+            'status'             => ['required', is_object($batch) ? Rule::in($batch->statutsModifiables()) : Rule::in(Batch::EDITABLE_STATUSES)],
             'observations'       => 'nullable|string|max:2000',
             'species_id'         => 'nullable|integer|exists:species,id',
             'production_type_id' => 'nullable|integer|exists:production_types,id',
@@ -120,7 +122,9 @@ class UpdateBatchRequest extends FormRequest
         return [
             'type.in'            => 'Type de production invalide.',
             'building_id.exists' => 'Bâtiment introuvable.',
-            'status.in'          => 'Statut invalide. Valeurs autorisées : ' . implode(', ', Batch::EDITABLE_STATUSES) . '.',
+            'status.in'          => is_object($lot = $this->route('batch'))
+                ? $lot->motifStatutRefuse((string) $this->input('status'))
+                : 'Statut invalide. Valeurs autorisées : ' . implode(', ', Batch::EDITABLE_STATUSES) . '.',
         ];
     }
 }

@@ -114,3 +114,23 @@ test('le tableau de bord et le résumé retiennent les MÊMES lots', function ()
 
     expect($retenus)->toBe(collect([$pondeuses->id, $repro->id])->sort()->values()->all());
 });
+
+test('un lot VIRTUEL d’œufs externes n’est jamais une bande de ponte', function () {
+    /*
+     * Les œufs achetés pour l'incubation sont tracés sur un lot virtuel
+     * (StartIncubation : effectif nul, type « reproducteur »). Ce type suit
+     * les œufs : passé l'âge de ponte, la sélection l'aurait retenu, et le
+     * résumé du matin aurait réclamé chaque jour une collecte à un lot qui
+     * n'a aucun animal. Le tableau de bord l'écartait (scope live) ; la règle
+     * commune l'écarte désormais pour les trois écrans.
+     */
+    $pondeuses = bandeEnPonte($this->lieu, $this->typePonte, 0, 500);
+    $virtuel = bandeEnPonte($this->lieu, $this->typeRepro, 0, 0);
+    $virtuel->update(['initial_quantity' => 0, 'current_quantity' => 0]);
+
+    $retenus = Batch::pondeusesSur(Batch::active()->get(), today()->subDay())->pluck('id')->all();
+    $rapport = (new EggAnalysisService())->getDailyReport();
+
+    expect($retenus)->toBe([$pondeuses->id])
+        ->and(collect($rapport['irregularities'])->pluck('batch'))->not->toContain($virtuel->code);
+});

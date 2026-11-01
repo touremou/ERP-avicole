@@ -60,16 +60,44 @@ class Batch extends Model
     ];
 
     /**
-     * Statuts sélectionnables manuellement depuis le formulaire d'édition
-     * (resources/views/batches/edit.blade.php). « Clôturé » et « Vendu »
-     * sont positionnés exclusivement par des actions dédiées (clôture de
-     * lot, vente de réforme) et ne sont donc pas proposés ici.
+     * Statuts qu'une MODIFICATION du lot peut poser. « Terminé », « Clôturé »
+     * et « Vendu » sont posés exclusivement par des actions dédiées (clôture,
+     * vente de réforme) et ne sont donc pas proposés ici.
+     *
+     * « Terminé » en faisait partie : la modification fermait un lot sans
+     * bilan ni marge, avec ses sujets encore comptés vivants et son bâtiment
+     * jamais mis en vide sanitaire. Cf. statutsModifiables().
      */
     public const EDITABLE_STATUSES = [
         self::STATUS_ACTIF,
-        self::STATUS_TERMINE,
         self::STATUS_ANNULE,
     ];
+
+    /**
+     * STATUTS QU'UNE MODIFICATION PEUT DONNER À CE LOT — déclaration unique
+     * (formulaire, requête, action `UpdateBatch`, donc aussi le terrain).
+     *
+     * Un lot actif ou annulé passe de l'un à l'autre. Un lot clôturé garde son
+     * statut : il se rouvre par sa propre action (ReopenBatch), comme il se
+     * ferme par la sienne (CloseBatch). Le statut courant reste toujours
+     * permis, pour qu'on puisse corriger le reste de la fiche.
+     */
+    public function statutsModifiables(): array
+    {
+        return in_array($this->status, self::EDITABLE_STATUSES, true)
+            ? self::EDITABLE_STATUSES
+            : [$this->status];
+    }
+
+    /** Motif du refus d'un statut que la modification ne peut pas poser. */
+    public function motifStatutRefuse(string $statut): string
+    {
+        return $statut === self::STATUS_TERMINE
+            ? "Un lot se clôture par le formulaire de clôture : c'est lui qui établit le bilan, "
+                . 'enregistre la marge et lance le vide sanitaire du bâtiment.'
+            : "Le lot {$this->code} est {$this->status} : il se rouvre par l'action « Rouvrir », "
+                . 'pas par une modification.';
+    }
 
     protected $fillable = [
         // Sync offline
@@ -883,7 +911,11 @@ class Batch extends Model
             ->pluck('batch_id')
             ->all();
 
+        // Un lot VIRTUEL (œufs externes en transit, effectif nul) n'est jamais
+        // une bande de ponte : son type « reproducteur » suit les œufs, et le
+        // résumé du matin lui réclamait une collecte dès l'âge de ponte passé.
         return $lots
+            ->reject(fn (self $lot) => $lot->isVirtual())
             ->filter(fn (self $lot) => $lot->canCollectEggs() || in_array($lot->id, $ontPondu, true))
             ->values();
     }
