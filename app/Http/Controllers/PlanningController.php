@@ -237,11 +237,21 @@ class PlanningController extends Controller
                     ->with('success', "Lot {$batch->code} créé — {$qtyAlive} sujets dans {$plan->building->name}.");
             }
 
-            // ═══ TERMINÉ ═══
+            /*
+             * ═══ TERMINÉ : le planning SUIT la clôture, il ne la remplace pas ═══
+             *
+             * La bande passée « terminée » fermait ici son lot d'un simple
+             * statut : ni bilan ni marge, des sujets encore comptés vivants, un
+             * bâtiment jamais mis en vide sanitaire. Le lot se clôture par sa
+             * clôture (CloseBatch), qui passe elle-même la bande à « terminée ».
+             */
             if ($newStatus === 'termine' && $plan->actual_batch_id) {
                 $batch = Batch::find($plan->actual_batch_id);
-                if ($batch?->status === 'Actif') {
-                    $batch->update(['status' => 'Terminé', 'closing_date' => now()]);
+                if ($batch?->isActive()) {
+                    return back()->with('error',
+                        "Le lot {$batch->code} est encore en production : clôturez-le par son formulaire "
+                        . 'de clôture (bilan, marge, vide sanitaire). La bande passera « terminée » d\'elle-même.'
+                    );
                 }
             }
 

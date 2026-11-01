@@ -216,10 +216,17 @@
                                 <div class="col-span-1 md:col-span-2">
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Statut du Lot</label>
                                     <select name="status" required class="w-full p-5 bg-slate-50 rounded-2xl font-black border-none text-slate-700 shadow-inner italic appearance-none">
-                                        @foreach(\App\Models\Batch::EDITABLE_STATUSES as $statusOption)
+                                        @foreach($batch->statutsModifiables() as $statusOption)
                                             <option value="{{ $statusOption }}" {{ old('status', $batch->status) == $statusOption ? 'selected' : '' }}>{{ \Illuminate\Support\Str::upper($statusOption) }}</option>
                                         @endforeach
                                     </select>
+                                    @if($batch->isActive())
+                                        <p class="text-[9px] text-slate-400 uppercase italic font-black mt-2 ml-1 leading-snug">
+                                            {{ __('Pour terminer le lot :') }}
+                                            <a href="{{ route('batches.close_form', $batch) }}" class="text-emerald-600 underline">{{ __('formulaire de clôture') }}</a>
+                                            {{ __('(bilan, marge, vide sanitaire).') }}
+                                        </p>
+                                    @endif
                                 </div>
                             </div>
                         </div>

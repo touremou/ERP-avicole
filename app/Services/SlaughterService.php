@@ -146,17 +146,11 @@ class SlaughterService
                 'executed_by'          => Auth::id(),
             ]);
 
-            // 3. Décrémenter le lot source (déjà verrouillé et contrôlé en tête)
+            // 3. Décrémenter le lot source (déjà verrouillé et contrôlé en tête).
+            //    Un lot entièrement abattu est CLÔTURÉ en fin d'exécution (7),
+            //    une fois le coût matière de cet ordre figé.
             if ($batch) {
                 $batch->decrement('current_quantity', $actualQty);
-
-                // Si tout le lot est abattu, fermer le lot
-                if ($batch->current_quantity <= 0) {
-                    $batch->update([
-                        'status'       => 'Terminé',
-                        'closing_date' => now(),
-                    ]);
-                }
             }
 
             // 4. Entrer les carcasses en stock produits finis (nom selon
@@ -194,6 +188,25 @@ class SlaughterService
             //    Vaut aussi pour la façon : les déchets restent NOTRE
             //    responsabilité sanitaire même si la viande part au client.
             $this->estimateByproducts($order, $batch, $liveWeight, $carcassWeight);
+
+            /*
+             * 7. LOT ENTIÈREMENT ABATTU : LA CLÔTURE, PAS UN STATUT.
+             *
+             * Le lot vide passait « Terminé » d'un simple statut : aucune marge
+             * enregistrée, aucun vide sanitaire pour son bâtiment. Décision de
+             * l'exploitation : l'abattage complet appelle la clôture (CloseBatch).
+             * Elle vient APRÈS le coût matière figé sur l'ordre (4) : c'est la
+             * cession à l'abattoir que la marge du lot compte en recette
+             * (Batch::cessions_abattoir). Aucun sujet ne reste à vendre : le prix
+             * de cession de la réforme est nul.
+             */
+            if ($batch && (int) $batch->fresh()->current_quantity <= 0) {
+                app(\App\Actions\Batch\CloseBatch::class)->execute($batch->fresh(), [
+                    'actual_sell_price_per_unit' => 0,
+                    'closing_date'               => $data['execution_date'] ?? now()->toDateString(),
+                    'observations'               => "Clôturé à l'abattage (ordre {$order->order_number}).",
+                ]);
+            }
 
             Log::info("Abattage {$order->order_number} : {$actualQty} sujets, {$liveWeight}kg vif → {$carcassWeight}kg carcasse (rendement {$yieldPercent}%)" . ($order->isFacon() ? ' [FAÇON]' : ''));
 

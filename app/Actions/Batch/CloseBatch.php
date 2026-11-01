@@ -133,6 +133,13 @@ class CloseBatch
             // ─── GESTION BÂTIMENT ───
             $this->handleBuildingSanitaryBreak($batch);
 
+            // ─── PLANNING ───
+            // La bande planifiée de ce lot se termine avec lui. C'était le
+            // planning qui fermait le lot, d'un simple statut — sans bilan.
+            \App\Models\PlannedBatch::where('actual_batch_id', $batch->id)
+                ->where('status', 'en_cours')
+                ->update(['status' => 'termine']);
+
             return $batch->fresh();
         });
     }

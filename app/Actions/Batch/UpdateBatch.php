@@ -49,6 +49,16 @@ class UpdateBatch
             // ─── Filtrage par liste blanche ───
             $payload = array_intersect_key($data, array_flip(self::ALLOWED_FIELDS));
 
+            // ─── Statut : ni clôture ni réouverture par une modification ───
+            // Même règle que le formulaire (Batch::statutsModifiables) : cette
+            // action sert aussi le terrain, qui ne passe pas par la requête.
+            if (array_key_exists('status', $payload)
+                && ! in_array($payload['status'], $batch->statutsModifiables(), true)) {
+                throw ValidationException::withMessages([
+                    'status' => $batch->motifStatutRefuse((string) $payload['status']),
+                ]);
+            }
+
             if (array_key_exists('model_name', $payload) && ! $payload['model_name']) {
                 $payload['model_name'] = 'Non spécifié';
             }

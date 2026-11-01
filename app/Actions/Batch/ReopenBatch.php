@@ -66,6 +66,11 @@ class ReopenBatch
                 $batch->building->markOccupied();
             }
 
+            // ─── Planning ─── la bande se rouvre avec son lot (cf. CloseBatch).
+            \App\Models\PlannedBatch::where('actual_batch_id', $batch->id)
+                ->where('status', 'termine')
+                ->update(['status' => 'en_cours']);
+
             return $batch->fresh();
         });
     }
