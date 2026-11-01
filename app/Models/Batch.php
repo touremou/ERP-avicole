@@ -2014,7 +2014,7 @@ class Batch extends Model
     public function getHealthPurchasesCostAttribute(): float
     {
         return (float) $this->feedPurchases
-            ->filter(fn ($p) => $p->category === 'Santé')
+            ->filter(fn ($p) => $p->isHealthProduct())
             ->sum('total_price');
     }
 

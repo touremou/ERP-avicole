@@ -79,3 +79,21 @@ test('un médicament acheté ne déclenche pas l’alerte « aliment acheté jam
 
     expect($this->get(route('batches.close_form', $this->lot))->assertOk()->viewData('costs')['feed_unlogged'] ?? 0)->toEqual(0);
 });
+
+test('l’analyse financière par lot compte aussi le vaccin à l’achat', function () {
+    /*
+     * Le rapport mensuel des dépenses par lot (« Analyse financière ») lisait
+     * la santé sur les seuls actes : 5 000 d'honoraires, quand la marge, le
+     * compte de résultat et le rapport sanitaire comptent 65 000.
+     */
+    acheterPourLeLot($this, $this->lot, 'VACCIN HB1', 60000, ['category' => 'conso', 'metadata' => ['conso_type' => 'Santé']]);
+    HealthCheck::create(['farm_id' => $this->farm->id, 'batch_id' => $this->lot->id, 'intervention_date' => today()->toDateString(),
+        'type' => 'Vaccin', 'product_name' => 'VACCIN HB1', 'mode_administration' => 'Eau', 'cost' => 5000]);
+
+    $stats = $this->get(route('reports.monthly', [
+        'year' => now()->year, 'month' => now()->month,
+    ]))->assertOk()->viewData('globalStats');
+
+    expect($stats['health_cost'])->toEqual(65000);
+});
+
