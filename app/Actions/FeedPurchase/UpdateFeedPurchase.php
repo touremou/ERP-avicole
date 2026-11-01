@@ -16,6 +16,12 @@ class UpdateFeedPurchase
     public function execute(FeedPurchase $feedPurchase, array $data): FeedPurchase
     {
         $feedPurchase = DB::transaction(function () use ($feedPurchase, $data) {
+            $lot = $feedPurchase->batch;
+            // Clôture définitive = verrou d'imputation (Batch::accepteImputation) :
+            // un lot actif ou soldé reçoit encore ses derniers coûts, pas après.
+            if ($lot && $motif = $lot->motifRefusImputation()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['batch_id' => $motif]);
+            }
             $oldQuantity = (float) $feedPurchase->quantity;
             $newQuantity = (float) $data['quantity'];
             $oldType     = $feedPurchase->feed_type;

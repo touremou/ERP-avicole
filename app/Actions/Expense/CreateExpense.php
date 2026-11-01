@@ -20,6 +20,12 @@ class CreateExpense
     public function execute(array $data, ?UploadedFile $justificatif = null): Expense
     {
         return DB::transaction(function () use ($data, $justificatif) {
+            $lot = ! empty($data['batch_id']) ? \App\Models\Batch::find($data['batch_id']) : null;
+            // Clôture définitive = verrou d'imputation (Batch::accepteImputation) :
+            // un lot actif ou soldé reçoit encore ses derniers coûts, pas après.
+            if ($lot && $motif = $lot->motifRefusImputation()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['batch_id' => $motif]);
+            }
             // Justificatif (facture, reçu, note de frais) : même convention de
             // stockage que les autres pièces du SI (disque public, chemin en BDD).
             // Depuis le web : fichier joint au formulaire. Depuis la sync

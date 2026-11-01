@@ -22,6 +22,11 @@ class CreateFeedPurchase
     {
         $purchase = DB::transaction(function () use ($data) {
             $batch = Batch::findOrFail($data['batch_id']);
+            // Clôture définitive = verrou d'imputation (Batch::accepteImputation) :
+            // un lot actif ou soldé reçoit encore ses derniers coûts, pas après.
+            if ($batch && $motif = $batch->motifRefusImputation()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['batch_id' => $motif]);
+            }
             $metadata = $data['metadata'] ?? [];
 
             // Catégorie de stock RÉELLE de l'achat. Tout entrait en « conso » de

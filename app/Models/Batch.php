@@ -49,6 +49,23 @@ class Batch extends Model
     public const STATUS_ANNULE  = 'Annulé';
 
     /**
+     * SOLDÉ — en cours de clôture : l'effectif est tombé à zéro (abattage,
+     * vente totale, mortalité totale), mais le lot n'est pas encore clôturé.
+     *
+     * Décision de l'exploitation : une fermeture en DEUX TEMPS. Le dernier
+     * sujet parti, des coûts arrivent encore (carburant, désinfection, vide
+     * sanitaire, analyses, aliment livré en fin de bande) ; la clôture
+     * définitive, par son formulaire, valide ces coûts, établit le bilan et
+     * verrouille le lot. Entre les deux, le lot est SOLDÉ :
+     *   • posé et retiré AUTOMATIQUEMENT selon l'effectif
+     *     (constaterEtatOperationnel) ;
+     *   • absent des lots vivants (il n'est pas « Actif ») — plus de pointage,
+     *     de pesée ni de collecte ;
+     *   • encore ouvert aux imputations de coûts (accepteImputation).
+     */
+    public const STATUS_SOLDE   = 'Soldé';
+
+    /**
      * Statuts « archivés » : le lot n'est plus en production active.
      * Référencé par scopeArchived() et les rapports/plannings.
      */
@@ -376,6 +393,14 @@ class Batch extends Model
             $batch->syncTaxonomyFromProductionType();
         });
 
+        // Effectif changé par une écriture Eloquent (vente, abattage, annulation,
+        // retour…) : l'état opérationnel suit (Actif ↔ Soldé).
+        static::updated(function (Batch $batch) {
+            if ($batch->wasChanged('current_quantity')) {
+                $batch->constaterEtatOperationnel();
+            }
+        });
+
         static::creating(function (Batch $batch) {
             $batch->status = $batch->status ?? self::STATUS_ACTIF;
             $batch->chick_state = $batch->chick_state ?? 'Normal';
@@ -683,6 +708,68 @@ class Batch extends Model
         return in_array($this->status, self::STATUS_ARCHIVED, true);
     }
 
+    /** Lot soldé : effectif à zéro, en attente de sa clôture définitive. */
+    public function isSolde(): bool
+    {
+        return $this->status === self::STATUS_SOLDE;
+    }
+
+    /**
+     * Le lot reçoit-il encore des COÛTS (dépense, achat, soin) ? Oui tant qu'il
+     * n'est pas clôturé : actif ou soldé. La clôture définitive le verrouille
+     * contre toute imputation — c'est elle qui arrête son bilan.
+     */
+    public function accepteImputation(): bool
+    {
+        return $this->isActive() || $this->isSolde();
+    }
+
+    /** Motif du refus d'un coût sur ce lot ; null s'il en reçoit encore. */
+    public function motifRefusImputation(): ?string
+    {
+        return $this->accepteImputation()
+            ? null
+            : "Le lot {$this->code} est clôturé définitivement : plus aucune imputation.";
+    }
+
+    /** La clôture définitive s'applique à un lot encore ouvert : actif ou soldé. */
+    public function peutEtreCloture(): bool
+    {
+        return $this->accepteImputation();
+    }
+
+    /**
+     * ÉTAT OPÉRATIONNEL — tiré de l'effectif, pour toutes les portes.
+     *
+     * Actif vidé (abattage, vente totale, mortalité totale) → Soldé ; Soldé
+     * qui retrouve des sujets (vente annulée, retour, pointage corrigé) →
+     * Actif. Appelé par le hook du modèle et par les deux écritures directes
+     * de l'effectif (pointage, reconstruction), qui n'émettent pas
+     * d'événements. Écrit sans événement non plus : ce n'est qu'un constat.
+     * Un lot virtuel (effectif initial nul) n'est jamais concerné.
+     */
+    public function constaterEtatOperationnel(): void
+    {
+        if ($this->isVirtual()) {
+            return;
+        }
+
+        $vivants = (int) $this->current_quantity;
+        $etat = match (true) {
+            $this->isActive() && $vivants <= 0 => self::STATUS_SOLDE,
+            $this->isSolde() && $vivants > 0   => self::STATUS_ACTIF,
+            default                            => null,
+        };
+
+        if ($etat === null) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\DB::table('batches')->where('id', $this->id)->update(['status' => $etat, 'updated_at' => now()]);
+        $this->status = $etat;
+        $this->syncOriginalAttribute('status');
+    }
+
     /**
      * La date tombe-t-elle AVANT l'arrivée physique du lot ? Sans date
      * d'arrivée connue, on ne bloque pas. Partagée par la règle de formulaire
@@ -707,15 +794,23 @@ class Batch extends Model
      * Déclarées ici une fois, appliquées par chaque action commune.
      *
      * @param  string  $champDate  Champ auquel rattacher un refus de date.
-     * @param  bool    $lotOuvert  Exiger un lot actif. Une intervention
-     *                             sanitaire se consigne aussi sur un lot fermé :
-     *                             c'est la règle du bureau, on la garde.
+     * @param  bool    $lotOuvert  Exiger un lot ACTIF (événement biologique :
+     *                             pointage, collecte). Sinon, un lot encore
+     *                             ouvert aux coûts suffit — actif ou soldé — :
+     *                             un soin se consigne après le départ du dernier
+     *                             sujet, pas après la clôture définitive.
      * @return array<string, string>  Champ => motif ; vide si la saisie est recevable.
      */
     public function refusDeSaisie(mixed $date, string $champDate, bool $lotOuvert = true): array
     {
         if ($lotOuvert && ! $this->isActive()) {
-            return ['batch_id' => "Le lot {$this->code} est clôturé. Saisie impossible."];
+            return ['batch_id' => $this->isSolde()
+                ? "Le lot {$this->code} est soldé (effectif à zéro) : plus d'événement d'élevage à y consigner."
+                : "Le lot {$this->code} est clôturé. Saisie impossible."];
+        }
+
+        if (! $lotOuvert && $motif = $this->motifRefusImputation()) {
+            return ['batch_id' => $motif];
         }
 
         if (Carbon::parse($date)->startOfDay()->gt(today())) {
@@ -2118,6 +2213,18 @@ class Batch extends Model
     public function scopeActive($query)
     {
         return $query->where('status', self::STATUS_ACTIF);
+    }
+
+    /** Lots soldés : effectif à zéro, clôture définitive à prononcer. */
+    public function scopeSolde($query)
+    {
+        return $query->where('status', self::STATUS_SOLDE);
+    }
+
+    /** Lots qui reçoivent encore des coûts : actifs ou soldés (cf. accepteImputation). */
+    public function scopeImputable($query)
+    {
+        return $query->whereIn('status', [self::STATUS_ACTIF, self::STATUS_SOLDE]);
     }
     /**
      * Filtre uniquement les lots physiques (animaux vivants).

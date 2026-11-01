@@ -180,7 +180,8 @@
                 <div @class([
                     'flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest italic shadow-sm shrink-0',
                     'bg-emerald-500 text-white' => $batch->isActive(),
-                    'bg-slate-200 text-slate-600' => ! $batch->isActive()
+                    'bg-amber-500 text-white' => $batch->isSolde(),
+                    'bg-slate-200 text-slate-600' => ! $batch->isActive() && ! $batch->isSolde()
                 ])>
                     @if($batch->isActive())
                         <span class="relative flex h-2 w-2">
@@ -223,6 +224,17 @@
     {{-- ZONE 2 : ACTIONS — 3 gestes terrain visibles + menu « Gérer » replié.
          flex-wrap (pas de défilement caché) : plus aucun débordement d'écran. --}}
     <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full xl:w-auto xl:justify-end">
+        {{-- Lot SOLDÉ : effectif à zéro, derniers coûts encore imputables ; la
+             clôture définitive (bilan, marge, verrou) se prononce ici. --}}
+        @if($batch->isSolde())
+            @can('elevage.M')
+            <a href="{{ route('batches.close_form', $batch->id) }}"
+               class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-amber-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-amber-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                <i class="fa-solid fa-flag-checkered"></i>
+                <span>{{ __("Clôture définitive") }}</span>
+            </a>
+            @endcan
+        @endif
         @if($batch->isActive())
 
             @can('elevage.C')

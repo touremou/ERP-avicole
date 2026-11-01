@@ -32,8 +32,9 @@ class CloseBatch
     public function execute(Batch $batch, array $data): Batch
     {
         // Garde de machine à états (audit W1) : re-clôturer un lot Terminé
-        // recalculerait et ÉCRASERAIT sa marge historique.
-        if (! $batch->isActive()) {
+        // recalculerait et ÉCRASERAIT sa marge historique. Un lot SOLDÉ (effectif
+        // à zéro, derniers coûts imputés) se clôture : c'est son second temps.
+        if (! $batch->peutEtreCloture()) {
             throw new \DomainException("Le lot {$batch->code} est déjà clôturé (statut : {$batch->status}).");
         }
 

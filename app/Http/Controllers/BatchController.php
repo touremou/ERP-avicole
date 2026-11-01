@@ -139,7 +139,11 @@ class BatchController extends Controller
         // d'action de la liste, réservée à elevage.M).
         $employees = \App\Models\Employee::assignableInCurrentFarm()->orderBy('last_name')->get();
 
-        return view('batches.index', compact('batches', 'counts', 'familyCounts', 'familyFilter', 'employees'));
+        // Lots SOLDÉS : effectif à zéro, clôture définitive à prononcer. Hors de
+        // la liste des lots vivants, mais rappelés ici tant qu'ils ne sont pas clos.
+        $soldes = Batch::solde()->live()->with('building')->orderBy('code')->get();
+
+        return view('batches.index', compact('batches', 'counts', 'familyCounts', 'familyFilter', 'employees', 'soldes'));
     }
 
     /**

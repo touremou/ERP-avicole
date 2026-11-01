@@ -77,7 +77,7 @@ class ExpenseController extends Controller
         return view('expenses.create', [
             'categories'     => Expense::CATEGORIES,
             'paymentMethods' => Expense::PAYMENT_METHODS,
-            'batches'        => Batch::active()->live()->orderBy('code')->get(['id', 'code']),
+            'batches'        => Batch::imputable()->live()->orderBy('code')->get(['id', 'code']), // actifs ET soldés : derniers coûts
             'treasuryAccounts' => \App\Models\TreasuryAccount::active()->orderBy('name')->get(['id', 'name']),
         ]);
     }
@@ -115,7 +115,7 @@ class ExpenseController extends Controller
             'expense'        => $expense,
             'categories'     => Expense::CATEGORIES,
             'paymentMethods' => Expense::PAYMENT_METHODS,
-            'batches'        => Batch::active()->live()->orderBy('code')->get(['id', 'code']),
+            'batches'        => Batch::imputable()->live()->orderBy('code')->get(['id', 'code']), // actifs ET soldés : derniers coûts
         ]);
     }
 
