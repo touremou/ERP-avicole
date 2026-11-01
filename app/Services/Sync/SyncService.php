@@ -1472,32 +1472,40 @@ class SyncService
             return ['status' => 'success'];
         }
 
-        DB::transaction(function () use ($validated, $price) {
-            Batch::withoutGlobalScopes()->updateOrCreate(
-                ['uuid' => $validated['uuid']],
-                [
-                    'code'                   => $validated['code'],
-                    'production_type_id'     => $validated['production_type_id'],
-                    'species_id'             => $validated['species_id'],
-                    'building_id'            => $validated['building_id'],
-                    'initial_quantity'       => $validated['initial_quantity'],
-                    'current_quantity'       => $validated['current_quantity'],
-                    'qty_dead'               => $validated['qty_dead'] ?? 0,
-                    'arrival_mortality_rate' => $validated['arrival_mortality_rate'] ?? 0,
-                    'status'                 => $validated['status'] ?? 'Actif',
-                    'arrival_date'           => $validated['arrival_date'],
-                    // Sans cette ligne, la naissance était VALIDÉE puis jetée : le
-                    // terrain l'aurait saisie sans effet, et l'âge serait resté
-                    // compté depuis la réception.
-                    'birth_date'             => $validated['birth_date'] ?? null,
-                    'employee_id'            => $validated['employee_id'] ?? null,
-                    'provider_id'            => $validated['provider_id'] ?? null,
-                    'buy_price_per_unit'     => $price,
-                    'total_acquisition_cost' => $price * $validated['initial_quantity'],
-                    'is_synced'              => true,
-                    'last_sync_at'           => now(),
-                ]
-            );
+        /*
+         * MISE À JOUR : la même action que le bureau (`UpdateBatch`).
+         *
+         * Le terrain écrivait ici tous les champs du téléphone par un
+         * `updateOrCreate` brut. Or le téléphone n'émet `batch.upsert` qu'à la
+         * mise en lot : ce chemin, c'est le REJEU de la création, effectifs de
+         * l'arrivée compris. Mesuré — 5 morts pointés après la mise en lot, puis
+         * un rejeu : l'effectif vivant revenait à celui de l'arrivée (les morts
+         * ressuscitaient), l'effectif initial passait des vivants reçus aux
+         * livrés, et le coût d'acquisition suivait. Un statut absent rouvrait
+         * même un lot clôturé (« Actif » par défaut).
+         *
+         * `UpdateBatch` ne touche JAMAIS aux effectifs — l'effectif vivant ne
+         * bouge que par les pointages, transferts et reconstructions —, contrôle
+         * la capacité si le bâtiment change, et recalcule le coût sur l'effectif
+         * initial du bureau. Le code du lot ne se renomme pas, au bureau non
+         * plus. Un refus métier (capacité) sort en « À corriger ».
+         */
+        DB::transaction(function () use ($validated, $price, $serverBatch) {
+            app(\App\Actions\Batch\UpdateBatch::class)->execute($serverBatch, [
+                'production_type_id' => $validated['production_type_id'],
+                'building_id'        => $validated['building_id'],
+                'status'             => $validated['status'] ?? $serverBatch->status,
+                'arrival_date'       => $validated['arrival_date'],
+                // Sans cette ligne, la naissance était VALIDÉE puis jetée : le
+                // terrain l'aurait saisie sans effet, et l'âge serait resté
+                // compté depuis la réception.
+                'birth_date'         => $validated['birth_date'] ?? null,
+                'employee_id'        => $validated['employee_id'] ?? null,
+                'provider_id'        => $validated['provider_id'] ?? null,
+                'buy_price_per_unit' => $price,
+            ]);
+
+            $serverBatch->forceFill(['is_synced' => true, 'last_sync_at' => now()])->save();
         });
 
         Log::info("Sync: lot réconcilié (uuid: {$validated['uuid']}, code: {$validated['code']}).");
