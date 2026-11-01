@@ -74,8 +74,12 @@ test('la marge par espèce suit les règles du compte de résultat : aliment con
         'farm_id' => $this->farm->id, 'batch_id' => $lot->id, 'feed_type' => 'Chair', 'quantity' => 1000, 'unit' => 'KG',
         'unit_price' => 400, 'total_price' => 400000, 'purchase_date' => now()->toDateString(),
     ]));
+    // Date au format qu'écrit l'application (cast « date » : « Y-m-d 00:00:00 »).
+    // Une chaîne « Y-m-d » insérée en brut précède « Y-m-d 00:00:00 » en
+    // comparaison de chaînes SQLite : le 1er du mois, le pointage sortait de la
+    // période et le test échouait ce jour-là seulement.
     Illuminate\Support\Facades\DB::table('daily_checks')->insert([
-        'farm_id' => $this->farm->id, 'batch_id' => $lot->id, 'check_date' => now()->toDateString(),
+        'farm_id' => $this->farm->id, 'batch_id' => $lot->id, 'check_date' => now()->startOfDay(),
         'feed_consumed' => 100, 'feed_unit_cost' => 400, 'mortality' => 0, 'created_at' => now(), 'updated_at' => now(),
     ]);
     App\Models\HealthIncident::create([
