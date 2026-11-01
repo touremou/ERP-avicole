@@ -84,12 +84,7 @@ class DashboardController extends Controller
             // numérateur gonflerait le taux — on remplacerait une sous-estimation
             // par une surestimation, ce qui est pire : un HDP trop haut ne se
             // remarque pas.
-            $pondeursDuJour = EggProduction::whereDate('production_date', $today)
-                ->pluck('batch_id')
-                ->all();
-
-            $layingBirds = $allActiveBatches
-                ->filter(fn ($b) => $b->canCollectEggs() || in_array($b->id, $pondeursDuJour, true))
+            $layingBirds = Batch::pondeusesSur($allActiveBatches, $today)
                 ->sum(fn ($b) => $b->effectifPondeur());   // les poules, pas les coqs
             $hdp = $layingBirds > 0 ? ($totalEggsToday / $layingBirds) * 100 : 0;
         }
