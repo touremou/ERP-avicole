@@ -39,7 +39,7 @@ jobs:
         run: php artisan view:cache
 
       - name: Setup Node
-        # Node 22 : `--experimental-strip-types` (tests de l'application terrain,
+        # Node 22 : `--experimental-transform-types` (tests de l'application terrain,
         # écrite en TypeScript) et les motifs de `node --test`.
         uses: actions/setup-node@v4
         with:
@@ -58,7 +58,10 @@ jobs:
       - name: Mobile app tests (pure offline logic)
         # Les modules PURS de l'application terrain, sans navigateur ni
         # dépendance. Les écrans et Dexie n'ont toujours pas de tests.
-        run: node --experimental-strip-types --test 'mobile/tests/*.test.mjs'
+        # `transform-types` et non `strip-types` : le miroir de validation
+        # (opRules.ts) déclare une propriété de paramètre, que le simple
+        # effacement des types ne sait pas traiter.
+        run: node --experimental-transform-types --test 'mobile/tests/*.test.mjs'
 
       - name: Validate migrations on a fresh database
         # Garantit que toute la chaîne de migrations s'applique proprement.
