@@ -96,7 +96,7 @@ class PosController extends Controller
 
         $data = $request->validate([
             'client_id'          => ['nullable', \App\Support\Ferme::existe('clients')],
-            'seller_employee_id' => 'nullable|exists:employees,id', // vendeur nominatif (façon balance)
+            'seller_employee_id' => ['nullable', \App\Support\Ferme::employe()], // vendeur nominatif (façon balance)
             'payment_method'     => ['required', \Illuminate\Validation\Rule::in(\App\Models\Payment::METHODES)],
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',

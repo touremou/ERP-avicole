@@ -439,15 +439,15 @@ class PayrollController extends Controller
         if (Gate::denies('rh.C')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
-            'employee_id' => 'required|exists:employees,id',
+            'employee_id' => ['required', \App\Support\Ferme::employe()],
             'type'        => 'required|in:conge_annuel,maladie,maternite,sans_solde,absence,formation,autre',
             'start_date'  => 'required|date',
             'end_date'    => 'required|date|after_or_equal:start_date',
             'reason'      => 'nullable|string|max:500',
         ]);
 
-        // Même règle que le sélecteur qui l'a proposé : `exists:employees,id` ne
-        // borne rien (ni ferme, ni archive).
+        // Même règle que le sélecteur qui l'a proposé : à l'effectif du site,
+        // plus strict que la seule visibilité validée ci-dessus.
         $employee = Employee::onStaffInCurrentFarm()->find($validated['employee_id']);
 
         if (! $employee) {
@@ -626,7 +626,7 @@ class PayrollController extends Controller
         }
 
         $validated = $request->validate([
-            'delegate_to' => 'required|exists:employees,id',
+            'delegate_to' => ['required', \App\Support\Ferme::employe()],
         ]);
 
         // Le délégataire vient du menu « Collègue », alimenté par le même écran :

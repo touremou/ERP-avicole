@@ -171,7 +171,7 @@ class PlanningController extends Controller
             'qty_alive'          => 'nullable|integer|min:1',
             'qty_dead'           => 'nullable|integer|min:0',
             'buy_price_per_unit' => 'nullable|numeric|min:0',
-            'employee_id'        => 'nullable|exists:employees,id',
+            'employee_id'        => ['nullable', \App\Support\Ferme::employe()],
         ]);
 
         $newStatus = $validated['status'];

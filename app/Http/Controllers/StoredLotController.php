@@ -157,7 +157,7 @@ class StoredLotController extends Controller
             'condition'        => 'required|in:' . implode(',', array_keys(StoredLotCheck::CONDITIONS)),
             'action_taken'     => 'nullable|in:' . implode(',', array_keys(StoredLotCheck::ACTIONS)),
             'market_price'     => 'nullable|numeric|min:0',
-            'employee_id'      => 'nullable|exists:employees,id',
+            'employee_id'      => ['nullable', \App\Support\Ferme::employe()],
             'notes'            => 'nullable|string|max:1000',
         ]);
 

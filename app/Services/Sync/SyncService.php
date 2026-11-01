@@ -2898,12 +2898,10 @@ class SyncService
          * On délègue au modèle. La suppression douce reste écartée : le scope ne
          * retire que le cadrage par ferme, pas SoftDeletes — un dossier archivé
          * ne revient pas par cette porte.
+         *
+         * La règle est partagée avec les formulaires du bureau (Ferme::employe).
          */
-        return function (string $attribute, $value, \Closure $fail): void {
-            if (! \App\Models\Employee::visibleInCurrentFarm()->whereKey($value)->exists()) {
-                $fail(__("Cet employé ne travaille pas sur ce site."));
-            }
-        };
+        return \App\Support\Ferme::employe();
     }
 
     /**

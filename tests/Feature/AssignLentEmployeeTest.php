@@ -143,7 +143,7 @@ test('le garde-fou « mauvais service » s’applique AUSSI à un agent prêté'
 
 test('un employé d’un AUTRE site, sans accès, reste refusé', function () {
     // Élargir la lecture ne doit pas ouvrir l'affectation à tous les sites.
-    // `exists:employees,id` ne borne rien : le refus doit venir de la règle.
+    // Le refus vient de la règle du site (Ferme::employe), dès la validation.
     $elsewhere = Farm::firstOrCreate(['code' => 'KER-701'], ['name' => 'Autre site', 'is_active' => true]);
     $stranger = Employee::factory()->create([
         'farm_id' => $elsewhere->id, 'user_id' => null, 'status' => 'Actif', 'department' => 'Cultures',
@@ -153,13 +153,13 @@ test('un employé d’un AUTRE site, sans accès, reste refusé', function () {
     $this->actingAs($this->adminUser)
         ->post(route('tasks.assign', $task), ['employee_id' => $stranger->id])
         ->assertRedirect()
-        ->assertSessionHas('error');
+        ->assertSessionHasErrors('employee_id');
 
     expect($task->fresh()->employee_id)->toBeNull();
 });
 
 test('un dossier ARCHIVÉ ne peut pas recevoir de tâche', function () {
-    // `exists:employees,id` accepte une ligne archivée : sans la règle, on
+    // `exists:employees,id` acceptait une ligne archivée : sans la règle, on
     // affecterait du travail à quelqu'un qui a quitté l'exploitation.
     $gone = Employee::factory()->create([
         'farm_id' => $this->farm->id, 'status' => 'Actif', 'department' => 'Cultures',
@@ -171,7 +171,7 @@ test('un dossier ARCHIVÉ ne peut pas recevoir de tâche', function () {
     $this->actingAs($this->adminUser)
         ->post(route('tasks.assign', $task), ['employee_id' => $gone->id])
         ->assertRedirect()
-        ->assertSessionHas('error');
+        ->assertSessionHasErrors('employee_id');
 
     expect($task->fresh()->employee_id)->toBeNull();
 });

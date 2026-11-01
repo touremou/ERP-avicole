@@ -29,4 +29,22 @@ final class Ferme
 
         return $regle;
     }
+
+    /**
+     * « CET EMPLOYÉ TRAVAILLE ICI. »
+     *
+     * Les employés ne se bornent pas par `farm_id` : un agent PRÊTÉ travaille
+     * sur un site sans y être rattaché. La règle est celle des sélecteurs,
+     * `Employee::visibleInCurrentFarm()`. Le terrain la lisait déjà
+     * (SyncService::employeeExists) ; dix-neuf validations du bureau lisaient
+     * `exists:employees,id`, sans borne de site ni d'archive.
+     */
+    public static function employe(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            if (! \App\Models\Employee::visibleInCurrentFarm()->whereKey($value)->exists()) {
+                $fail(__('Cet employé ne travaille pas sur ce site.'));
+            }
+        };
+    }
 }

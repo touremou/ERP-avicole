@@ -42,7 +42,7 @@ class StoreBatchRequest extends FormRequest
             'building_id'        => ['required', 'integer', \App\Support\Ferme::existe('buildings')],
             'type'               => ['required', Rule::in($validTypes)],
             'model_name'         => 'nullable|string|max:100',
-            'employee_id'        => 'nullable|integer|exists:employees,id',
+            'employee_id'        => ['nullable', 'integer', \App\Support\Ferme::employe()],
             'provider_id'        => ['nullable', 'integer', \App\Support\Ferme::existe('providers')],
             'protocol_id'        => 'nullable|integer|exists:protocols,id',
             'allocated_surface'  => 'nullable|numeric|min:0.1',
