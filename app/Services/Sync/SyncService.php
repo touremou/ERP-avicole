@@ -1592,11 +1592,11 @@ class SyncService
             'uuid'            => 'required|uuid',
             'batch_id'        => ['required', 'integer', $this->farmScopedExists('batches')],
             'incident_date'   => 'required|date|before_or_equal:today',
-            'mortality_count' => 'required|integer|min:0',
             'symptoms'        => 'required|string|max:2000',
-            'severity'        => 'nullable|in:mineur,modere,critique',
             'photo_path'      => 'nullable|string|max:255',
-        ]);
+            // Mortalité facultative, gravité et action prise exigées : la règle
+            // du bureau (HealthIncident::reglesDeDeclaration).
+        ] + HealthIncident::reglesDeDeclaration());
 
         if ($v->fails()) {
             return $this->invalid($v->errors()->toArray());
@@ -1618,9 +1618,10 @@ class SyncService
                 'batch_id'        => $batch->id,
                 'user_id'         => Auth::id(),
                 'incident_date'   => $data['incident_date'],
-                'mortality_count' => $data['mortality_count'],
+                'mortality_count' => (int) ($data['mortality_count'] ?? 0),
                 'symptoms'        => $data['symptoms'],
-                'severity'        => $data['severity'] ?? HealthIncident::SEVERITY_MODERATE,
+                'action_taken'    => $data['action_taken'],
+                'severity'        => $data['severity'],
                 'photo_path'      => $data['photo_path'] ?? null,
                 'status'          => HealthIncident::STATUS_PENDING,
             ]);

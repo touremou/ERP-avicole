@@ -33,6 +33,9 @@ export function IncidentScreen() {
   const [symptoms, setSymptoms] = useState<string[]>([])
   const [details, setDetails] = useState('')
   const [severity, setSeverity] = useState<'mineur' | 'modere' | 'critique'>('modere')
+  // Exigée par le serveur, au bureau comme au terrain : ce qui a été fait sur
+  // le moment (isolement, traitement, délai d'attente…).
+  const [actionTaken, setActionTaken] = useState('')
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
   const [saved, setSaved] = useState(false)
@@ -61,7 +64,7 @@ export function IncidentScreen() {
     if (!batch) return
 
     const symptomsText = [...symptoms, details.trim()].filter(Boolean).join(', ')
-    if (!symptomsText) return
+    if (!symptomsText || !actionTaken.trim()) return
 
     const payload: Record<string, unknown> = {
       batch_id: batch.id,
@@ -69,6 +72,7 @@ export function IncidentScreen() {
       mortality_count: mortalityCount,
       symptoms: symptomsText,
       severity,
+      action_taken: actionTaken.trim(),
     }
 
     if (photoBlob) {
@@ -148,12 +152,27 @@ export function IncidentScreen() {
         ))}
       </div>
 
+      <label htmlFor="action-taken">{t('Action prise')}</label>
+      <textarea
+        id="action-taken"
+        rows={2}
+        maxLength={1000}
+        required
+        placeholder={t("Isolement, traitement administré, délai d'attente…")}
+        value={actionTaken}
+        onChange={(e) => setActionTaken(e.target.value)}
+      />
+
       <button type="button" className="btn-secondary" onClick={() => void attachPhoto()}>
         📷 {photoBlob ? t('Reprendre la photo') : t('Prendre une photo')}
       </button>
       {photoPreview && <img src={photoPreview} alt={t("Photo de l'incident")} className="photo-preview" />}
 
-      <button type="submit" className="btn-primary" disabled={symptoms.length === 0 && !details.trim()}>
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={(symptoms.length === 0 && !details.trim()) || !actionTaken.trim()}
+      >
         {t("Déclarer l'incident")}
       </button>
     </form>

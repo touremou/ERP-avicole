@@ -27,9 +27,34 @@ class HealthIncident extends Model
     public const SEVERITY_MODERATE = 'modere';
     public const SEVERITY_CRITICAL = 'critique';
 
+    public const SEVERITIES = [self::SEVERITY_MINOR, self::SEVERITY_MODERATE, self::SEVERITY_CRITICAL];
+
+    /**
+     * CE QU'EXIGE LA DÉCLARATION D'UN INCIDENT — règle commune au bureau et au
+     * terrain (décision de l'exploitation).
+     *
+     * Le bureau exigeait au moins un mort ; le terrain acceptait zéro. Or un
+     * incident n'en provoque pas toujours : symptômes respiratoires, chute
+     * d'appétit, coup de chaleur, blessures collectives, traitement préventif.
+     * La mortalité devient donc facultative (zéro par défaut), et la gravité et
+     * l'ACTION PRISE (isolement, traitement administré, délai d'attente…)
+     * deviennent obligatoires, des deux côtés.
+     *
+     * Les champs propres à chaque porte (lot, symptômes, date) restent déclarés
+     * par elle.
+     */
+    public static function reglesDeDeclaration(): array
+    {
+        return [
+            'mortality_count' => 'nullable|integer|min:0',
+            'severity'        => 'required|in:' . implode(',', self::SEVERITIES),
+            'action_taken'    => 'required|string|max:1000',
+        ];
+    }
+
     protected $fillable = [
         'uuid', 'farm_id', 'building_id', 'batch_id', 'daily_check_id', 'user_id', 'incident_date', 'mortality_count',
-        'symptoms', 'photo_path', 'status', 'severity', 'suspected_disease', 'vet_prescription',
+        'symptoms', 'action_taken', 'photo_path', 'status', 'severity', 'suspected_disease', 'vet_prescription',
         'diagnosed_by', 'diagnosed_at', 'treatment_cost',
         'resolved_by', 'resolved_at', 'resolution_notes',
         'is_quarantined', 'quarantine_started_at', 'quarantine_ended_at',

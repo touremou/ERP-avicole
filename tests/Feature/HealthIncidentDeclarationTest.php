@@ -36,6 +36,8 @@ test('la page santé rend la modale industrialisée (checklist + option quaranta
 test('déclaration par checklist : les tags sont composés avec les détails libres', function () {
     $this->actingAs($this->operatorUser)
         ->post(route('health.incidents.store'), [
+            // Exigées depuis la règle commune (HealthIncident::reglesDeDeclaration).
+            'severity' => 'modere', 'action_taken' => 'Lot isolé, vétérinaire appelé',
             'batch_id'        => $this->batch->id,
             'mortality_count' => 2,
             'severity'        => 'modere',
@@ -53,6 +55,8 @@ test('déclaration par checklist : les tags sont composés avec les détails lib
 test('compat : une déclaration avec symptômes texte seul reste acceptée', function () {
     $this->actingAs($this->operatorUser)
         ->post(route('health.incidents.store'), [
+            // Exigées depuis la règle commune (HealthIncident::reglesDeDeclaration).
+            'severity' => 'modere', 'action_taken' => 'Lot isolé, vétérinaire appelé',
             'batch_id'        => $this->batch->id,
             'mortality_count' => 1,
             'symptoms'        => 'Râles respiratoires généralisés',
@@ -67,6 +71,8 @@ test('déclaration sans aucun symptôme (ni tags ni texte) : refusée', function
     $this->actingAs($this->operatorUser)
         ->from(route('health.index'))
         ->post(route('health.incidents.store'), [
+            // Exigées depuis la règle commune (HealthIncident::reglesDeDeclaration).
+            'severity' => 'modere', 'action_taken' => 'Lot isolé, vétérinaire appelé',
             'batch_id'        => $this->batch->id,
             'mortality_count' => 1,
         ])
@@ -78,6 +84,8 @@ test('déclaration sans aucun symptôme (ni tags ni texte) : refusée', function
 test('quarantaine immédiate par un manager (M) : le lot est gelé dès la déclaration', function () {
     $this->actingAs($this->managerUser)
         ->post(route('health.incidents.store'), [
+            // Exigées depuis la règle commune (HealthIncident::reglesDeDeclaration).
+            'severity' => 'modere', 'action_taken' => 'Lot isolé, vétérinaire appelé',
             'batch_id'        => $this->batch->id,
             'mortality_count' => 8,
             'severity'        => 'critique',
@@ -95,6 +103,8 @@ test('quarantaine immédiate par un manager (M) : le lot est gelé dès la décl
 test('quarantaine immédiate par un opérateur (C sans M) : incident créé mais lot NON gelé', function () {
     $this->actingAs($this->operatorUser)
         ->post(route('health.incidents.store'), [
+            // Exigées depuis la règle commune (HealthIncident::reglesDeDeclaration).
+            'severity' => 'modere', 'action_taken' => 'Lot isolé, vétérinaire appelé',
             'batch_id'        => $this->batch->id,
             'mortality_count' => 8,
             'symptom_tags'    => ['Mortalité brutale'],

@@ -301,8 +301,11 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     const e: string[] = []
     reqId(p, 'batch_id', 'Lot', e)
     reqDate(p, 'incident_date', 'Date', e, true)
-    reqNum(p, 'mortality_count', 'Mortalité', e, 0)
+    // Mortalité facultative ; gravité et action prise exigées (règle du serveur).
+    optNum(p, 'mortality_count', 'Mortalité', e, 0)
     reqStr(p, 'symptoms', 'Symptômes', e)
+    reqEnum(p, 'severity', 'Gravité', ['mineur', 'modere', 'critique'], e)
+    reqStr(p, 'action_taken', 'Action prise', e)
     return e
   },
   'crop_cycle.create': (p) => {

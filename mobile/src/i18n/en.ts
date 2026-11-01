@@ -246,6 +246,8 @@ export const en: Record<string, string> = {
   'Aucune alerte — elles arrivent à chaque synchronisation.': 'No alerts — they arrive with each sync.',
   'Aucune saisie sur cet appareil.': 'No entries on this device.',
   'Autres constats — optionnel': 'Other findings — optional',
+  'Action prise': 'Action taken',
+  "Isolement, traitement administré, délai d'attente…": 'Isolation, treatment given, withdrawal period…',
   'Boiterie': 'Lameness',
   'Bonjour': 'Hello',
   'À faire': 'To do',
