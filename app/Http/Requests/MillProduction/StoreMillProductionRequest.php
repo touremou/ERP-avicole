@@ -19,7 +19,7 @@ class StoreMillProductionRequest extends FormRequest
             'machine_ids'   => 'required|array|min:1',
             'machine_ids.*' => ['integer', \App\Support\Ferme::existe('mill_machines')],
             'nb_bags'       => 'required|integer|min:1',
-            'supervisor_id' => 'required|integer|exists:employees,id',
+            'supervisor_id' => ['required', 'integer', \App\Support\Ferme::employe()],
         ];
     }
 
@@ -29,7 +29,6 @@ class StoreMillProductionRequest extends FormRequest
             'formula_id.exists'   => 'Formule introuvable.',
             'machine_ids.required' => 'Au moins une machine est requise.',
             'nb_bags.min'          => 'Au moins 1 sac doit être produit.',
-            'supervisor_id.exists' => 'Superviseur introuvable.',
         ];
     }
 }

@@ -155,7 +155,7 @@ class BatchController extends Controller
         $data = $request->validate([
             'batch_ids'   => ['required', 'array', 'min:1'],
             'batch_ids.*' => ['integer'],
-            'employee_id' => ['nullable', 'exists:employees,id'],
+            'employee_id' => ['nullable', \App\Support\Ferme::employe()],
         ]);
 
         $employeeId = $data['employee_id'] ?: null;

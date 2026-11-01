@@ -72,7 +72,7 @@ class CropTransformationController extends Controller
             // coût matière le plus juste (coût de production de SON cycle).
             'harvest_id'          => ['nullable', \App\Support\Ferme::existe('harvests')],
             'crop_recipe_id'      => ['nullable', \App\Support\Ferme::existe('crop_recipes')],
-            'employee_id'         => 'nullable|exists:employees,id',
+            'employee_id'         => ['nullable', \App\Support\Ferme::employe()],
             'input_product'       => 'required|string|max:255',
             'output_product'      => 'required|string|max:255',
             'transformation_type' => 'required|in:' . implode(',', array_keys(CropTransformation::TYPES)),
@@ -167,7 +167,7 @@ class CropTransformationController extends Controller
 
         $validated = $request->validate([
             'crop_cycle_id'       => ['nullable', \App\Support\Ferme::existe('crop_cycles')],
-            'employee_id'         => 'nullable|exists:employees,id',
+            'employee_id'         => ['nullable', \App\Support\Ferme::employe()],
             'input_product'       => 'required|string|max:255',
             'output_product'      => 'required|string|max:255',
             'transformation_type' => 'required|in:' . implode(',', array_keys(CropTransformation::TYPES)),

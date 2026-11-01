@@ -253,39 +253,6 @@ class ReportController extends Controller
     }
 
     /**
-     * Coût de l'aliment CONSOMMÉ sur la période (COGS aliment) — principe de
-     * rattachement des charges. Chaque consommation de pointage est valorisée au
-     * coût figé à la saisie (feed_unit_cost, cohérent avec la fiche lot) ; à
-     * défaut (données antérieures au snapshot), au CMP courant de l'article. Ne
-     * dépend donc PAS des achats : l'aliment produit en interne est bien compté.
-     */
-    private function feedConsumedCost(Carbon $from, Carbon $to): float
-    {
-        // Carte de repli : CMP courant par nom d'article / type d'aliment.
-        $cmpByName = [];
-        foreach (\App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)->get() as $s) {
-            $cmp = (float) ($s->last_unit_price ?? $s->unit_price ?? 0);
-            if ($cmp <= 0) continue;
-            if ($s->item_name) $cmpByName[trim($s->item_name)] = $cmp;
-            if ($s->feed_type) $cmpByName[trim($s->feed_type)] = $cmp;
-        }
-
-        $total = 0.0;
-        \App\Models\DailyCheck::whereBetween('check_date', [$from, $to])
-            ->where('feed_consumed', '>', 0)
-            ->get(['feed_consumed', 'feed_unit_cost', 'feed_type'])
-            ->each(function ($f) use (&$total, $cmpByName) {
-                $snapshot = (float) ($f->feed_unit_cost ?? 0);
-                $unitCost = $snapshot > 0
-                    ? $snapshot
-                    : (float) ($cmpByName[trim((string) $f->feed_type)] ?? 0);
-                $total += (float) $f->feed_consumed * $unitCost;
-            });
-
-        return round($total, 2);
-    }
-
-    /**
      * Marge directe par culture : agrège les cycles végétaux CLÔTURÉS sur la
      * période par nom de culture (revenus vs coûts forfaitaires + intrants).
      *
@@ -806,6 +773,41 @@ class ReportController extends Controller
             ->get()
             ->each(fn ($f) => $f->month = Carbon::parse($f->check_date)->month);
 
+        /*
+         * LA SANTÉ DU COMPTE DE RÉSULTAT, PAS LES SEULS ACTES.
+         *
+         * Cette analyse lisait la santé sur le seul coût saisi à l'acte. Or ce
+         * coût ne porte que les honoraires : le PRODUIT compte à sa date d'achat
+         * (décision de l'exploitation), et le traitement d'un INCIDENT au
+         * diagnostic. Mesuré — un vaccin acheté 60 000 pour le lot, 5 000
+         * d'honoraires : 65 000 à la marge du lot, au compte de résultat et au
+         * rapport sanitaire, 5 000 ici. Mêmes trois sources que
+         * PeriodCharges, chacune à sa date.
+         */
+        $inPeriod = function ($query, string $column) use ($useDateRange, $rangeStart, $rangeEnd, $currentYear, $monthFilter) {
+            return $useDateRange
+                ? $query->whereBetween($column, [$rangeStart, $rangeEnd])
+                : $query->whereYear($column, $currentYear)
+                    ->when($monthFilter !== 'all', fn ($q) => $q->whereMonth($column, $monthFilter));
+        };
+
+        $incidentCare = $inPeriod(HealthIncident::whereIn('batch_id', $batchIds), 'incident_date')
+            ->get(['batch_id', 'treatment_cost', 'incident_date'])
+            ->map(fn ($i) => (object) [
+                'batch_id' => $i->batch_id, 'month' => Carbon::parse($i->incident_date)->month,
+                'cost' => (float) $i->treatment_cost,
+            ]);
+
+        $healthProducts = $inPeriod(\App\Models\FeedPurchase::whereIn('batch_id', $batchIds), 'purchase_date')
+            ->get(['id', 'batch_id', 'total_price', 'metadata', 'purchase_date'])
+            ->filter(fn ($p) => $p->isHealthProduct())
+            ->map(fn ($p) => (object) [
+                'batch_id' => $p->batch_id, 'month' => Carbon::parse($p->purchase_date)->month,
+                'cost' => (float) $p->total_price,
+            ]);
+
+        $healthOthers = $incidentCare->concat($healthProducts);
+
         // Carte de repli du coût moyen pondéré courant par article aliment
         // (conso), indexée par nom. Source UNIQUE de valorisation partagée
         // avec la fiche lot (feed_cogs) : on valorise chaque consommation au
@@ -888,6 +890,13 @@ class ReportController extends Controller
                 $key = $useDateRange ? 0 : $h->month;
                 if (isset($monthlyData[$key][$batch->id])) {
                     $monthlyData[$key][$batch->id]['health'] += $h->total_health;
+                }
+            }
+
+            foreach ($healthOthers->where('batch_id', $batch->id) as $h) {
+                $key = $useDateRange ? 0 : $h->month;
+                if (isset($monthlyData[$key][$batch->id])) {
+                    $monthlyData[$key][$batch->id]['health'] += $h->cost;
                 }
             }
 

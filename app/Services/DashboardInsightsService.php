@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Batch;
 use App\Models\DailyCheck;
 use App\Models\EggProduction;
 use App\Models\EnergyReading;
@@ -147,12 +148,7 @@ class DashboardInsightsService
         // consignés garde son coût EN FACE d'eux. Sans elle, on aurait retiré
         // des œufs du dénominateur en gardant leur coût hors du numérateur —
         // deux erreurs qui ne se compensent pas.
-        $pondeursDuMois = EggProduction::whereBetween('production_date', [$start, $end])
-            ->pluck('batch_id')
-            ->all();
-
-        $layingIds = $activeBatches
-            ->filter(fn ($b) => $b->canCollectEggs() || in_array($b->id, $pondeursDuMois, true))
+        $layingIds = Batch::pondeusesSur($activeBatches, $start, $end)
             ->pluck('id')
             ->all();
 

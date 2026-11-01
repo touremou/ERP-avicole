@@ -243,7 +243,7 @@ class TaskController extends Controller
     {
         if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
-        $validated = $request->validate(['employee_id' => 'required|exists:employees,id']);
+        $validated = $request->validate(['employee_id' => ['required', \App\Support\Ferme::employe()]]);
 
         // On relit l'employé par la MÊME règle que le sélecteur qui l'a proposé.
         // `Employee::find()` réappliquait le filtre de ferme : pour un agent
@@ -284,7 +284,7 @@ class TaskController extends Controller
             // acceptait n'importe quel libellé, y compris une faute de frappe
             // qui rendait la tâche invisible de tous les filtres.
             'category'        => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
-            'employee_id'     => 'nullable|exists:employees,id',
+            'employee_id'     => ['nullable', \App\Support\Ferme::employe()],
             'building_id'     => ['nullable', \App\Support\Ferme::existe('buildings')],
             'scheduled_date'  => 'required|date',
             'scheduled_time'  => 'nullable|date_format:H:i',
@@ -345,7 +345,7 @@ class TaskController extends Controller
             // acceptait n'importe quel libellé, y compris une faute de frappe
             // qui rendait la tâche invisible de tous les filtres.
             'category'        => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
-            'employee_id'     => 'nullable|exists:employees,id',
+            'employee_id'     => ['nullable', \App\Support\Ferme::employe()],
             'building_id'     => ['nullable', \App\Support\Ferme::existe('buildings')],
             'scheduled_date'  => 'required|date',
             'scheduled_time'  => 'nullable',

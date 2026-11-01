@@ -278,7 +278,7 @@ class PeriodCharges
             ->get(['id', 'batch_id', 'total_price', 'metadata'])
             ->reject(fn ($p) => $p->isFeed());
 
-        $sante = (float) $achats->filter(fn ($p) => $p->category === 'Santé')->sum('total_price');
+        $sante = (float) $achats->filter(fn ($p) => $p->isHealthProduct())->sum('total_price');
 
         return [
             'sante'  => round($sante, 2),

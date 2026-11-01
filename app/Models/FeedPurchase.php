@@ -131,4 +131,14 @@ class FeedPurchase extends Model
     {
         return $this->category === 'Aliment';
     }
+
+    /**
+     * Produit de santé : compté à sa date d'ACHAT dans le poste santé —
+     * décision de l'exploitation, lue par la marge du lot, le compte de
+     * résultat et les rapports.
+     */
+    public function isHealthProduct(): bool
+    {
+        return $this->category === 'Santé';
+    }
 }

@@ -293,7 +293,8 @@ test('déléguer à quelqu’un hors de la ferme est refusé, proprement', funct
     $this->actingAs($this->adminUser)
         ->post(route('payroll.leaves.delegate', $leave), ['delegate_to' => $stranger->id])
         ->assertRedirect()
-        ->assertSessionHas('error');
+        // Refusé dès la validation, par la règle du site (Ferme::employe).
+        ->assertSessionHasErrors('delegate_to');
 });
 
 test('affecter des lots à un agent prêté NOMME l’agent dans le compte-rendu', function () {

@@ -2280,7 +2280,9 @@ class SyncService
             'purchase_basis'       => 'nullable|in:' . implode(',', array_keys(\App\Models\SlaughterReception::PURCHASE_BASES)),
             'purchase_unit_price'  => 'nullable|numeric|min:0',
             'photo_path'           => 'nullable|string|max:255',
-            'releve_at'            => 'nullable|date',
+            // Pas dans le futur, à la dérive d'horloge près : la règle du
+            // nettoyage, pour tout le registre HACCP.
+            'releve_at'            => 'nullable|date|before_or_equal:' . self::CLOCK_SKEW_TOLERANCE,
         ]);
 
         if ($v->fails()) {
@@ -2334,7 +2336,8 @@ class SyncService
             'mesures'            => 'required|array|min:1',
             'conforme'           => 'nullable|boolean',
             'corrective_action'  => 'nullable|string|max:2000',
-            'releve_at'          => 'required|date',
+            // Pas dans le futur, à la dérive d'horloge près (cf. nettoyage).
+            'releve_at'          => 'required|date|before_or_equal:' . self::CLOCK_SKEW_TOLERANCE,
         ]);
 
         if ($v->fails()) {
@@ -2397,7 +2400,8 @@ class SyncService
             'equipment_ref'     => 'nullable|string|max:50',
             'temperature'       => 'required|numeric|min:-60|max:120',
             'corrective_action' => 'nullable|string|max:2000',
-            'releve_at'         => 'required|date',
+            // Pas dans le futur, à la dérive d'horloge près (cf. nettoyage).
+            'releve_at'         => 'required|date|before_or_equal:' . self::CLOCK_SKEW_TOLERANCE,
         ]);
 
         if ($v->fails()) {
@@ -2898,12 +2902,10 @@ class SyncService
          * On délègue au modèle. La suppression douce reste écartée : le scope ne
          * retire que le cadrage par ferme, pas SoftDeletes — un dossier archivé
          * ne revient pas par cette porte.
+         *
+         * La règle est partagée avec les formulaires du bureau (Ferme::employe).
          */
-        return function (string $attribute, $value, \Closure $fail): void {
-            if (! \App\Models\Employee::visibleInCurrentFarm()->whereKey($value)->exists()) {
-                $fail(__("Cet employé ne travaille pas sur ce site."));
-            }
-        };
+        return \App\Support\Ferme::employe();
     }
 
     /**

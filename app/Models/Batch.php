@@ -865,6 +865,30 @@ class Batch extends Model
     }
 
     /**
+     * LES LOTS QUI COMPTENT DANS LA PONTE D'UNE PÉRIODE — déclaration unique.
+     *
+     * En âge de pondre (`canCollectEggs`), OU ayant réellement pondu sur la
+     * période : un lot dont les œufs sont au numérateur reste au dénominateur.
+     *
+     * La règle était recopiée par le tableau de bord (HDP du jour), le prix de
+     * revient de l'œuf (mois) et le résumé quotidien (veille). Le résumé y
+     * ajoutait un filtre sur le seul type « ponte », qui en écartait les
+     * REPRODUCTEURS : leurs œufs à couver sont collectés, mais ils manquaient
+     * au total du matin et leur absence de collecte ne sonnait jamais.
+     */
+    public static function pondeusesSur(\Illuminate\Support\Collection $lots, mixed $du, mixed $au = null): \Illuminate\Support\Collection
+    {
+        $ontPondu = EggProduction::whereDate('production_date', '>=', Carbon::parse($du)->toDateString())
+            ->whereDate('production_date', '<=', Carbon::parse($au ?? $du)->toDateString())
+            ->pluck('batch_id')
+            ->all();
+
+        return $lots
+            ->filter(fn (self $lot) => $lot->canCollectEggs() || in_array($lot->id, $ontPondu, true))
+            ->values();
+    }
+
+    /**
      * Indique si le lot fait l'objet d'une collecte de lait (chèvres
      * laitières, vaches...). Piloté par le type de production, avec repli
      * sur le flag tracks_milk de l'espèce.
@@ -1990,7 +2014,7 @@ class Batch extends Model
     public function getHealthPurchasesCostAttribute(): float
     {
         return (float) $this->feedPurchases
-            ->filter(fn ($p) => $p->category === 'Santé')
+            ->filter(fn ($p) => $p->isHealthProduct())
             ->sum('total_price');
     }
 

@@ -171,7 +171,7 @@ class PlanningController extends Controller
             'qty_alive'          => 'nullable|integer|min:1',
             'qty_dead'           => 'nullable|integer|min:0',
             'buy_price_per_unit' => 'nullable|numeric|min:0',
-            'employee_id'        => 'nullable|exists:employees,id',
+            'employee_id'        => ['nullable', \App\Support\Ferme::employe()],
         ]);
 
         $newStatus = $validated['status'];
@@ -190,9 +190,6 @@ class PlanningController extends Controller
 
             // ═══ EN_COURS → Créer le lot réel ═══
             if ($newStatus === 'en_cours' && ! $plan->actual_batch_id) {
-                $qtyAlive = $validated['qty_alive'] ?? $plan->planned_quantity;
-                $qtyDead = $validated['qty_dead'] ?? 0;
-                $totalReceived = $qtyAlive + $qtyDead;
                 $employeeId = $validated['employee_id'] ?? null;
 
                 if (! $employeeId) {
@@ -201,35 +198,38 @@ class PlanningController extends Controller
 
                 $batchPrefix = setting("elevage.batch_prefix_{$plan->batch_type}", 'LOT');
 
-                $batch = Batch::create([
-                    'uuid'                   => (string) Str::uuid(),
-                    'code'                   => $batchPrefix . '-' . now()->format('Ymd-His'),
-                    'type'                   => $plan->batch_type,
+                /*
+                 * LA MÊME MISE EN LOT QUE LE FORMULAIRE ET LE TERRAIN.
+                 *
+                 * Ce lot s'écrivait ici, avec sa propre convention : l'effectif
+                 * INITIAL comptait les morts du transport — que la mortalité
+                 * ajoute déjà au dénominateur, d'où un taux sous-évalué —, le
+                 * coût d'acquisition portait sur les livrés, et aucune capacité
+                 * n'était contrôlée. `CreateBatch` est la porte des deux autres :
+                 * vivants reçus en initial, morts à part, capacité sous verrou,
+                 * bâtiment « Occupé ». Un refus de capacité annule la
+                 * transaction : la bande reste « commandée ».
+                 */
+                $batch = app(\App\Actions\Batch\CreateBatch::class)->execute([
+                    'uuid'               => (string) Str::uuid(),
+                    'code'               => $batchPrefix . '-' . now()->format('Ymd-His'),
+                    'type'               => $plan->batch_type,
                     // Propagation de l'espèce : un lot issu du planning est désormais
                     // pleinement multiespèces (plus de lot « sans espèce »).
-                    'species_id'             => $plan->species_id,
-                    'production_type_id'     => $plan->production_type_id,
-                    'model_name'             => $plan->model_name,
-                    'building_id'            => $plan->building_id,
-                    'provider_id'            => $plan->provider_id,
-                    'employee_id'            => $employeeId,
-                    'initial_quantity'       => $totalReceived,
-                    'current_quantity'       => $qtyAlive,
-                    'qty_alive'              => $qtyAlive,
-                    'qty_dead'               => $qtyDead,
-                    'arrival_mortality_rate' => $totalReceived > 0 ? round(($qtyDead / $totalReceived) * 100, 2) : 0,
-                    'arrival_date'           => now()->toDateString(),
-                    // expected_end_date : calculée par la bande elle-même à sa création
-                    // (Batch::calculateExpectedEndDate → cycleDays : souche, sinon type).
-                    // Une valeur ici était écrasée — et sur le seul type, elle trompait.
-                    'buy_price_per_unit'     => $validated['buy_price_per_unit'] ?? 0,
-                    'total_acquisition_cost' => $totalReceived * ($validated['buy_price_per_unit'] ?? 0),
-                    'status'                 => 'Actif',
-                    'chick_state'            => 'Normal',
-                    'protocol_id'            => $plan->protocol_id ?? null,
-                    'is_synced'              => true,
-                    'farm_id'                => $plan->farm_id ?? session('current_farm_id'),
+                    'species_id'         => $plan->species_id,
+                    'production_type_id' => $plan->production_type_id,
+                    'model_name'         => $plan->model_name,
+                    'building_id'        => $plan->building_id,
+                    'provider_id'        => $plan->provider_id,
+                    'employee_id'        => $employeeId,
+                    'protocol_id'        => $plan->protocol_id ?? null,
+                    'qty_alive'          => $validated['qty_alive'] ?? $plan->planned_quantity,
+                    'qty_dead'           => $validated['qty_dead'] ?? 0,
+                    'buy_price_per_unit' => $validated['buy_price_per_unit'] ?? 0,
+                    'arrival_date'       => now()->toDateString(),
+                    'is_synced'          => true,
                 ]);
+                $qtyAlive = (int) $batch->current_quantity;
 
                 $plan->update(['status' => 'en_cours', 'actual_batch_id' => $batch->id]);
 

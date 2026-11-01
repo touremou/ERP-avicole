@@ -74,18 +74,15 @@ class EggAnalysisService
          * La règle est donc : en âge de pondre, OU ayant réellement pondu. On ne
          * se tait que sur les lots dont l'application elle-même refuse la
          * collecte ET qui n'ont rien rendu.
+         *
+         * Cette règle est celle du tableau de bord (Batch::pondeusesSur). Le
+         * résumé y ajoutait un filtre sur le seul type « ponte » : une bande de
+         * REPRODUCTEURS, qui pond les œufs à couver, en était absente.
          */
-        $collectesDuJour = EggProduction::whereDate('production_date', $yesterday)
-            ->pluck('batch_id')
-            ->all();
-
-        $layingBatches = Batch::active()
-            ->byType('ponte')
-            ->with('building')
-            ->get()
-            ->filter(fn (Batch $batch) => $batch->canCollectEggs()
-                || in_array($batch->id, $collectesDuJour, true))
-            ->values();
+        $layingBatches = Batch::pondeusesSur(
+            Batch::active()->with(['building', 'productionType'])->get(),
+            $yesterday,
+        );
 
         if ($layingBatches->isEmpty()) {
             return [
@@ -242,7 +239,9 @@ class EggAnalysisService
 
         // Résumé global
         $globalHdp = 0;
-        $totalHens = $layingBatches->sum('current_quantity');
+        // Les POULES, comme le HDP de chaque lot plus haut et le tableau de
+        // bord : diviser par tout l'effectif comptait les coqs des reproducteurs.
+        $totalHens = $layingBatches->sum(fn (Batch $batch) => $batch->effectifPondeur());
         if ($totalHens > 0) {
             $globalHdp = round(($totalEggs / $totalHens) * 100, 1);
         }

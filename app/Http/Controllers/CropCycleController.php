@@ -99,7 +99,7 @@ class CropCycleController extends Controller
             'plot_id' => ['required', \App\Support\Ferme::existe('plots')],
             'campaign_id' => 'nullable|exists:crop_campaigns,id',
             'crop_protocol_id' => 'nullable|exists:crop_protocols,id',
-            'employee_id' => 'nullable|exists:employees,id',
+            'employee_id' => ['nullable', \App\Support\Ferme::employe()],
             'code' => 'nullable|string|max:50',
             'crop_name' => 'required|string|max:255',
             'variety' => 'nullable|string|max:255',
@@ -380,7 +380,7 @@ class CropCycleController extends Controller
             'crop_protocol_id' => 'nullable|exists:crop_protocols,id',
             'crop_name' => 'required|string|max:255',
             'variety' => 'nullable|string|max:255',
-            'employee_id' => 'nullable|exists:employees,id',
+            'employee_id' => ['nullable', \App\Support\Ferme::employe()],
             'area_used_ha' => 'required|numeric|min:0.001',
             // Un cycle naît « semé, en croissance » (aucun statut « prévu ») : un
             // semis futur contredit son propre statut. La règle du terrain.
@@ -488,7 +488,7 @@ class CropCycleController extends Controller
             'loss_quantity' => 'nullable|numeric|min:0',
             'quality' => 'nullable|in:'.implode(',', Harvest::QUALITIES),
             'destination' => 'nullable|in:'.implode(',', array_keys(Harvest::DESTINATIONS)),
-            'employee_id' => 'nullable|exists:employees,id',
+            'employee_id' => ['nullable', \App\Support\Ferme::employe()],
             'unit_price' => 'nullable|numeric|min:0',
             'sync_to_stock' => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',
@@ -621,7 +621,7 @@ class CropCycleController extends Controller
             'loss_quantity' => 'nullable|numeric|min:0',
             'quality' => 'nullable|in:'.implode(',', Harvest::QUALITIES),
             'destination' => 'nullable|in:'.implode(',', array_keys(Harvest::DESTINATIONS)),
-            'employee_id' => 'nullable|exists:employees,id',
+            'employee_id' => ['nullable', \App\Support\Ferme::employe()],
             'unit_price' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:500',
         ]);

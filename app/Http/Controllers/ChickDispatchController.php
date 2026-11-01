@@ -73,7 +73,7 @@ class ChickDispatchController extends Controller
             'notes'            => ['nullable', 'string', 'max:500'],
             // Élevage uniquement
             'building_id'      => ['nullable', 'required_if:destination_type,elevage', \App\Support\Ferme::existe('buildings')],
-            'employee_id'      => ['nullable', 'exists:employees,id'],
+            'employee_id'      => ['nullable', \App\Support\Ferme::employe()],
             // Vente uniquement
             'client_id'        => ['nullable', 'required_if:destination_type,vente', \App\Support\Ferme::existe('clients')],
             'unit_price'       => ['nullable', 'required_if:destination_type,vente', 'numeric', 'min:0'],
