@@ -20,7 +20,39 @@ class RecordEggCollection
         $batch = Batch::findOrFail($data['batch_id']);
 
         return DB::transaction(function () use ($data, $batch) {
-            
+
+            /*
+             * 0. LE LOT PEUT-IL RECEVOIR CETTE COLLECTE ?
+             *
+             * Ces gardes vivaient dans la seule `StoreEggProductionRequest` : le
+             * terrain, qui appelle cette action sans passer par elle, collectait
+             * sur un lot clôturé, à une date future ou d'avant l'arrivée, sur un
+             * lot qui ne pond pas, et déclarait plus de cassés et de petits que
+             * d'œufs ramassés.
+             *
+             * « Ce lot pond-il ? » avait en outre DEUX définitions : le type de
+             * production à l'écran (`tracksEggs`), une liste de types écrite à
+             * la main dans la requête — qu'un bélier « reproducteur » passait.
+             * On garde la première, celle de l'écran et de la tournée.
+             */
+            if ($refus = $batch->refusDeSaisie($data['production_date'], 'production_date')) {
+                throw ValidationException::withMessages($refus);
+            }
+
+            if (! $batch->tracksEggs()) {
+                throw ValidationException::withMessages([
+                    'batch_id' => "Le lot {$batch->code} n'est pas un lot de ponte.",
+                ]);
+            }
+
+            $cassesEtPetits = (int) ($data['broken_eggs'] ?? 0) + (int) ($data['small_eggs'] ?? 0);
+            if ($cassesEtPetits > (int) $data['total_eggs_collected']) {
+                throw ValidationException::withMessages([
+                    'broken_eggs' => "Cassés + petits ({$cassesEtPetits}) > total collecté "
+                        . "({$data['total_eggs_collected']}).",
+                ]);
+            }
+
             /*
              * 1. Recherche d'une collecte existante pour ce lot aujourd'hui.
              *

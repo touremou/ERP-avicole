@@ -31,6 +31,13 @@ class RecordDailyCheck
         return DB::transaction(function () use ($data) {
             $batch = Batch::findOrFail($data['batch_id']);
 
+            // ─── Vie du lot : actif, date ni future ni d'avant l'arrivée ───
+            // Règles des requêtes web, que le terrain ne voyait pas (cf.
+            // Batch::refusDeSaisie) — appliquées ici pour toutes les portes.
+            if ($refus = $batch->refusDeSaisie($data['check_date'], 'check_date')) {
+                throw ValidationException::withMessages($refus);
+            }
+
             // ─── Normalisation de la date (cohérence updateOrCreate) ───
             // La colonne check_date est persistée au format datetime
             // (« Y-m-d 00:00:00 ») via le cast 'date'. Une comparaison avec la

@@ -77,6 +77,9 @@ beforeEach(function () {
         'building_id'      => $this->building->id,
         'status'           => 'Actif',
         'current_quantity' => 500,
+        // Arrivé AVANT les pointages datés de ces tests : un pointage d'avant
+        // l'arrivée est refusé (Batch::refusDeSaisie).
+        'arrival_date'     => '2026-06-01',
     ]);
 });
 

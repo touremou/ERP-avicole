@@ -138,7 +138,8 @@ const RULES: Partial<Record<OperationType, Validator>> = {
   'daily_check.create': (p) => {
     const e: string[] = []
     reqId(p, 'batch_id', 'Lot', e)
-    reqDate(p, 'check_date', 'Date', e)
+    // Pas de pointage futur : le serveur le refuse (Batch::refusDeSaisie).
+    reqDate(p, 'check_date', 'Date', e, true)
     optNum(p, 'mortality', 'Mortalité', e, 0)
     optNum(p, 'avg_weight', 'Poids moyen', e, 0)
     optNum(p, 'water_consumed', 'Eau', e, 0)
@@ -153,6 +154,10 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqNum(p, 'total_eggs_collected', 'Œufs collectés', e, 0)
     optNum(p, 'broken_eggs', 'Œufs cassés', e, 0)
     optNum(p, 'small_eggs', 'Petits œufs', e, 0)
+    // Cassés + petits ne dépassent pas le ramassage (miroir de RecordEggCollection).
+    const total = num(p.total_eggs_collected) ?? 0
+    const tries = (num(p.broken_eggs) ?? 0) + (num(p.small_eggs) ?? 0)
+    if (tries > total) e.push('Œufs cassés + petits : ne peuvent pas dépasser les œufs collectés.')
     return e
   },
   'stock_movement.create': (p) => {
