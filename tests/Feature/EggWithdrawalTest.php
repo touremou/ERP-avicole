@@ -42,6 +42,8 @@ beforeEach(function () {
     $this->batch = Batch::factory()->create([
         'code' => 'PONTE-VAC', 'initial_quantity' => 100, 'current_quantity' => 100, 'qty_alive' => 100,
         'arrival_date' => now()->subDays(200), 'age_at_arrival' => 1, 'production_phase' => 'ponte',
+        // Un lot de PONTE : la collecte est refusée sur un lot qui ne pond pas.
+        'production_type_id' => \App\Models\ProductionType::resolveOrCreate('ponte', null)->id,
     ]);
     $this->actingAs($this->managerUser);
 });

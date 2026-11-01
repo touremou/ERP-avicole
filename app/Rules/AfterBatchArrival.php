@@ -43,14 +43,10 @@ class AfterBatchArrival implements DataAwareRule, ValidationRule
 
         $batch = Batch::find($batchId);
 
-        if (! $batch || ! $batch->arrival_date) {
-            return;
-        }
-
-        $arrival = Carbon::parse($batch->arrival_date)->startOfDay();
-
-        if (Carbon::parse($value)->startOfDay()->lt($arrival)) {
-            $fail("La date ne peut pas précéder l'arrivée du lot ({$arrival->format('d/m/Y')}).");
+        // Même comparaison que les actions communes (Batch::refusDeSaisie).
+        if ($batch && $batch->precedeArrivee($value)) {
+            $fail("La date ne peut pas précéder l'arrivée du lot ("
+                . Carbon::parse($batch->arrival_date)->format('d/m/Y') . ').');
         }
     }
 }

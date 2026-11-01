@@ -24,6 +24,8 @@ beforeEach(function () {
     ]);
     $this->batch = Batch::factory()->create([
         'code' => 'CHAIR-VAC', 'initial_quantity' => 100, 'current_quantity' => 100, 'qty_alive' => 100,
+        // Arrivé avant les interventions datées de ces tests (Batch::refusDeSaisie).
+        'arrival_date' => now()->subDays(30),
     ]);
     $this->actingAs($this->managerUser);
 });

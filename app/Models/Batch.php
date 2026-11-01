@@ -656,6 +656,54 @@ class Batch extends Model
     }
 
     /**
+     * La date tombe-t-elle AVANT l'arrivée physique du lot ? Sans date
+     * d'arrivée connue, on ne bloque pas. Partagée par la règle de formulaire
+     * `AfterBatchArrival` et par `refusDeSaisie()`.
+     */
+    public function precedeArrivee(mixed $date): bool
+    {
+        return $this->arrival_date !== null
+            && Carbon::parse($date)->startOfDay()->lt(Carbon::parse($this->arrival_date)->startOfDay());
+    }
+
+    /**
+     * UN ÉVÉNEMENT D'ÉLEVAGE PEUT-IL ÊTRE CONSIGNÉ SUR CE LOT, À CETTE DATE ?
+     *
+     * Trois règles de vie du lot — lot ACTIF, date PAS FUTURE, date APRÈS
+     * L'ARRIVÉE — vivaient dans les seules requêtes web du pointage et de la
+     * collecte. Le terrain passe par les mêmes actions (`RecordDailyCheck`,
+     * `RecordEggCollection`), mais pas par ces requêtes : il n'en appliquait
+     * aucune. Mesuré, un pointage de cinq morts rejoué après la clôture du lot
+     * était accepté, et l'effectif d'un lot fermé baissait APRÈS son bilan.
+     *
+     * Déclarées ici une fois, appliquées par chaque action commune.
+     *
+     * @param  string  $champDate  Champ auquel rattacher un refus de date.
+     * @param  bool    $lotOuvert  Exiger un lot actif. Une intervention
+     *                             sanitaire se consigne aussi sur un lot fermé :
+     *                             c'est la règle du bureau, on la garde.
+     * @return array<string, string>  Champ => motif ; vide si la saisie est recevable.
+     */
+    public function refusDeSaisie(mixed $date, string $champDate, bool $lotOuvert = true): array
+    {
+        if ($lotOuvert && ! $this->isActive()) {
+            return ['batch_id' => "Le lot {$this->code} est clôturé. Saisie impossible."];
+        }
+
+        if (Carbon::parse($date)->startOfDay()->gt(today())) {
+            return [$champDate => 'La date ne peut pas être dans le futur.'];
+        }
+
+        if ($this->precedeArrivee($date)) {
+            $arrivee = Carbon::parse($this->arrival_date)->format('d/m/Y');
+
+            return [$champDate => "La date ne peut pas précéder l'arrivée du lot ({$arrivee})."];
+        }
+
+        return [];
+    }
+
+    /**
      * Indique si le lot fait l'objet d'un suivi de ponte (collecte d'œufs,
      * couvoir...). Piloté par le type de production de l'espèce, avec
      * repli sur l'ancienne logique (type legacy) pour les lots volaille

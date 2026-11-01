@@ -88,6 +88,8 @@ test('la collecte d’œufs enregistre toujours normalement', function () {
         'status' => Batch::STATUS_ACTIF,
         'initial_quantity' => 500, 'current_quantity' => 500,
         'arrival_date' => now()->subMonths(6)->toDateString(),
+        // Un lot de PONTE : la collecte est refusée sur un lot qui ne pond pas.
+        'production_type_id' => \App\Models\ProductionType::resolveOrCreate('ponte', null)->id,
     ]);
 
     app(RecordEggCollection::class)->execute([
@@ -118,6 +120,8 @@ test('un second passage le MÊME jour enrichit la collecte au lieu d’en créer
         'status' => Batch::STATUS_ACTIF,
         'initial_quantity' => 500, 'current_quantity' => 500,
         'arrival_date' => now()->subMonths(6)->toDateString(),
+        // Un lot de PONTE : la collecte est refusée sur un lot qui ne pond pas.
+        'production_type_id' => \App\Models\ProductionType::resolveOrCreate('ponte', null)->id,
     ]);
 
     $payload = [

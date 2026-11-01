@@ -36,7 +36,10 @@ class StoreEggProductionRequest extends FormRequest
                 $validator->errors()->add('batch_id', "Le lot {$batch->code} est clôturé.");
             }
 
-            if (! in_array($batch->type, ['ponte', 'repro', 'reproducteur'])) {
+            // Même définition que l'écran, la tournée et l'action commune : le
+            // type de production. Une liste de types écrite ici à la main
+            // laissait passer un bélier « reproducteur ».
+            if (! $batch->tracksEggs()) {
                 $validator->errors()->add('batch_id', "Seuls les lots de ponte peuvent enregistrer des collectes.");
             }
 
@@ -67,24 +70,11 @@ class StoreEggProductionRequest extends FormRequest
                 $validator->errors()->add('broken_eggs', "Cassés + petits ({$broken} + {$small}) > total collecté ({$total}).");
             }
 
-            // Taux de ponte > 100 % = biologiquement impossible (1 œuf/sujet/jour max)
-            if ($total > 0 && $batch->current_quantity > 0) {
-                $existing = \App\Models\EggProduction::where('batch_id', $batch->id)
-                    ->where('production_date', $this->production_date)
-                    ->first();
-                $existingTotal   = $existing ? (int) $existing->total_eggs_collected : 0;
-                $projectedTotal  = $existingTotal + $total;
-
-                if ($projectedTotal > $batch->current_quantity) {
-                    $rate = number_format(($projectedTotal / $batch->current_quantity) * 100, 1);
-                    $validator->errors()->add(
-                        'total_eggs_collected',
-                        "Taux de ponte impossible : {$projectedTotal} œufs pour {$batch->current_quantity} sujets = {$rate} %. "
-                        . "Le maximum biologique est 100 % (1 œuf/sujet/jour). "
-                        . "Vérifiez votre saisie ; si vous saisissez un cumul multi-jours, fractionnez sur les dates réelles."
-                    );
-                }
-            }
+            // Le plafond de 100 % n'est plus recopié ici : il comptait sur
+            // TOUS les sujets du lot, coqs compris, quand l'action — porte de
+            // toutes les saisies — compte sur les pondeuses
+            // (Batch::effectifPondeur). Deux dénominateurs, deux taux annoncés
+            // pour la même collecte ; seul celui de l'action reste.
         });
     }
 
