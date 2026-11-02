@@ -5104,5 +5104,9 @@
     "Attendu": "Expected",
     "Pour terminer le lot :": "To finish the batch:",
     "formulaire de clôture": "closing form",
-    "(bilan, marge, vide sanitaire).": "(report, margin, sanitary break)."
+    "(bilan, marge, vide sanitaire).": "(report, margin, sanitary break).",
+    "Gravité *": "Severity *",
+    "Action prise *": "Action taken *",
+    "Action prise": "Action taken",
+    "Isolement, traitement administré, délai d'attente à respecter...": "Isolation, treatment given, withdrawal period to observe..."
 }

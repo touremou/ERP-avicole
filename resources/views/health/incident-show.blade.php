@@ -41,6 +41,13 @@
                         <p class="text-sm text-slate-700 leading-relaxed">{{ $incident->symptoms }}</p>
                     </div>
 
+                    @if($incident->action_taken)
+                        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                            <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-2">{{ __("Action prise") }}</p>
+                            <p class="text-sm text-slate-700 leading-relaxed">{{ $incident->action_taken }}</p>
+                        </div>
+                    @endif
+
                     @if($incident->suspected_disease)
                         <div class="bg-blue-50 p-6 rounded-[2rem] border border-blue-100">
                             <p class="text-[9px] uppercase tracking-widest text-blue-400 font-black mb-1"><i class="fa-solid fa-user-doctor mr-1"></i>{{ __("Diagnostic") }}</p>

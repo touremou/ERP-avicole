@@ -53,17 +53,18 @@ class HealthIncidentController extends Controller
         // 1. Validation des données de l'incident.
         //    Symptômes : checklist standardisée (symptom_tags[]) et/ou texte
         //    libre — au moins l'un des deux (compat API/sync : symptoms seul).
+        //    Mortalité, gravité et action prise : la règle commune au terrain
+        //    (HealthIncident::reglesDeDeclaration) — un incident sans mort se
+        //    déclare, et l'action prise est exigée.
         $validated = $request->validate([
             'batch_id'        => ['required', \App\Support\Ferme::existe('batches')],
             'daily_check_id'  => 'nullable|exists:daily_checks,id', // pointage d'origine (traçabilité)
-            'mortality_count' => 'required|integer|min:1',
-            'severity'        => 'nullable|in:mineur,modere,critique',
             'symptom_tags'    => 'required_without:symptoms|nullable|array',
             'symptom_tags.*'  => 'string|max:100',
             'symptoms'        => 'required_without:symptom_tags|nullable|string|max:1000',
             'photo'           => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
             'quarantine_now'  => 'nullable|boolean',
-        ]);
+        ] + HealthIncident::reglesDeDeclaration());
 
         // 2. Traitement de la photo d'autopsie
         $photoPath = null;
@@ -92,9 +93,10 @@ class HealthIncidentController extends Controller
             'daily_check_id'  => $validated['daily_check_id'] ?? null,
             'user_id'         => Auth::id(),
             'incident_date'   => now()->toDateString(),
-            'mortality_count' => $validated['mortality_count'],
-            'severity'        => $validated['severity'] ?? HealthIncident::SEVERITY_MODERATE,
+            'mortality_count' => (int) ($validated['mortality_count'] ?? 0),
+            'severity'        => $validated['severity'],
             'symptoms'        => $symptoms,
+            'action_taken'    => $validated['action_taken'],
             'photo_path'      => $photoPath,
             'status'          => HealthIncident::STATUS_PENDING,
             'is_quarantined'        => $quarantineNow,

@@ -86,16 +86,18 @@
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Cadavres *") }}</label>
-                    <input type="number" name="mortality_count" required min="1" placeholder="{{ __('Nb.') }}"
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Cadavres") }}</label>
+                    {{-- Facultatif : un incident n'entraîne pas toujours de mort
+                         (symptômes, coup de chaleur, traitement préventif). --}}
+                    <input type="number" name="mortality_count" min="0" value="0" placeholder="{{ __('Nb.') }}"
                            id="incident-mortality" oninput="incidentSuggestSeverity()"
                            class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-rose-600 shadow-inner focus:ring-2 focus:ring-rose-500 text-center">
                 </div>
                 <div>
                     <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">
-                        {{ __("Gravité") }} <span id="incident-severity-hint" class="text-rose-400 normal-case hidden">({{ __("suggérée") }})</span>
+                        {{ __("Gravité *") }} <span id="incident-severity-hint" class="text-rose-400 normal-case hidden">({{ __("suggérée") }})</span>
                     </label>
-                    <select name="severity" id="incident-severity" onchange="this.dataset.touched = '1'"
+                    <select name="severity" required id="incident-severity" onchange="this.dataset.touched = '1'"
                             class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner cursor-pointer text-slate-700 focus:ring-2 focus:ring-rose-500">
                         <option value="mineur">{{ __("Mineur") }}</option>
                         <option value="modere" selected>{{ __("Modéré") }}</option>
@@ -122,6 +124,12 @@
                 <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Détails complémentaires") }}</label>
                 <textarea name="symptoms" rows="2" placeholder="{{ __('Précisions : localisation, évolution, nombre de sujets atteints...') }}"
                           class="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-rose-500 shadow-inner"></textarea>
+            </div>
+
+            <div>
+                <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Action prise *") }}</label>
+                <textarea name="action_taken" rows="2" required maxlength="1000" placeholder="{{ __('Isolement, traitement administré, délai d\'attente à respecter...') }}"
+                          class="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-rose-500 shadow-inner">{{ old('action_taken') }}</textarea>
             </div>
 
             <div>

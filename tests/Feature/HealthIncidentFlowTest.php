@@ -20,6 +20,8 @@ beforeEach(function () {
 test('le signalement d\'une anomalie crée un incident en attente', function () {
     $this->actingAs($this->adminUser)
         ->post(route('health.incidents.store'), [
+            // Exigées depuis la règle commune (HealthIncident::reglesDeDeclaration).
+            'severity' => 'modere', 'action_taken' => 'Lot isolé, vétérinaire appelé',
             'batch_id'        => $this->batch->id,
             'mortality_count' => 3,
             'symptoms'        => 'Diarrhée, plumes ébouriffées',
@@ -120,6 +122,8 @@ test('l\'incident est rattaché au LOT et porte la gravité saisie (déclaration
     // jamais faire échouer l'enregistrement.
     $this->actingAs($this->adminUser)
         ->post(route('health.incidents.store'), [
+            // Exigées depuis la règle commune (HealthIncident::reglesDeDeclaration).
+            'severity' => 'modere', 'action_taken' => 'Lot isolé, vétérinaire appelé',
             'batch_id'        => $this->batch->id,
             'mortality_count' => 5,
             'severity'        => 'critique',
@@ -179,6 +183,8 @@ test('un incident peut être rattaché au pointage qui l\'a révélé (sans doub
 
     $this->actingAs($this->adminUser)
         ->post(route('health.incidents.store'), [
+            // Exigées depuis la règle commune (HealthIncident::reglesDeDeclaration).
+            'severity' => 'modere', 'action_taken' => 'Lot isolé, vétérinaire appelé',
             'batch_id'       => $this->batch->id,
             'daily_check_id' => $check->id,
             'mortality_count' => 4,

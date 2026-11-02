@@ -470,6 +470,7 @@ test('health_incident.create : incident créé avec photo, idempotent au rejeu',
             'mortality_count' => 4,
             'symptoms'        => 'Fientes vertes, prostration',
             'severity'        => 'critique',
+            'action_taken'    => 'Lot isolé, prélèvements envoyés au labo',
             'photo_path'      => 'field/incident/autopsie.jpg',
         ],
     ]];
