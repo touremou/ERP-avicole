@@ -11,6 +11,7 @@ import { enqueue } from '../../offline/sync'
 import { lastPayloadOf } from '../../offline/prefill'
 import { t } from '../../i18n'
 import type { RefBatch, RefProvider } from '../../api/types'
+import { STATUTS_IMPUTABLES, STATUT_SOLDE } from '../../offline/statutsDeLot'
 
 const UNITS = ['Sac', 'KG', 'Litre', 'Unité', 'Boite'] as const
 
@@ -34,7 +35,7 @@ export function FeedReceptionScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_batches.where('status').equals('Actif').toArray().then(setBatches)
+    void db.ref_batches.where('status').anyOf(STATUTS_IMPUTABLES).toArray().then(setBatches)
     void db.ref_providers.toArray().then(setProviders)
   }, [])
 
@@ -101,7 +102,7 @@ export function FeedReceptionScreen() {
       <select id="batch" required value={batchId} onChange={(e) => setBatchId(e.target.value)}>
         <option value="">{t('Sélectionner…')}</option>
         {batches.map((b) => (
-          <option key={b.id} value={b.id}>{b.code}</option>
+          <option key={b.id} value={b.id}>{b.code}{b.status === STATUT_SOLDE ? ` · ${t('lot soldé')}` : ''}</option>
         ))}
       </select>
       {batches.length === 0 && (
