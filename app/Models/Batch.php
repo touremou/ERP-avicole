@@ -66,11 +66,31 @@ class Batch extends Model
     public const STATUS_SOLDE   = 'Soldé';
 
     /**
+     * AVORTÉ / SINISTRÉ — clôturé avant terme. Décision de l'exploitation : le
+     * lot a été reçu ou engagé, ses coûts sont RÉELS (achat des animaux, frais
+     * engagés), mais son cycle s'est arrêté prématurément (mortalité totale au
+     * démarrage, vide sanitaire obligatoire, sinistre au transport).
+     *   • son achat paraît au compte de résultat sur une ligne dédiée
+     *     (« Pertes sur lots avortés / sinistrés ») ;
+     *   • il est EXCLU des moyennes zootechniques (IC, ponte, mortalité des
+     *     bandes terminées), qui ne retiennent que le statut « Terminé ».
+     * Posé par la clôture (CloseBatch), comme « Terminé ».
+     *
+     * À ne pas confondre avec « Annulé » : un lot créé par ERREUR, sans aucun
+     * flux réel, exclu de tout (cf. scopeLive, peutEtreAnnule).
+     */
+    public const STATUS_AVORTE  = 'Avorté';
+
+    /** Statuts d'un lot CLÔTURÉ par sa procédure : son cycle s'arrête à closing_date. */
+    public const STATUTS_CLOTURES = [self::STATUS_TERMINE, self::STATUS_AVORTE];
+
+    /**
      * Statuts « archivés » : le lot n'est plus en production active.
      * Référencé par scopeArchived() et les rapports/plannings.
      */
     public const STATUS_ARCHIVED = [
         self::STATUS_TERMINE,
+        self::STATUS_AVORTE,
         self::STATUS_CLOTURE,
         self::STATUS_VENDU,
         self::STATUS_ANNULE,
@@ -101,14 +121,46 @@ class Batch extends Model
      */
     public function statutsModifiables(): array
     {
-        return in_array($this->status, self::EDITABLE_STATUSES, true)
+        if (! in_array($this->status, self::EDITABLE_STATUSES, true)) {
+            return [$this->status];
+        }
+
+        // « Annulé » est l'erreur de saisie : réservé au lot SANS flux réel.
+        return $this->status === self::STATUS_ANNULE || $this->peutEtreAnnule()
             ? self::EDITABLE_STATUSES
-            : [$this->status];
+            : [self::STATUS_ACTIF];
+    }
+
+    /**
+     * Le lot peut-il être ANNULÉ (erreur de saisie) ? Seulement s'il n'a
+     * enregistré aucun flux : ni pointage, ni collecte, ni soin, ni achat, ni
+     * dépense, ni vente, ni abattage, ni traite. Un lot qui en a vécu un est
+     * un lot réel : interrompu, il se clôture comme « avorté / sinistré ».
+     */
+    public function peutEtreAnnule(): bool
+    {
+        if (! $this->exists) {
+            return true;
+        }
+
+        return ! $this->dailyChecks()->exists()
+            && ! $this->eggProductions()->exists()
+            && ! $this->healthChecks()->exists()
+            && ! $this->feedPurchases()->exists()
+            && ! $this->expenses()->exists()
+            && ! $this->slaughterOrders()->exists()
+            && ! \App\Models\SaleItem::where('batch_id', $this->id)->exists()
+            && ! \App\Models\MilkProduction::where('batch_id', $this->id)->exists();
     }
 
     /** Motif du refus d'un statut que la modification ne peut pas poser. */
     public function motifStatutRefuse(string $statut): string
     {
+        if ($statut === self::STATUS_ANNULE) {
+            return "Le lot {$this->code} a des flux enregistrés : ce n'est pas une erreur de saisie. "
+                . "S'il a été interrompu, clôturez-le comme « avorté / sinistré ».";
+        }
+
         return $statut === self::STATUS_TERMINE
             ? "Un lot se clôture par le formulaire de clôture : c'est lui qui établit le bilan, "
                 . 'enregistre la marge et lance le vide sanitaire du bâtiment.'
@@ -903,7 +955,7 @@ class Batch extends Model
             return 1;
         }
 
-        $fin = $date ?? (($this->status === self::STATUS_TERMINE && $this->closing_date) ? $this->closing_date : now());
+        $fin = $date ?? ((in_array($this->status, self::STATUTS_CLOTURES, true) && $this->closing_date) ? $this->closing_date : now());
 
         return max(1, (int) ceil((\App\Support\Jours::entre($debut, $fin) + 1) / 7));
     }
@@ -1658,7 +1710,7 @@ class Batch extends Model
          * Repli sur `arrival_date` quand la naissance n'est pas renseignée : c'est
          * le comportement historique, à la journée près, pour les lots antérieurs.
          */
-        $end = ($this->status === self::STATUS_TERMINE && $this->closing_date)
+        $end = (in_array($this->status, self::STATUTS_CLOTURES, true) && $this->closing_date)
             ? $this->closing_date
             : now();
 
@@ -2240,7 +2292,11 @@ class Batch extends Model
      */
     public function scopeLive($query)
     {
-        return $query->where('initial_quantity', '>', 0);
+        // Un lot ANNULÉ (créé par erreur, sans flux réel) n'est pas non plus un
+        // lot physique : décision de l'exploitation, il sort de toute sélection
+        // et de tout rapport — l'équivalent d'une suppression logique.
+        return $query->where('initial_quantity', '>', 0)
+            ->where('status', '!=', self::STATUS_ANNULE);
     }
 
     /**

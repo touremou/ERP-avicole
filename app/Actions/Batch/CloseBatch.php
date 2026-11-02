@@ -118,7 +118,11 @@ class CloseBatch
 
             // ─── MISE À JOUR DU LOT ───
             $batch->update([
-                'status'                     => Batch::STATUS_TERMINE,
+                // Mené à terme, ou AVORTÉ / sinistré : mêmes coûts réels, mais
+                // hors des moyennes zootechniques (Batch::STATUS_AVORTE).
+                'status'                     => ($data['closure_kind'] ?? 'normale') === 'avorte'
+                    ? Batch::STATUS_AVORTE
+                    : Batch::STATUS_TERMINE,
                 'current_quantity'           => 0,
                 'closing_date'               => $data['closing_date'],
                 'actual_sell_price_per_unit'  => $sellingPrice,

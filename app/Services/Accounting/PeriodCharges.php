@@ -86,8 +86,21 @@ class PeriodCharges
         $achatsLots = self::achatsDesLots($from, $to);
 
         $costs = [
+            // Les lots ANNULÉS (erreur de saisie) n'y sont pas : scope live.
             'Achats animaux (lots)' => (float) Batch::live()
                 ->whereBetween('arrival_date', [$from, $to])
+                ->where('status', '!=', Batch::STATUS_AVORTE)
+                ->sum('total_acquisition_cost'),
+
+            /*
+             * LOTS AVORTÉS / SINISTRÉS — décision de l'exploitation : leur achat
+             * est une charge RÉELLE, mais suivie sur sa propre ligne pour qu'on
+             * voie ce que coûtent les sinistres. Leurs autres frais restent dans
+             * leurs postes (aliment, santé…), comme pour tout lot.
+             */
+            'Pertes sur lots avortés / sinistrés' => (float) Batch::live()
+                ->whereBetween('arrival_date', [$from, $to])
+                ->where('status', Batch::STATUS_AVORTE)
                 ->sum('total_acquisition_cost'),
 
             'Aliment' => self::feedConsumedCost($from, $to),
