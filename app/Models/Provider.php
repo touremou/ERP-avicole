@@ -25,6 +25,7 @@ class Provider extends Model
         'rccm', 
         'nif', 
         'payment_terms', 
+        'doa_policy',    // morts à la livraison : avoir | repartition | perte (MortsALaLivraison)
         'reliability',   // Bon, Moyen, Mauvais
         'status'         // Actif, Blacklisté, Inactif
     ];

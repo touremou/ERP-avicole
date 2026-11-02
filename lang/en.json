@@ -5113,5 +5113,9 @@
     "Lots soldés à clôturer": "Sold-out batches to close",
     "Nature de la clôture": "Type of closing",
     "Cycle mené à terme": "Cycle completed",
-    "Lot avorté / sinistré (arrêt prématuré)": "Aborted / disaster batch (early stop)"
+    "Lot avorté / sinistré (arrêt prématuré)": "Aborted / disaster batch (early stop)",
+    "Morts à la livraison (contrat)": "Dead on arrival (contract)",
+    "A — Avoir fournisseur : coût sur les vivants": "A — Supplier credit note: cost on live birds",
+    "B — Facture entière : coût absorbé par les vivants": "B — Full invoice: cost absorbed by live birds",
+    "C — Charge « Pertes au transport »": "C — “Transport losses” expense"
 }

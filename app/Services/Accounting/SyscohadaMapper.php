@@ -21,6 +21,7 @@ class SyscohadaMapper
         // Par NATURE, l'achat d'un lot avorté reste un achat d'animaux ; la ligne
         // dédiée du compte de résultat de gestion le distingue.
         'Pertes sur lots avortés / sinistrés' => ['602', 'Achats de matières premières et fournitures liées'],
+        'Pertes au transport'            => ['602', 'Achats de matières premières et fournitures liées'],
         'Aliment'                        => ['602', 'Achats de matières premières et fournitures liées'],
         'Production végétale (cultures)' => ['602', 'Achats de matières premières et fournitures liées'],
         'Santé / prophylaxie'            => ['604', 'Achats stockés de matières et fournitures consommables'],

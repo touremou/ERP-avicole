@@ -110,6 +110,7 @@ export const en: Record<string, string> = {
   'Aucune vente enregistrée aujourd’hui.': 'No sales recorded today.',
   'Client comptoir': 'Walk-in customer',
   'Soldé': 'Paid',
+  'lot soldé': 'sold out',
   'Partiel': 'Partial',
   'Impayé': 'Unpaid',
   // Tableau de bord — KPIs par rôle

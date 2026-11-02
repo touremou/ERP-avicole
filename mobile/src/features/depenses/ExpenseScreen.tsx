@@ -11,6 +11,7 @@ import { enqueue } from '../../offline/sync'
 import { platform, compressImage } from '../../platform'
 import { t } from '../../i18n'
 import type { RefBatch } from '../../api/types'
+import { STATUTS_IMPUTABLES, STATUT_SOLDE } from '../../offline/statutsDeLot'
 
 /** Miroir de App\Models\Expense::CATEGORIES (référentiel stable). */
 const CATEGORIES: Record<string, string> = {
@@ -44,7 +45,7 @@ export function ExpenseScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_batches.where('status').equals('Actif').toArray().then(setBatches)
+    void db.ref_batches.where('status').anyOf(STATUTS_IMPUTABLES).toArray().then(setBatches)
   }, [])
 
   async function attachPhoto() {
@@ -162,7 +163,7 @@ export function ExpenseScreen() {
           <select id="batch" value={batchId} onChange={(e) => setBatchId(e.target.value)}>
             <option value="">{t('— Aucun (frais général) —')}</option>
             {batches.map((b) => (
-              <option key={b.id} value={b.id}>{b.code}</option>
+              <option key={b.id} value={b.id}>{b.code}{b.status === STATUT_SOLDE ? ` · ${t('lot soldé')}` : ''}</option>
             ))}
           </select>
         </>

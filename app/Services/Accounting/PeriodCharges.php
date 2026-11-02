@@ -103,6 +103,12 @@ class PeriodCharges
                 ->where('status', Batch::STATUS_AVORTE)
                 ->sum('total_acquisition_cost'),
 
+            // Morts à la livraison, règle C du contrat fournisseur : le prix des
+            // sujets morts en route est une charge à part (MortsALaLivraison).
+            'Pertes au transport' => (float) Batch::live()
+                ->whereBetween('arrival_date', [$from, $to])
+                ->sum('transport_loss_cost'),
+
             'Aliment' => self::feedConsumedCost($from, $to),
 
             /*
