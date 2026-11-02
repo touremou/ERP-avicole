@@ -645,6 +645,11 @@
             </div>
             @endif
 
+            {{-- RÉFÉRENTIEL REPRODUCTEURS : réel contre guide de souche --}}
+            @if(!empty($referentiel))
+                @include('batches.partials.referentiel-reproducteur', ['referentiel' => $referentiel])
+            @endif
+
             {{-- AQUACULTURE: QUALITÉ DE L'EAU --}}
             @if($isAquaculture && (isset($stats['last_water_ph']) || isset($stats['last_water_o2'])))
             <div class="mb-8 bg-blue-50 border border-blue-200 rounded-[2rem] p-6">

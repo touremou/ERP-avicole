@@ -184,8 +184,11 @@ class EggAnalysisService
             }
 
             // ─── IRRÉGULARITÉ 3 : HDP SOUS LA NORME ───
+            // La règle de la fiche du lot (ProductionNorm::ponteSousLaCourbe) :
+            // 5 points sous la courbe d'un référentiel reproducteur, 85 % de la
+            // norme sinon.
             $normHdp = $ageWeeks ? (\App\Models\ProductionNorm::cibleA($batch, $ageWeeks)['laying'] ?? null) : null;
-            if ($normHdp && $hdp < ($normHdp * 0.85)) {
+            if ($normHdp && \App\Models\ProductionNorm::ponteSousLaCourbe($batch, (float) $hdp, (float) $normHdp)) {
                 $irregularities[] = [
                     'type'     => 'hdp_below_norm',
                     'severity' => 'attention',

@@ -16,9 +16,9 @@
         openEdit: false, 
         openDelete: false, 
         openImport: false,
-        currentNorm: { id: '', species_id: '', week_number: '', phase_name: 'Démarrage', target_weight: '', target_laying_rate: '', target_feed_daily: '', target_water_daily: '', model_name: '' },
+        currentNorm: { id: '', species_id: '', week_number: '', phase_name: 'Démarrage', target_weight: '', target_laying_rate: '', target_feed_daily: '', target_water_daily: '', model_name: '', target_weight_male: '', target_weight_female: '', target_hatching_egg_rate: '', target_fertility_rate: '', target_hatchability_rate: '', target_mortality_weekly: '' },
         resetNorm() {
-            this.currentNorm = { id: '', species_id: '', week_number: '', phase_name: 'Démarrage', target_weight: '', target_laying_rate: '', target_feed_daily: '', target_water_daily: '', model_name: '' };
+            this.currentNorm = { id: '', species_id: '', week_number: '', phase_name: 'Démarrage', target_weight: '', target_laying_rate: '', target_feed_daily: '', target_water_daily: '', model_name: '', target_weight_male: '', target_weight_female: '', target_hatching_egg_rate: '', target_fertility_rate: '', target_hatchability_rate: '', target_mortality_weekly: '' };
         }
 
     }">
@@ -315,6 +315,37 @@
                         </div>
                     </div>
 
+                    {{-- Référentiel reproducteurs (guide de souche) : facultatif. --}}
+                    <div class="bg-violet-50/50 p-8 rounded-[3rem] border border-violet-100 shadow-inner">
+                        <p class="text-[9px] font-black uppercase text-violet-500 italic mb-4">{{ __("Référentiel reproducteurs — facultatif, d'après le guide de la souche") }}</p>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                        <div class="space-y-2 text-center">
+                            <label class="text-[9px] font-black uppercase text-violet-500 italic">{{ __("Poids mâles (g)") }}</label>
+                            <input type="number" min="0" step="1" name="target_weight_male" x-model="currentNorm.target_weight_male" class="w-full bg-white border-none rounded-xl p-4 text-sm font-black text-center shadow-sm text-violet-600">
+                        </div>
+                        <div class="space-y-2 text-center">
+                            <label class="text-[9px] font-black uppercase text-violet-500 italic">{{ __("Poids femelles (g)") }}</label>
+                            <input type="number" min="0" step="1" name="target_weight_female" x-model="currentNorm.target_weight_female" class="w-full bg-white border-none rounded-xl p-4 text-sm font-black text-center shadow-sm text-violet-600">
+                        </div>
+                        <div class="space-y-2 text-center">
+                            <label class="text-[9px] font-black uppercase text-violet-500 italic">{{ __("Œufs incubables (%)") }}</label>
+                            <input type="number" min="0" max="100" step="0.1" name="target_hatching_egg_rate" x-model="currentNorm.target_hatching_egg_rate" class="w-full bg-white border-none rounded-xl p-4 text-sm font-black text-center shadow-sm text-violet-600">
+                        </div>
+                        <div class="space-y-2 text-center">
+                            <label class="text-[9px] font-black uppercase text-violet-500 italic">{{ __("Fertilité (%)") }}</label>
+                            <input type="number" min="0" max="100" step="0.1" name="target_fertility_rate" x-model="currentNorm.target_fertility_rate" class="w-full bg-white border-none rounded-xl p-4 text-sm font-black text-center shadow-sm text-violet-600">
+                        </div>
+                        <div class="space-y-2 text-center">
+                            <label class="text-[9px] font-black uppercase text-violet-500 italic">{{ __("Éclosion des fertiles (%)") }}</label>
+                            <input type="number" min="0" max="100" step="0.1" name="target_hatchability_rate" x-model="currentNorm.target_hatchability_rate" class="w-full bg-white border-none rounded-xl p-4 text-sm font-black text-center shadow-sm text-violet-600">
+                        </div>
+                        <div class="space-y-2 text-center">
+                            <label class="text-[9px] font-black uppercase text-violet-500 italic">{{ __("Mortalité + réforme / sem. (%)") }}</label>
+                            <input type="number" min="0" max="100" step="0.01" name="target_mortality_weekly" x-model="currentNorm.target_mortality_weekly" class="w-full bg-white border-none rounded-xl p-4 text-sm font-black text-center shadow-sm text-violet-600">
+                        </div>
+                        </div>
+                    </div>
+
                     <button type="submit" class="w-full bg-slate-900 text-white py-6 rounded-3xl text-[11px] font-black uppercase tracking-[0.3em] hover:bg-blue-600 transition shadow-2xl border-none cursor-pointer italic"
                             x-text="openEdit ? @js(__('ACTUALISER LE RÉFÉRENTIEL')) : @js(__('ENREGISTRER LA NORME'))"></button>
                 </form>
@@ -367,6 +398,7 @@
                 <h3 class="text-2xl md:text-3xl font-black text-slate-900 uppercase italic tracking-tighter mb-4 leading-none pr-10">{{ __("Importation Massive") }}</h3>
                 <p class="text-[10px] text-slate-400 uppercase font-black mb-10 tracking-widest leading-relaxed">
                     {{ __("Fichier .csv : week_number, phase_name, target_weight, target_laying_rate, target_feed_daily, target_water_daily, model_name") }}
+                    <span class="block mt-2">{{ __("Reproducteurs, colonnes facultatives à la suite : target_weight_male, target_weight_female, target_hatching_egg_rate, target_fertility_rate, target_hatchability_rate, target_mortality_weekly") }}</span>
                 </p>
                 
                 {{-- Le référentiel des normes est rattaché à l'ÉLEVAGE, pas à

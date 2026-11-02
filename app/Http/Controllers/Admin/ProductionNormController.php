@@ -12,6 +12,29 @@ use Illuminate\Support\Facades\DB;
 class ProductionNormController extends Controller
 {
     /**
+     * Le référentiel reproducteurs (guide de souche) : poids mâles/femelles en
+     * grammes, taux en %. Cf. ReferentielReproducteur.
+     */
+    private const REGLES_REPRODUCTEUR = [
+        'target_weight_male'       => 'nullable|numeric|min:0',
+        'target_weight_female'     => 'nullable|numeric|min:0',
+        'target_hatching_egg_rate' => 'nullable|numeric|min:0|max:100',
+        'target_fertility_rate'    => 'nullable|numeric|min:0|max:100',
+        'target_hatchability_rate' => 'nullable|numeric|min:0|max:100',
+        'target_mortality_weekly'  => 'nullable|numeric|min:0|max:100',
+    ];
+
+    /** Colonnes facultatives du CSV, après model_name (index 6). */
+    private const CSV_REPRODUCTEUR = [
+        7  => 'target_weight_male',
+        8  => 'target_weight_female',
+        9  => 'target_hatching_egg_rate',
+        10 => 'target_fertility_rate',
+        11 => 'target_hatchability_rate',
+        12 => 'target_mortality_weekly',
+    ];
+
+    /**
      * Métadonnées d'affichage (icône, couleur, libellé) par type de production.
      */
     public const TYPE_META = [
@@ -96,6 +119,7 @@ class ProductionNormController extends Controller
             'target_laying_rate' => 'nullable|numeric|min:0|max:100',
             'target_feed_daily'  => 'nullable|numeric|min:0',
             'target_water_daily' => 'nullable|numeric|min:0',
+            ...self::REGLES_REPRODUCTEUR,
         ]);
 
         // Clé d'unicité alignée sur l'index DB (batch_type, week_number,
@@ -149,6 +173,7 @@ class ProductionNormController extends Controller
             'target_laying_rate' => 'nullable|numeric|min:0|max:100',
             'target_feed_daily'  => 'nullable|numeric|min:0',
             'target_water_daily' => 'nullable|numeric|min:0',
+            ...self::REGLES_REPRODUCTEUR,
         ]);
 
         $norm->update($data);
@@ -224,7 +249,7 @@ public function import(Request $request)
                         'target_laying_rate' => $data[3] ?? 0,
                         'target_feed_daily'  => $data[4] ?? 0,
                         'target_water_daily' => $data[5] ?? 0,
-                    ]
+                    ] + $this->colonnesReproducteur($data)
                 );
                 $count++;
             }
@@ -236,5 +261,23 @@ public function import(Request $request)
             DB::rollBack();
             return back()->with('error', 'Erreur lors de l\'importation : ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Les colonnes du référentiel reproducteurs présentes dans la ligne. Une
+     * cellule vide — ou un fichier à 7 colonnes — ne touche pas la valeur
+     * déjà en base.
+     */
+    private function colonnesReproducteur(array $ligne): array
+    {
+        $valeurs = [];
+        foreach (self::CSV_REPRODUCTEUR as $index => $colonne) {
+            $cellule = trim((string) ($ligne[$index] ?? ''));
+            if ($cellule !== '' && is_numeric($cellule)) {
+                $valeurs[$colonne] = (float) $cellule;
+            }
+        }
+
+        return $valeurs;
     }
 }
