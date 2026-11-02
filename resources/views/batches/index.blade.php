@@ -40,6 +40,24 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
             {{-- FILTRES PAR FAMILLE D'ESPÈCE --}}
+            @if(($soldes ?? collect())->isNotEmpty())
+                {{-- Lots soldés : plus de sujets, clôture définitive à prononcer. --}}
+                <div class="mb-6 p-5 bg-amber-50 border border-amber-200 rounded-2xl not-italic">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-3">
+                        <i class="fa-solid fa-flag-checkered mr-1"></i>
+                        {{ __("Lots soldés à clôturer") }} ({{ $soldes->count() }})
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($soldes as $solde)
+                            <a href="{{ route('batches.show', $solde) }}"
+                               class="px-3 py-2 bg-white rounded-xl text-[10px] font-black uppercase text-amber-700 border border-amber-200 hover:bg-amber-100 no-underline">
+                                {{ $solde->code }} · {{ $solde->building->name ?? '—' }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <div class="flex flex-wrap items-center gap-3 mb-4">
                 <a href="{{ route('batches.index') }}"
                    @class([

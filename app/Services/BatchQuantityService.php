@@ -147,6 +147,10 @@ class BatchQuantityService
                     ->update(['qty_alive' => $expectedQuantity]);
             }
 
+            // L'effectif réconcilié décide de l'état opérationnel (Actif ↔ Soldé).
+            $batch->current_quantity = $expectedQuantity;
+            $batch->constaterEtatOperationnel();
+
             $result['corrected'] = true;
 
             Log::info(

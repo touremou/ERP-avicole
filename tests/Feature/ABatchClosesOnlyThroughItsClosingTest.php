@@ -124,7 +124,13 @@ test('la clôture du lot termine la bande planifiée', function () {
 
 // ── ABATTAGE COMPLET ─────────────────────────────────────────────────────
 
-test('abattre tout le lot le clôture par la clôture : marge, effectif, vide sanitaire', function () {
+test('abattre tout le lot le SOLDE ; sa clôture définitive établit ensuite la marge', function () {
+    /*
+     * Fermeture en deux temps (décision de l'exploitation, cf.
+     * ASoldOutBatchClosesInTwoStepsTest) : l'abattage complet ne clôture plus
+     * le lot, il le SOLDE. La clôture définitive, par son formulaire, établit
+     * la marge et lance le vide sanitaire.
+     */
     $ordre = SlaughterOrder::create([
         'order_number' => SlaughterOrder::generateNumber(), 'batch_id' => $this->lot->id,
         'planned_date' => now()->toDateString(), 'planned_quantity' => 100,
@@ -137,9 +143,16 @@ test('abattre tout le lot le clôture par la clôture : marge, effectif, vide sa
     ]);
 
     $lot = $this->lot->fresh();
-    expect($lot->status)->toBe('Terminé')
+    expect($lot->status)->toBe('Soldé')
         ->and((int) $lot->current_quantity)->toBe(0)
-        ->and($lot->closing_date)->not->toBeNull()
+        ->and($lot->margin)->toBeNull();
+
+    $this->put(route('batches.close', $lot), [
+        'actual_sell_price_per_unit' => 0, 'closing_date' => now()->toDateString(),
+    ])->assertSessionHasNoErrors();
+
+    $lot = $lot->fresh();
+    expect($lot->status)->toBe('Terminé')
         // Cédé au coût de revient : la marge enregistrée existe, et vaut zéro.
         ->and($lot->margin)->not->toBeNull()
         ->and(round((float) $lot->margin, 2))->toEqual(0.0)

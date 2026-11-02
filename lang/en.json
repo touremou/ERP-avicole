@@ -5108,5 +5108,7 @@
     "Gravité *": "Severity *",
     "Action prise *": "Action taken *",
     "Action prise": "Action taken",
-    "Isolement, traitement administré, délai d'attente à respecter...": "Isolation, treatment given, withdrawal period to observe..."
+    "Isolement, traitement administré, délai d'attente à respecter...": "Isolation, treatment given, withdrawal period to observe...",
+    "Clôture définitive": "Final closing",
+    "Lots soldés à clôturer": "Sold-out batches to close"
 }

@@ -247,9 +247,9 @@ class PlanningController extends Controller
              */
             if ($newStatus === 'termine' && $plan->actual_batch_id) {
                 $batch = Batch::find($plan->actual_batch_id);
-                if ($batch?->isActive()) {
+                if ($batch?->peutEtreCloture()) {
                     return back()->with('error',
-                        "Le lot {$batch->code} est encore en production : clôturez-le par son formulaire "
+                        "Le lot {$batch->code} n'est pas clôturé : clôturez-le par son formulaire "
                         . 'de clôture (bilan, marge, vide sanitaire). La bande passera « terminée » d\'elle-même.'
                     );
                 }

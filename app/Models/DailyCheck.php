@@ -251,6 +251,11 @@ class DailyCheck extends Model
             DB::table('batches')
                 ->where('id', $batchId)
                 ->update(['current_quantity' => $newQty, 'updated_at' => now()]);
+
+            // Mortalité totale → lot SOLDÉ ; pointage corrigé qui rend des
+            // sujets → de nouveau ACTIF (Batch::constaterEtatOperationnel).
+            $batch->current_quantity = $newQty;
+            $batch->constaterEtatOperationnel();
         });
     }
 
