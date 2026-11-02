@@ -113,3 +113,19 @@ test('un lot mené à terme garde ses achats parmi les achats d’animaux — no
     expect(chargesDuMoisAvorte()['Achats animaux (lots)'])->toEqual(50000.0)
         ->and(chargesDuMoisAvorte()['Pertes sur lots avortés / sinistrés'])->toEqual(0.0);
 });
+
+test('un lot avorté libère son bâtiment : les jours vides se comptent depuis sa clôture', function () {
+    // Une bande menée à terme il y a 40 jours, puis la bande avortée il y a 3 jours.
+    Batch::factory()->create([
+        'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'status' => Batch::STATUS_TERMINE,
+        'arrival_date' => now()->subDays(90)->toDateString(), 'closing_date' => now()->subDays(40)->toDateString(),
+        'initial_quantity' => 100, 'current_quantity' => 0,
+    ]);
+    $this->lot->update(['status' => Batch::STATUS_AVORTE, 'current_quantity' => 0, 'closing_date' => now()->subDays(3)->toDateString()]);
+
+    $occupation = app(\App\Services\PlanningService::class)
+        ->getBuildingOccupancy(now()->startOfMonth(), now()->endOfMonth())
+        ->firstWhere('building.id', $this->building->id);
+
+    expect($occupation['idle_days'])->toBe(3);
+});

@@ -137,8 +137,11 @@ class PlanningService
             // ═══ 3. JOURS VIDES (si bâtiment inoccupé) ═══
             $idleDays = 0;
             if ($currentBirds === 0) {
+                // Toute bande close libère le bâtiment — l'avortée comme la
+                // terminée (Batch::STATUTS_CLOTURES) : sans elle, les jours
+                // vides se comptaient depuis la bande d'avant.
                 $lastClosed = Batch::where('building_id', $building->id)
-                    ->whereIn('status', [Batch::STATUS_TERMINE, Batch::STATUS_CLOTURE])
+                    ->whereIn('status', [...Batch::STATUTS_CLOTURES, Batch::STATUS_CLOTURE])
                     ->whereNotNull('closing_date')
                     ->latest('closing_date')
                     ->value('closing_date');
