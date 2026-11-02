@@ -1018,6 +1018,11 @@ class ReportController extends Controller
         $statusFilter = $request->input('status', 'Actif');
         if ($statusFilter !== 'all') {
             $query->where('status', $statusFilter);
+        } else {
+            // Moyennes zootechniques : ni lot annulé ni virtuel (scope live), ni
+            // lot AVORTÉ / sinistré — décision de l'exploitation, il fausserait
+            // les moyennes. On le consulte en le filtrant explicitement.
+            $query->live()->where('status', '!=', \App\Models\Batch::STATUS_AVORTE);
         }
 
         $batches = $query->orderByDesc('arrival_date')->get();
@@ -1125,6 +1130,11 @@ class ReportController extends Controller
         $statusFilter = $request->input('status', 'Actif');
         if ($statusFilter !== 'all') {
             $query->where('status', $statusFilter);
+        } else {
+            // Moyennes zootechniques : ni lot annulé ni virtuel (scope live), ni
+            // lot AVORTÉ / sinistré — décision de l'exploitation, il fausserait
+            // les moyennes. On le consulte en le filtrant explicitement.
+            $query->live()->where('status', '!=', \App\Models\Batch::STATUS_AVORTE);
         }
 
         $batches = $query->orderByDesc('arrival_date')->get();

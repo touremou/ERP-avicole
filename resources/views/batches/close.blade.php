@@ -230,6 +230,17 @@
                                 class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                         </div>
 
+                        {{-- NATURE DE LA CLÔTURE : cycle mené à terme, ou interrompu (sinistre).
+                             Un lot avorté garde ses coûts réels, mais sort des moyennes
+                             zootechniques (cf. Batch::STATUS_AVORTE). --}}
+                        <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-left">
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-2 block">{{ __("Nature de la clôture") }}</label>
+                            <select name="closure_kind" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                                <option value="normale" @selected(old('closure_kind', 'normale') === 'normale')>{{ __("Cycle mené à terme") }}</option>
+                                <option value="avorte" @selected(old('closure_kind') === 'avorte')>{{ __("Lot avorté / sinistré (arrêt prématuré)") }}</option>
+                            </select>
+                        </div>
+
                         {{-- BOUTONS --}}
                         <button type="submit" class="w-full bg-slate-900 text-white font-black py-8 rounded-[2rem] hover:bg-blue-600 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl border-none cursor-pointer">
                             <i class="fas fa-file-invoice-dollar mr-2"></i> Clôturer & Archiver

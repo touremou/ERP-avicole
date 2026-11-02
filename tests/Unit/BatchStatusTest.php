@@ -11,16 +11,21 @@ test('les valeurs des constantes de statut restent stables (valeurs stockées en
         ->and(Batch::STATUS_TERMINE)->toBe('Terminé')
         ->and(Batch::STATUS_CLOTURE)->toBe('Clôturé')
         ->and(Batch::STATUS_VENDU)->toBe('Vendu')
-        ->and(Batch::STATUS_ANNULE)->toBe('Annulé');
+        ->and(Batch::STATUS_ANNULE)->toBe('Annulé')
+        ->and(Batch::STATUS_SOLDE)->toBe('Soldé')
+        ->and(Batch::STATUS_AVORTE)->toBe('Avorté');
 });
 
-test('STATUS_ARCHIVED regroupe tous les statuts non actifs', function () {
+test('STATUS_ARCHIVED regroupe les statuts d’un lot fermé', function () {
+    // « Soldé » n'en est pas : effectif à zéro, mais clôture encore à prononcer.
     expect(Batch::STATUS_ARCHIVED)->toBe([
         Batch::STATUS_TERMINE,
+        Batch::STATUS_AVORTE,
         Batch::STATUS_CLOTURE,
         Batch::STATUS_VENDU,
         Batch::STATUS_ANNULE,
-    ])->not->toContain(Batch::STATUS_ACTIF);
+    ])->not->toContain(Batch::STATUS_ACTIF)
+        ->not->toContain(Batch::STATUS_SOLDE);
 });
 
 test('EDITABLE_STATUSES ne contient que des statuts connus', function () {

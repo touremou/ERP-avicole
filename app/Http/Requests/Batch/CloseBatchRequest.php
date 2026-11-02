@@ -22,6 +22,8 @@ class CloseBatchRequest extends FormRequest
             'additional_costs'          => 'nullable|numeric|min:0',
             'closing_date'              => 'required|date|before_or_equal:today',
             'observations'              => 'nullable|string|max:2000',
+            // Cycle mené à terme (Terminé) ou interrompu (Avorté / sinistré).
+            'closure_kind'              => 'nullable|in:normale,avorte',
         ];
     }
 

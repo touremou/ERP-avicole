@@ -187,7 +187,9 @@ class BatchController extends Controller
             abort(403, 'Accès restreint.');
         }
 
-        $query = Batch::with(['building', 'provider'])->archived();
+        // Les bilans de bande : un lot ANNULÉ (erreur de saisie) n'en a pas.
+        $query = Batch::with(['building', 'provider'])->archived()
+            ->where('status', '!=', Batch::STATUS_ANNULE);
 
         if ($request->filled('building_id')) {
             $request->validate(['building_id' => ['integer', \App\Support\Ferme::existe('buildings')]]);
