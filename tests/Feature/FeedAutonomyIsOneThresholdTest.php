@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Batch;
-use App\Models\ProductionType;
 use App\Models\Setting;
 use App\Models\Stock;
 use App\Services\BatchAdvisorService;
@@ -19,6 +18,9 @@ uses(TestCase::class, RefreshDatabase::class, AviSmartTestHelper::class);
  * matin tenaient le leur en dur (« critique » sous 3 jours, « attention » sous
  * 7). À 3 jours : critique ici, simple attention là ; et une ferme qui
  * relevait son seuil à 5 jours n'était entendue que par un écran.
+ *
+ * (Les ruminants suivent, eux, l'autonomie FOURRAGÈRE du troupeau, en matière
+ * sèche et à son propre seuil : RuminantForageAutonomyIsInDryMatterTest.)
  */
 
 beforeEach(function () {
@@ -29,15 +31,12 @@ beforeEach(function () {
     $this->seed(Database\Seeders\SpeciesSeeder::class);
     $this->seed(Database\Seeders\ProductionNormSeeder::class);
 
-    $type = ProductionType::where('slug', 'reproducteur')
-        ->whereHas('species', fn ($q) => $q->where('slug', 'mouton'))->firstOrFail();
-    $this->beliers = Batch::factory()->create([
+    $this->poulets = Batch::factory()->create([
         'farm_id' => $this->farm->id, 'building_id' => $this->building->id,
-        'production_type_id' => $type->id, 'type' => 'reproducteur', 'model_name' => 'Bélier Djallonké',
-        'arrival_date' => today()->subDays(3), 'birth_date' => today()->subYears(2),
-        'status' => 'Actif', 'initial_quantity' => 20, 'current_quantity' => 20,
+        'type' => 'chair', 'model_name' => 'Ross 308', 'arrival_date' => today()->subDays(10),
+        'status' => 'Actif', 'initial_quantity' => 500, 'current_quantity' => 500,
     ]);
-    $this->phase = $this->beliers->feedPhases()[0];
+    $this->phase = $this->poulets->feedPhases()[0];
 });
 
 /** Un stock de l'aliment du lot couvrant exactement $jours jours. */
@@ -51,9 +50,9 @@ function stockPourJours(Tests\TestCase $test, Batch $lot, string $aliment, int $
 }
 
 test('à 3 jours, avec le seuil par défaut, le lot est en autonomie CRITIQUE — comme au tableau de bord', function () {
-    stockPourJours($this, $this->beliers, $this->phase, $this->farm->id, 3);
+    stockPourJours($this, $this->poulets, $this->phase, $this->farm->id, 3);
 
-    $autonomie = app(BatchAdvisorService::class)->feedAutonomy($this->beliers);
+    $autonomie = app(BatchAdvisorService::class)->feedAutonomy($this->poulets);
     expect($autonomie['days'])->toBe(3)
         ->and($autonomie['is_critical'])->toBeTrue();
 });
@@ -65,8 +64,8 @@ test('le seuil réglé par la ferme vaut aussi pour le conseiller du lot', funct
         ->and(Stock::niveauAutonomie(9))->toBe('attention')
         ->and(Stock::niveauAutonomie(11))->toBeNull();
 
-    stockPourJours($this, $this->beliers, $this->phase, $this->farm->id, 4);
-    expect(app(BatchAdvisorService::class)->feedAutonomy($this->beliers)['is_critical'])->toBeTrue();
+    stockPourJours($this, $this->poulets, $this->phase, $this->farm->id, 4);
+    expect(app(BatchAdvisorService::class)->feedAutonomy($this->poulets)['is_critical'])->toBeTrue();
 });
 
 test('par défaut, « attention » commence toujours à 6 jours', function () {

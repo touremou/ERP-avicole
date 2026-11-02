@@ -280,6 +280,52 @@ class Stock extends Model
         return $jours <= $seuil ? 'critique' : ($jours <= 2 * $seuil ? 'attention' : null);
     }
 
+    /**
+     * AUTONOMIE FOURRAGÈRE DU TROUPEAU DE RUMINANTS — sa règle à elle.
+     *
+     * Décision de l'exploitation : un stock de foin, d'ensilage ou de
+     * concentré se pilote en semaines, pas en jours de silo. Alerte sous
+     * 15 jours par défaut (stocks.forage_autonomy_alert_days) :
+     *
+     *   critique  : moins que le seuil (« < 15 jours ») ;
+     *   attention : moins que deux fois le seuil (un mois par défaut).
+     *
+     * Lue par la fiche du lot, le tableau de bord et le dosage du matin
+     * (BatchAdvisorService::autonomieDuTroupeau).
+     */
+    public static function seuilAutonomieFourragere(): int
+    {
+        return max(1, (int) setting('stocks.forage_autonomy_alert_days', 15));
+    }
+
+    public static function niveauAutonomieFourragere(int $jours): ?string
+    {
+        $seuil = self::seuilAutonomieFourragere();
+
+        return $jours < $seuil ? 'critique' : ($jours < 2 * $seuil ? 'attention' : null);
+    }
+
+    /**
+     * Teneur en MATIÈRE SÈCHE de l'aliment, en % (metadata.dry_matter_pct) :
+     * foin ~85 %, ensilage ~35 %, concentré ~88 %, fourrage vert ~20 %. Null
+     * tant que la ferme ne l'a pas renseignée.
+     */
+    public function teneurMatiereSeche(): ?float
+    {
+        $pct = $this->metadata['dry_matter_pct'] ?? null;
+
+        return is_numeric($pct) && (float) $pct > 0 ? min(100.0, (float) $pct) : null;
+    }
+
+    /**
+     * Le stock exprimé en kg de MS. Sans teneur renseignée, l'article compte
+     * à son poids brut — comme avant — et l'autonomie le signale.
+     */
+    public function stockEnMatiereSecheKg(): float
+    {
+        return (float) $this->current_quantity * ($this->teneurMatiereSeche() ?? 100.0) / 100;
+    }
+
     public function getIsLowAttribute(): bool
     {
         if ((float) $this->alert_threshold <= 0) {

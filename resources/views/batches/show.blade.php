@@ -608,11 +608,20 @@
                         $autonomyColor = $feedAutonomy['is_critical'] ? 'rose' : ($feedAutonomy['is_warning'] ? 'amber' : 'slate');
                     @endphp
                     <div class="bg-{{ $autonomyColor }}-50 border border-{{ $autonomyColor }}-100 rounded-[1.5rem] p-4 text-center col-span-2 md:col-span-1">
-                        <p class="text-[8px] font-black text-{{ $autonomyColor }}-400 uppercase tracking-widest italic mb-1">{{ __("Autonomie stock") }}</p>
+                        <p class="text-[8px] font-black text-{{ $autonomyColor }}-400 uppercase tracking-widest italic mb-1">{{ !empty($feedAutonomy['troupeau']) ? __("Autonomie du troupeau") : __("Autonomie stock") }}</p>
                         <h4 class="text-2xl font-black text-{{ $autonomyColor }}-600 tracking-tighter italic">
                             {{ $feedAutonomy['days'] }}<small class="text-[10px] ml-1 opacity-60">j</small>
                         </h4>
-                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAutonomy['stock_kg'], 0) }} kg dispo</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAutonomy['stock_kg'], 0) }} {{ $feedAutonomy['unite'] ?? 'kg' }} dispo</p>
+                        @if(!empty($feedAutonomy['troupeau']))
+                            <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ __('Rupture prévue le :date', ['date' => $feedAutonomy['rupture_le']->format('d/m/Y')]) }}</p>
+                            @if(!empty($feedAutonomy['sans_teneur_ms']))
+                                <p class="text-[8px] font-black text-amber-500 uppercase mt-1" title="{{ implode(', ', $feedAutonomy['sans_teneur_ms']) }}">{{ __('Teneur en MS à renseigner : :n aliment(s), comptés bruts', ['n' => count($feedAutonomy['sans_teneur_ms'])]) }}</p>
+                            @endif
+                            @if(!empty($feedAutonomy['lots_sans_bareme']))
+                                <p class="text-[8px] font-black text-amber-500 uppercase mt-1">{{ __('Sans barème, hors du besoin : :lots', ['lots' => implode(', ', $feedAutonomy['lots_sans_bareme'])]) }}</p>
+                            @endif
+                        @endif
                     </div>
                     @endif
                 </div>

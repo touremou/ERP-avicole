@@ -159,10 +159,23 @@ class DashboardController extends Controller
             ? Stock::where('category', Stock::CAT_CONSO)->get()->filter->isFeed()
             : collect();
 
+        // Ruminants : l'autonomie FOURRAGÈRE DU TROUPEAU, en matière sèche, au
+        // seuil fourrager (BatchAdvisorService::autonomieDuTroupeau) — celle de
+        // la fiche du lot. Les aliments qu'elle compte ne sont pas rejugés
+        // ci-dessous en jours de silo : un même foin ne reçoit qu'un verdict.
+        $autonomieFourragere = $canLogistique
+            ? app(\App\Services\BatchAdvisorService::class)->autonomieDuTroupeau()
+            : null;
+        $alimentsDuTroupeau = $autonomieFourragere['stock_ids'] ?? [];
+
         foreach ($silos as $silo) {
             // Silo vide → épuisé.
             if ($silo->current_quantity <= 0) {
                 $criticalTypes[] = ['type' => $silo->item_name, 'days' => 0];
+                continue;
+            }
+
+            if (in_array($silo->id, $alimentsDuTroupeau, true)) {
                 continue;
             }
 
@@ -505,7 +518,8 @@ class DashboardController extends Controller
         // par criticité (critique > attention > info), avec lien d'action.
         $priorityAlerts = $this->buildPriorityAlerts(
             $emergencyBatches, $underperformingBatches, $waterAlerts,
-            $criticalTypes, $lowStocks, $vaccineAlerts, $welfareAlerts, $sanitaryAlertsCount
+            $criticalTypes, $lowStocks, $vaccineAlerts, $welfareAlerts, $sanitaryAlertsCount,
+            $autonomieFourragere
         );
 
         return view('dashboard', compact(
@@ -516,7 +530,7 @@ class DashboardController extends Controller
             'lowStocks', 'expiringStocks', 'vaccineAlerts', 'welfareAlerts', 'criticalDaysThreshold',
             'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
             'familyBreakdown', 'showEggKpis', 'activeLotsCount',
-            'occupiedBuildingsCount', 'totalBuildingsCount'
+            'occupiedBuildingsCount', 'totalBuildingsCount', 'autonomieFourragere'
         ));
     }
 
@@ -563,7 +577,8 @@ class DashboardController extends Controller
      */
     private function buildPriorityAlerts(
         $emergencyBatches, $underperformingBatches, $waterAlerts,
-        array $criticalTypes, $lowStocks, $vaccineAlerts, $welfareAlerts, int $sanitaryAlertsCount
+        array $criticalTypes, $lowStocks, $vaccineAlerts, $welfareAlerts, int $sanitaryAlertsCount,
+        ?array $autonomieFourragere = null
     ) {
         $rank = ['critique' => 0, 'attention' => 1, 'info' => 2];
         $out = collect();
@@ -661,6 +676,18 @@ class DashboardController extends Controller
                 'level' => $c['days'] <= 0 ? 'critique' : 'attention', 'icon' => 'fa-wheat-awn',
                 'title' => 'Autonomie aliment', 'detail' => $detail,
                 'url' => route('stocks.index'),
+            ]);
+        }
+
+        // Autonomie fourragère du troupeau de ruminants (kg MS).
+        if (($autonomieFourragere['niveau'] ?? null) !== null) {
+            $a = $autonomieFourragere;
+            $out->push([
+                'level' => $a['niveau'], 'icon' => 'fa-cow',
+                'title' => 'Autonomie fourragère',
+                'detail' => "Troupeau de ruminants — {$a['days']} j ({$a['stock_kg']} kg MS pour {$a['daily_kg']} kg MS/j),"
+                    . ' rupture prévue le ' . $a['rupture_le']->format('d/m/Y') . " (seuil : {$a['seuil']} j).",
+                'url' => route('stocks.index', ['category' => 'conso']),
             ]);
         }
 

@@ -5117,5 +5117,15 @@
     "Morts à la livraison (contrat)": "Dead on arrival (contract)",
     "A — Avoir fournisseur : coût sur les vivants": "A — Supplier credit note: cost on live birds",
     "B — Facture entière : coût absorbé par les vivants": "B — Full invoice: cost absorbed by live birds",
-    "C — Charge « Pertes au transport »": "C — “Transport losses” expense"
+    "C — Charge « Pertes au transport »": "C — “Transport losses” expense",
+    "Autonomie du troupeau": "Herd autonomy",
+    "Rupture prévue le :date": "Stock-out expected on :date",
+    "Teneur en MS à renseigner : :n aliment(s), comptés bruts": "Dry matter content missing: :n feed(s), counted as fed",
+    "Sans barème, hors du besoin : :lots": "No norms, left out of the need: :lots",
+    "Troupeau de ruminants": "Ruminant herd",
+    "kg MS pour": "kg DM for",
+    "kg MS/j": "kg DM/day",
+    "Teneur en matière sèche (%)": "Dry matter content (%)",
+    "Foin ~85 · ensilage ~35 · concentré ~88": "Hay ~85 · silage ~35 · concentrate ~88",
+    "Sert à l'autonomie fourragère du troupeau de ruminants, calculée en kg de matière sèche.": "Used for the ruminant herd's forage autonomy, computed in kg of dry matter."
 }

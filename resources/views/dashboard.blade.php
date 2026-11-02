@@ -140,6 +140,27 @@
                             <span class="text-[8px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-black uppercase">{{ __("Seuil") }} : {{ $criticalDaysThreshold ?? 3 }} {{ __("jours") }}</span>
                         </div>
                         
+                        {{-- Ruminants : autonomie du troupeau en matière sèche, à son seuil fourrager. --}}
+                        @if(($autonomieFourragere['niveau'] ?? null) !== null)
+                            <a href="{{ route('stocks.index', ['category' => 'conso']) }}" @class([
+                                'flex items-center justify-between p-4 mb-3 rounded-2xl border no-underline',
+                                'bg-rose-50 border-rose-200 text-rose-900' => $autonomieFourragere['niveau'] === 'critique',
+                                'bg-amber-50 border-amber-200 text-amber-900' => $autonomieFourragere['niveau'] !== 'critique',
+                            ])>
+                                <div>
+                                    <h5 class="text-[11px] font-black uppercase leading-none">{{ __("Troupeau de ruminants") }}</h5>
+                                    <p class="text-[9px] opacity-70 uppercase font-black mt-1">
+                                        {{ number_format($autonomieFourragere['stock_kg'], 0, ',', ' ') }} {{ __("kg MS pour") }} {{ number_format($autonomieFourragere['daily_kg'], 1, ',', ' ') }} {{ __("kg MS/j") }}
+                                        · {{ __('Rupture prévue le :date', ['date' => $autonomieFourragere['rupture_le']->format('d/m/Y')]) }}
+                                    </p>
+                                </div>
+                                <p class="text-xs font-black uppercase tracking-tight leading-none text-right">
+                                    {{ $autonomieFourragere['days'] }} {{ __('Jours') }}
+                                    <span class="block text-[8px] opacity-60 mt-1">{{ __("Seuil") }} : {{ $autonomieFourragere['seuil'] }} {{ __("jours") }}</span>
+                                </p>
+                            </a>
+                        @endif
+
                         @if(count($criticalTypes ?? []) > 0)
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 @foreach($criticalTypes as $alert)
@@ -185,7 +206,7 @@
                                     </a>
                                 @endforeach
                             </div>
-                        @else
+                        @elseif(($autonomieFourragere['niveau'] ?? null) === null)
                             <div class="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center gap-2">
                                 <i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>
                                 <p class="text-[9px] text-slate-500 uppercase tracking-wider">{{ __("Tous les silos disposent d'une autonomie supérieure au seuil.") }}</p>

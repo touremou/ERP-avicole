@@ -142,21 +142,24 @@ class BatchAdvisorService
         // 1b. Stock aliment — autonomie.
         $autonomy = $this->feedAutonomy($batch);
         if ($autonomy !== null) {
+            // Ruminants : l'autonomie du TROUPEAU, en kg de matière sèche.
+            $unite = $autonomy['unite'] ?? 'kg';
+            $qui   = ! empty($autonomy['troupeau']) ? ' du troupeau' : '';
             if ($autonomy['is_critical']) {
                 $out[] = [
                     'severity' => 'critique',
                     'icon'     => 'fa-box-open',
                     'title'    => 'Stock aliment critique',
-                    'message'  => "Autonomie estimée : {$autonomy['days']} jour(s) ({$autonomy['stock_kg']} kg"
-                        . " disponibles pour {$autonomy['daily_kg']} kg/j recommandés). Commander immédiatement.",
+                    'message'  => "Autonomie estimée{$qui} : {$autonomy['days']} jour(s) ({$autonomy['stock_kg']} {$unite}"
+                        . " disponibles pour {$autonomy['daily_kg']} {$unite}/j recommandés). Commander immédiatement.",
                 ];
             } elseif ($autonomy['is_warning']) {
                 $out[] = [
                     'severity' => 'attention',
                     'icon'     => 'fa-boxes-stacked',
                     'title'    => 'Stock aliment faible',
-                    'message'  => "Autonomie estimée : {$autonomy['days']} jour(s) ({$autonomy['stock_kg']} kg"
-                        . " disponibles pour {$autonomy['daily_kg']} kg/j). Planifier une commande cette semaine.",
+                    'message'  => "Autonomie estimée{$qui} : {$autonomy['days']} jour(s) ({$autonomy['stock_kg']} {$unite}"
+                        . " disponibles pour {$autonomy['daily_kg']} {$unite}/j). Planifier une commande cette semaine.",
                 ];
             }
         }
@@ -449,6 +452,12 @@ class BatchAdvisorService
      */
     public function feedAutonomy(Batch $batch): ?array
     {
+        // Un ruminant mange au râtelier du TROUPEAU : son autonomie est celle
+        // du troupeau, en matière sèche (cf. autonomieDuTroupeau).
+        if ($batch->isRuminant()) {
+            return $this->autonomieDuTroupeau();
+        }
+
         $reco = $this->recommendation($batch);
         if ($reco === null || $reco['total']['feed_kg'] <= 0) {
             return null;
@@ -498,6 +507,124 @@ class BatchAdvisorService
             'is_critical' => Stock::niveauAutonomie($days) === 'critique',
             'is_warning' => Stock::niveauAutonomie($days) !== null,
             'item_names' => $matched->pluck('item_name')->join(', '),
+        ];
+    }
+
+    /** @var array<int|string, array|null> Une ferme, un calcul par requête. */
+    private array $troupeau = [];
+
+    /**
+     * AUTONOMIE FOURRAGÈRE DU TROUPEAU DE RUMINANTS, EN MATIÈRE SÈCHE.
+     *
+     * Décision de l'exploitation :
+     *
+     *   Autonomie (jours) = stock utile total (kg MS)
+     *                       ÷ consommation journalière du troupeau (kg MS/j)
+     *
+     * Ce qui se mesurait avant, par bande : le stock en kg BRUTS divisé par la
+     * ration de CETTE bande, exprimée — elle — en kg de MS (normes ovines,
+     * caprines et bovines, cf. 2026_10_13_000004). Deux erreurs dans le même
+     * sens : un ensilage à 35 % de MS comptait près de trois fois ses jours,
+     * et chaque bande se croyait seule devant un stock que tout le troupeau
+     * mange — trois bandes égales, trois fois l'autonomie réelle.
+     *
+     *   • Troupeau : toutes les bandes actives de ruminants de la ferme.
+     *   • Besoin : la ration du barème (g MS/tête/j, âge et chaleur du jour) ×
+     *     l'effectif, bande par bande (recommendation()).
+     *   • Stock utile : les aliments que le troupeau peut manger (la règle du
+     *     pointage, Batch::accepteAliment, et pas un aliment d'un secteur
+     *     volaille), convertis en MS par leur teneur (Stock::teneurMatiereSeche).
+     *
+     * Ce qui manque est DIT, pas deviné : aliments sans teneur en MS (comptés
+     * bruts), bandes sans barème (hors du besoin).
+     *
+     * @return array{stock_kg: float, stock_brut_kg: float, daily_kg: float, days: int,
+     *   rupture_le: \Illuminate\Support\Carbon, niveau: ?string, seuil: int,
+     *   is_critical: bool, is_warning: bool, item_names: string, unite: string,
+     *   troupeau: bool, lots: array<int, string>, lots_sans_bareme: array<int, string>,
+     *   sans_teneur_ms: array<int, string>}|null
+     */
+    public function autonomieDuTroupeau(): ?array
+    {
+        $ferme = session('current_farm_id') ?: 'toutes';
+        if (array_key_exists($ferme, $this->troupeau)) {
+            return $this->troupeau[$ferme];
+        }
+
+        return $this->troupeau[$ferme] = $this->calculerAutonomieDuTroupeau();
+    }
+
+    private function calculerAutonomieDuTroupeau(): ?array
+    {
+        $lots = Batch::active()->live()->with(['species', 'productionType'])->get()
+            ->filter(fn (Batch $lot) => $lot->isRuminant() && (int) $lot->current_quantity > 0)
+            ->values();
+
+        if ($lots->isEmpty()) {
+            return null;
+        }
+
+        $besoin = 0.0;
+        $sansBareme = [];
+        foreach ($lots as $lot) {
+            $kg = (float) ($this->recommendation($lot)['total']['feed_kg'] ?? 0);
+            $kg > 0 ? $besoin += $kg : $sansBareme[] = $lot->code;
+        }
+
+        if ($besoin <= 0) {
+            return null;
+        }
+
+        $secteurs = $lots->map->feedSector()->unique();
+        $secteursConnus = array_keys(Batch::FEED_PHASES);
+
+        $aliments = Stock::where('category', Stock::CAT_CONSO)
+            ->where('unit', 'KG')
+            ->where('current_quantity', '>', 0)
+            ->get()
+            ->filter(function (Stock $stock) use ($lots, $secteurs, $secteursConnus) {
+                if (! $stock->isFeed()) {
+                    return false;
+                }
+
+                // Un aliment rangé dans un autre secteur (Chair, Ponte…) n'est
+                // pas au râtelier, même sous un nom libre.
+                $secteur = collect($secteursConnus)
+                    ->first(fn ($s) => strcasecmp($s, (string) ($stock->metadata['poultry_type'] ?? '')) === 0);
+                if ($secteur !== null && ! $secteurs->contains($secteur)) {
+                    return false;
+                }
+
+                return $lots->contains(fn (Batch $lot) => $lot->accepteAliment($stock->feed_type ?? $stock->item_name));
+            })
+            ->values();
+
+        if ($aliments->isEmpty()) {
+            return null;
+        }
+
+        $stockMs = (float) $aliments->sum(fn (Stock $s) => $s->stockEnMatiereSecheKg());
+        $jours   = (int) floor($stockMs / $besoin);
+        $niveau  = Stock::niveauAutonomieFourragere($jours);
+
+        return [
+            'stock_kg'         => round($stockMs, 1),
+            'stock_brut_kg'    => round((float) $aliments->sum('current_quantity'), 1),
+            'daily_kg'         => round($besoin, 1),
+            'days'             => $jours,
+            'rupture_le'       => today()->addDays($jours),
+            'niveau'           => $niveau,
+            'seuil'            => Stock::seuilAutonomieFourragere(),
+            'is_critical'      => $niveau === 'critique',
+            'is_warning'       => $niveau !== null,
+            'item_names'       => $aliments->pluck('item_name')->join(', '),
+            'stock_ids'        => $aliments->pluck('id')->all(),
+            'unite'            => 'kg MS',
+            'troupeau'         => true,
+            'lots'             => $lots->pluck('code')->all(),
+            'lots_sans_bareme' => $sansBareme,
+            'sans_teneur_ms'   => $aliments->filter(fn (Stock $s) => $s->teneurMatiereSeche() === null)
+                ->pluck('item_name')->values()->all(),
         ];
     }
 
