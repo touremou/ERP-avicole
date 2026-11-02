@@ -111,6 +111,8 @@ export const en: Record<string, string> = {
   'Client comptoir': 'Walk-in customer',
   'Soldé': 'Paid',
   'lot soldé': 'sold out',
+  'Lot soldé (effectif à zéro) : plus d’événement d’élevage. La clôture définitive se fait au bureau.': 'Sold-out batch (zero headcount): no more farming events. Final closing is done at the office.',
+  'Lot clôturé : consultation seule.': 'Closed batch: view only.',
   'Partiel': 'Partial',
   'Impayé': 'Unpaid',
   // Tableau de bord — KPIs par rôle

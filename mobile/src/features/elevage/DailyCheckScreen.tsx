@@ -14,6 +14,7 @@ import { NumberStepper } from '../../ui/NumberStepper'
 import { VoiceDictation } from '../../ui/VoiceDictation'
 import { t, dateLocale } from '../../i18n'
 import type { RefBatch, RefStock } from '../../api/types'
+import { motifSansEvenement } from '../../offline/statutsDeLot'
 
 export function DailyCheckScreen() {
   const { batchId } = useParams()
@@ -113,6 +114,17 @@ export function DailyCheckScreen() {
     return (
       <div className="screen">
         <p className="muted">{t("Lot introuvable en local — synchronisez d'abord.")}</p>
+      </div>
+    )
+  }
+
+  // Lot soldé ou clôturé : la saisie serait refusée à la synchronisation
+  // (Batch::refusDeSaisie) — on le dit avant (cf. offline/statutsDeLot).
+  const motifFerme = motifSansEvenement(batch.status)
+  if (motifFerme) {
+    return (
+      <div className="screen">
+        <p className="muted">{t(motifFerme)}</p>
       </div>
     )
   }

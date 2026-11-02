@@ -11,6 +11,7 @@ import { lastPayloadOf } from '../../offline/prefill'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t, dateLocale } from '../../i18n'
 import type { RefBatch } from '../../api/types'
+import { motifSansEvenement } from '../../offline/statutsDeLot'
 
 export function EggCollectionScreen() {
   const { batchId } = useParams()
@@ -63,6 +64,17 @@ export function EggCollectionScreen() {
     return (
       <div className="screen">
         <p className="muted">{t("Lot introuvable en local — synchronisez d'abord.")}</p>
+      </div>
+    )
+  }
+
+  // Lot soldé ou clôturé : la saisie serait refusée à la synchronisation
+  // (Batch::refusDeSaisie) — on le dit avant (cf. offline/statutsDeLot).
+  const motifFerme = motifSansEvenement(batch.status)
+  if (motifFerme) {
+    return (
+      <div className="screen">
+        <p className="muted">{t(motifFerme)}</p>
       </div>
     )
   }
