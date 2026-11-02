@@ -332,6 +332,9 @@ class ReportController extends Controller
              */
             $liveIds = Batch::live()->whereIn('id', $batchIds)->pluck('id');
             $cost = (float) Batch::whereIn('id', $liveIds)->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
+            // Morts à la livraison, règle C : la ligne « Pertes au transport » du
+            // compte de résultat, ventilée sur l'espèce de la bande.
+            $cost += (float) Batch::whereIn('id', $liveIds)->whereBetween('arrival_date', [$from, $to])->sum('transport_loss_cost');
             $cost += \App\Services\Accounting\PeriodCharges::feedConsumedCost($from, $to, $batchIds);
             // Les achats directs hors aliment (santé — compté à l'achat —,
             // hygiène, litière, matériel), à leur date : la règle du total.

@@ -97,9 +97,15 @@ class UpdateBatch
             }
 
             // Coût d'acquisition (si le prix unitaire change)
+            // Même règle des morts à la livraison qu'à la mise en lot, celle
+            // figée sur le lot (App\Support\MortsALaLivraison).
             if (isset($payload['buy_price_per_unit'])) {
-                $payload['total_acquisition_cost'] =
-                    $batch->initial_quantity * (float) $payload['buy_price_per_unit'];
+                $couts = \App\Support\MortsALaLivraison::couts(
+                    (int) $batch->initial_quantity, (int) $batch->qty_dead,
+                    (float) $payload['buy_price_per_unit'], $batch->doa_policy,
+                );
+                $payload['total_acquisition_cost'] = $couts['acquisition'];
+                $payload['transport_loss_cost']    = $couts['perte'];
             }
 
             // Mapping protocole

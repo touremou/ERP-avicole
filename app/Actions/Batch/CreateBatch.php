@@ -57,6 +57,13 @@ class CreateBatch
             $totalOrdered = $qtyAlive + $qtyDead; // Total commandé (vivants reçus + morts transport)
             $price = (float) ($data['buy_price_per_unit'] ?? 0);
 
+            // Morts à la livraison : la règle du CONTRAT du fournisseur, figée
+            // sur le lot (App\Support\MortsALaLivraison).
+            $politiqueDoa = \App\Support\MortsALaLivraison::politiqueDe(
+                ! empty($data['provider_id']) ? \App\Models\Provider::find($data['provider_id']) : null
+            );
+            $coutsArrivee = \App\Support\MortsALaLivraison::couts($qtyAlive, $qtyDead, $price, $politiqueDoa);
+
             // ─── Résolution du type de production (source de vérité) ───
             // `type` n'est plus une colonne : le slug soumis par le formulaire
             // est traduit en production_type_id (créé si besoin). Le champ
@@ -103,7 +110,9 @@ class CreateBatch
 
                 // Financier
                 'buy_price_per_unit'     => $price,
-                'total_acquisition_cost' => $qtyAlive * $price,
+                'total_acquisition_cost' => $coutsArrivee['acquisition'],
+                'transport_loss_cost'    => $coutsArrivee['perte'],
+                'doa_policy'             => $politiqueDoa,
                 'arrival_mortality_rate' => $totalOrdered > 0
                     ? round(($qtyDead / $totalOrdered) * 100, 2)
                     : 0,

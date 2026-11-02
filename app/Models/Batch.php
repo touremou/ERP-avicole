@@ -194,7 +194,7 @@ class Batch extends Model
         'transfer_date', 'closing_date',
 
         // Financier
-        'buy_price_per_unit', 'total_acquisition_cost',
+        'buy_price_per_unit', 'total_acquisition_cost', 'doa_policy', 'transport_loss_cost',
         'actual_sell_price_per_unit', 'total_revenue',
         'margin', 'additional_costs',
 
@@ -228,6 +228,7 @@ class Batch extends Model
         'transfer_date' => 'date',
         'buy_price_per_unit' => 'decimal:2',
         'total_acquisition_cost' => 'decimal:2',
+        'transport_loss_cost'    => 'decimal:2',
         'actual_sell_price_per_unit' => 'decimal:2',
         'total_revenue' => 'decimal:2',
         'additional_costs' => 'decimal:2',

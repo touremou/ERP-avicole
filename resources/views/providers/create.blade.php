@@ -108,6 +108,16 @@
                             </div>
 
                             <div>
+                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 italic tracking-widest">{{ __("Morts à la livraison (contrat)") }}</label>
+                                <select name="doa_policy" class="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border-2 border-transparent focus:border-green-500 shadow-inner italic">
+                                    @foreach(\App\Support\MortsALaLivraison::POLITIQUES as $code => $libelle)
+                                        <option value="{{ $code }}" @selected(old('doa_policy', 'avoir') === $code)>{{ __($libelle) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+
+                            <div>
                                 <label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 italic tracking-widest">{{ __("Indice de Fiabilité") }}</label>
                                 <select name="reliability" class="w-full p-4 bg-slate-50 rounded-2xl font-black outline-none border-2 border-transparent focus:border-green-500 shadow-inner appearance-none italic cursor-pointer">
                                     <option value="Bon" @selected(old('reliability') == 'Bon')>{{ __("🌟 Établissement de confiance (A+)") }}</option>

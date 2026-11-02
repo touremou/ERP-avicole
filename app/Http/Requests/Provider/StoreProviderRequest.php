@@ -25,6 +25,8 @@ class StoreProviderRequest extends FormRequest
             'rccm'          => 'nullable|string|max:100',
             'nif'           => 'nullable|string|max:100',
             'payment_terms' => 'nullable|string|max:255',
+            // Morts à la livraison : la règle du contrat (App\Support\MortsALaLivraison).
+            'doa_policy'    => 'nullable|in:' . implode(',', array_keys(\App\Support\MortsALaLivraison::POLITIQUES)),
             'reliability'   => 'nullable|in:Bon,Moyen,Mauvais',
         ];
     }
