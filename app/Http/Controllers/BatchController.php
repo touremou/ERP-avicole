@@ -357,6 +357,19 @@ class BatchController extends Controller
         $feedAutonomy    = $advisor->feedAutonomy($batch);
         $weightCurve     = $advisor->weightCurve($batch);
 
+        // Référentiel reproducteurs : le réel contre le guide de souche, semaine
+        // par semaine ; alerte si la ponte HD passe sous la courbe.
+        $referentiel = app(\App\Services\ReferentielReproducteur::class)->comparer($batch);
+        if ($alerte = $referentiel['alerte'] ?? null) {
+            $batchAdvisories[] = [
+                'severity' => 'critique',
+                'icon'     => 'fa-chart-line',
+                'title'    => 'Ponte sous le référentiel',
+                'message'  => "Semaine {$alerte['semaine']} : ponte HD {$alerte['reel']} % pour {$alerte['guide']} % au guide"
+                    . " ({$alerte['ecart']} points sous la courbe). Vérifier lumière, aliment, eau, état sanitaire et poids des femelles.",
+            ];
+        }
+
         // Souches disponibles pour le modal de mutation (graduation de phase).
         $normModels = ProductionNorm::forSpecies($batch->species_id)
             ->select('model_name', 'batch_type')
@@ -397,7 +410,7 @@ class BatchController extends Controller
          */
         $treasuryAccounts = \App\Models\TreasuryAccount::active()->orderBy('name')->get(['id', 'name']);
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve', 'feedStocks', 'treasuryAccounts'));
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve', 'feedStocks', 'treasuryAccounts', 'referentiel'));
     }
 
     /**

@@ -10,6 +10,7 @@ import { db } from '../../offline/db'
 import { t } from '../../i18n'
 import type { RefBatch, RefBuilding, RefProductionType } from '../../api/types'
 import { BatchHistory } from './BatchHistory'
+import { accepteEvenementDElevage, motifSansEvenement } from '../../offline/statutsDeLot'
 
 export function BatchScreen() {
   const { batchId } = useParams()
@@ -42,6 +43,11 @@ export function BatchScreen() {
   // Éligibilité collecte : booléen calculé serveur (âge/phase de ponte selon
   // la souche) ; repli sur le slug 'ponte' si le serveur ne l'a pas fourni.
   const canCollect = batch.can_collect_eggs ?? productionType?.slug === 'ponte'
+
+  // Les actions d'élevage, sur un lot ACTIF seulement — la règle de la fiche du
+  // bureau (cf. offline/statutsDeLot).
+  const ouvert = accepteEvenementDElevage(batch.status)
+  const motifFerme = motifSansEvenement(batch.status)
 
   /*
    * L'âge se compte depuis la NAISSANCE, pas depuis la réception — un lot
@@ -84,32 +90,38 @@ export function BatchScreen() {
         </div>
       </div>
 
-      {can('elevage', 'C') && (
-        <Link to={`/elevage/pointage/${batch.id}`} className="task-card">
-          <span className="task-title">📋 {t('Pointage du jour')}</span>
-          <span className="task-meta">{t('mortalité · aliment')}</span>
-        </Link>
-      )}
+      {motifFerme && <p className="muted">{t(motifFerme)}</p>}
 
-      {canCollect && can('production', 'C') && (
-        <Link to={`/elevage/collecte/${batch.id}`} className="task-card">
-          <span className="task-title">🥚 {t("Collecte d'œufs")}</span>
-          <span className="task-meta">{t('par passage')}</span>
-        </Link>
-      )}
+      {ouvert && (
+        <>
+          {can('elevage', 'C') && (
+            <Link to={`/elevage/pointage/${batch.id}`} className="task-card">
+              <span className="task-title">📋 {t('Pointage du jour')}</span>
+              <span className="task-meta">{t('mortalité · aliment')}</span>
+            </Link>
+          )}
 
-      {can('elevage', 'C') && (
-        <Link to={`/elevage/incident/${batch.id}`} className="task-card">
-          <span className="task-title">🩺 {t('Déclarer un incident')}</span>
-          <span className="task-meta">{t('symptômes · photo')}</span>
-        </Link>
-      )}
+          {canCollect && can('production', 'C') && (
+            <Link to={`/elevage/collecte/${batch.id}`} className="task-card">
+              <span className="task-title">🥚 {t("Collecte d'œufs")}</span>
+              <span className="task-meta">{t('par passage')}</span>
+            </Link>
+          )}
 
-      {can('elevage', 'C') && (
-        <Link to={`/elevage/soin/${batch.id}`} className="task-card">
-          <span className="task-title">💉 {t('Soin / vaccination')}</span>
-          <span className="task-meta">{t('produit · dose · délai d’attente')}</span>
-        </Link>
+          {can('elevage', 'C') && (
+            <Link to={`/elevage/incident/${batch.id}`} className="task-card">
+              <span className="task-title">🩺 {t('Déclarer un incident')}</span>
+              <span className="task-meta">{t('symptômes · photo')}</span>
+            </Link>
+          )}
+
+          {can('elevage', 'C') && (
+            <Link to={`/elevage/soin/${batch.id}`} className="task-card">
+              <span className="task-title">💉 {t('Soin / vaccination')}</span>
+              <span className="task-meta">{t('produit · dose · délai d’attente')}</span>
+            </Link>
+          )}
+        </>
       )}
 
       {/* Consultation enrichie : indicateurs + courbe de poids + historique. */}

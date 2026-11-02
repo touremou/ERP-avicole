@@ -29,6 +29,25 @@ class ProductionNorm extends Model
         'uniformity_target',
         'light_hours', 'light_lux_min', 'light_lux_max',
         'temp_min_c', 'temp_max_c',
+
+        // Référentiel reproducteurs (guide de souche, cf. 2026_11_02_000004).
+        'target_weight_male', 'target_weight_female',
+        'target_hatching_egg_rate', 'target_fertility_rate', 'target_hatchability_rate',
+        'target_mortality_weekly',
+    ];
+
+    /**
+     * Les colonnes du RÉFÉRENTIEL REPRODUCTEURS, clé de la cible => colonne.
+     * Une souche en porte au moins une : sa bande est comparée « réel vs
+     * référentiel » (App\Services\ReferentielReproducteur).
+     */
+    public const CIBLES_REPRODUCTEUR = [
+        'weight_male'   => 'target_weight_male',
+        'weight_female' => 'target_weight_female',
+        'hatching_eggs' => 'target_hatching_egg_rate',
+        'fertility'     => 'target_fertility_rate',
+        'hatchability'  => 'target_hatchability_rate',
+        'mortality'     => 'target_mortality_weekly',
     ];
 
     /**
@@ -203,7 +222,7 @@ class ProductionNorm extends Model
         $span = $upper->week_number - $lower->week_number;
         $t = $span > 0 ? ($week - $lower->week_number) / $span : 0;
 
-        return [
+        $cibles = [
             'weight' => static::lerp($lower->target_weight, $upper->target_weight, $t),
             'feed'   => static::lerp($lower->target_feed_daily, $upper->target_feed_daily, $t),
             'water'  => static::lerp($lower->target_water_daily, $upper->target_water_daily, $t),
@@ -211,18 +230,68 @@ class ProductionNorm extends Model
             // Phase = celle du palier dont on est le plus proche.
             'phase'  => $t < 0.5 ? $lower->phase_name : $upper->phase_name,
         ];
+
+        foreach (self::CIBLES_REPRODUCTEUR as $cle => $colonne) {
+            $cibles[$cle] = static::lerp($lower->{$colonne}, $upper->{$colonne}, $t);
+        }
+
+        return $cibles;
     }
 
     /** @return array{weight: ?float, feed: ?float, water: ?float, laying: ?float, phase: ?string} */
     private static function paquet(self $row): array
     {
-        return [
+        $cibles = [
             'weight' => $row->target_weight !== null ? (float) $row->target_weight : null,
             'feed'   => $row->target_feed_daily !== null ? (float) $row->target_feed_daily : null,
             'water'  => $row->target_water_daily !== null ? (float) $row->target_water_daily : null,
             'laying' => $row->target_laying_rate !== null ? (float) $row->target_laying_rate : null,
             'phase'  => $row->phase_name,
         ];
+
+        foreach (self::CIBLES_REPRODUCTEUR as $cle => $colonne) {
+            $cibles[$cle] = $row->{$colonne} !== null ? (float) $row->{$colonne} : null;
+        }
+
+        return $cibles;
+    }
+
+    /**
+     * LA COURBE PORTE-T-ELLE UN RÉFÉRENTIEL REPRODUCTEUR ? Au moins une valeur
+     * du guide (poids M/F, incubables, fertilité, éclosion, mortalité).
+     */
+    public static function estReferentielReproducteur(\Illuminate\Support\Collection $courbe): bool
+    {
+        return $courbe->contains(fn (self $row) => collect(self::CIBLES_REPRODUCTEUR)
+            ->contains(fn (string $colonne) => $row->{$colonne} !== null));
+    }
+
+    /**
+     * ÉCART DE PONTE À LA COURBE — une règle, lue par la fiche du lot
+     * (ReferentielReproducteur) et l'analyse des œufs du matin.
+     *
+     *   • bande suivie sur un RÉFÉRENTIEL REPRODUCTEUR : alerte dès que la
+     *     ponte HD passe sous la courbe de 5 points (décision de l'exploitation,
+     *     elevage.breeder_laying_gap_points) — 60 % au lieu de 65 % ;
+     *   • autres bandes : la règle de l'analyse, ponte sous 85 % de la norme.
+     */
+    public static function ponteSousLaCourbe(Batch $batch, float $hdp, float $cible): bool
+    {
+        if ($cible <= 0) {
+            return false;
+        }
+
+        if (static::estReferentielReproducteur(static::courbePour($batch))) {
+            return $hdp < $cible - static::ecartDePonteTolere();
+        }
+
+        return $hdp < $cible * 0.85;
+    }
+
+    /** Points de ponte HD tolérés sous la courbe d'un référentiel reproducteur. */
+    public static function ecartDePonteTolere(): float
+    {
+        return max(0.0, (float) setting('elevage.breeder_laying_gap_points', 5));
     }
 
     private static function lerp($a, $b, float $t): ?float

@@ -66,6 +66,17 @@
                             </div>
                         </template>
 
+                        {{-- TENEUR EN MATIÈRE SÈCHE (rations de ruminants) --}}
+                        <template x-if="cat === 'conso' && consoType === 'Aliment'">
+                            <div class="text-left">
+                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Teneur en matière sèche (%)") }}</label>
+                                    <input type="number" name="metadata[dry_matter_pct]" min="1" max="100" step="0.1" value="{{ old('metadata.dry_matter_pct', $stock->getMeta('dry_matter_pct')) }}"
+                                           placeholder="{{ __('Foin ~85 · ensilage ~35 · concentré ~88') }}"
+                                           class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-sm focus:ring-2 focus:ring-slate-900 shadow-inner italic">
+                                    <p class="text-[9px] text-slate-400 ml-6 mt-2 italic">{{ __("Sert à l'autonomie fourragère du troupeau de ruminants, calculée en kg de matière sèche.") }}</p>
+                                </div>
+                        </template>
+
                         {{-- 2. DÉSIGNATION (AVEC LOCK VISUEL) --}}
                         <div>
                             <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Désignation de l'article") }}</label>

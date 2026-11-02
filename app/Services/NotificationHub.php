@@ -1199,14 +1199,21 @@ class NotificationHub
                 $hasData   = true;
                 $heatFlag  = $reco['environment']['heat_stress'] ? ' 🌡️ THI ' . $reco['environment']['thi'] : '';
                 $lines[]   = "  • *{$batch->code}* — S{$reco['week']} {$reco['phase']}{$heatFlag}";
-                $lines[]   = "    🌾 *{$reco['total']['feed_kg']} kg* aliment ({$reco['per_subject']['feed_g']} g/sujet)";
+                // Ruminants : la ration du barème est en matière sèche, comme
+                // l'affiche la fiche du lot (« Ration (MS) / lot / jour »).
+                $ration    = $batch->isRuminant() ? 'kg MS* ration' : 'kg* aliment';
+                $parSujet  = $batch->isRuminant() ? 'g MS/sujet' : 'g/sujet';
+                $lines[]   = "    🌾 *{$reco['total']['feed_kg']} {$ration} ({$reco['per_subject']['feed_g']} {$parSujet})";
                 $lines[]   = "    💧 *{$reco['total']['water_l']} L* eau ({$reco['per_subject']['water_ml']} ml/sujet)";
 
                 // Autonomie aliment
                 $auto = $advisor->feedAutonomy($batch);
                 if ($auto !== null) {
                     $autoEmoji = $auto['is_critical'] ? '🔴' : ($auto['is_warning'] ? '⚠️' : '✅');
-                    $lines[]   = "    {$autoEmoji} Stock : {$auto['days']}j d'autonomie ({$auto['stock_kg']} kg)";
+                    // Ruminants : l'autonomie du troupeau, en kg de matière sèche.
+                    $unite     = $auto['unite'] ?? 'kg';
+                    $qui       = ! empty($auto['troupeau']) ? ', troupeau' : '';
+                    $lines[]   = "    {$autoEmoji} Stock : {$auto['days']}j d'autonomie ({$auto['stock_kg']} {$unite}{$qui})";
                 }
             }
             $lines[] = '';

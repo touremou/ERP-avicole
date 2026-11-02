@@ -27,6 +27,8 @@ class StoreStockRequest extends FormRequest
             'expiry_date'      => 'nullable|date',
             'lot_number'       => 'nullable|string|max:100',
             'metadata'         => 'nullable|array',
+            // Teneur en matière sèche (%) : l'autonomie fourragère du troupeau.
+            'metadata.dry_matter_pct' => 'nullable|numeric|min:1|max:100',
             'metadata.*'       => 'nullable|string', // STM-01 : Validation du contenu JSON
         ];
     }
