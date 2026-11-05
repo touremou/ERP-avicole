@@ -56,6 +56,7 @@ import { AppareilsScreen } from '../features/appareils/AppareilsScreen'
 import { TachesScreen } from '../features/taches/TachesScreen'
 import { AffecterTacheScreen } from '../features/taches/AffecterTacheScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
+import { TousMesEcransScreen } from '../features/menu/TousMesEcransScreen'
 import { BottomNav } from '../ui/BottomNav'
 import { SyncBadge } from '../ui/SyncBadge'
 import { UpdateToast } from '../ui/UpdateToast'
@@ -127,6 +128,7 @@ const SCREENS: Array<[RoutePath, ReactElement]> = [
   ['/provenderie/cloture/:opId', <MillCompleteScreen />],
   ['/provenderie/lancer', <MillStartScreen />],
   ['/alertes', <NotificationsScreen />],
+  ['/menu', <TousMesEcransScreen />],
   ['/taches', <TachesScreen />],
   ['/taches/affecter', <AffecterTacheScreen />],
   ['/mon-espace', <MonEspaceScreen />],

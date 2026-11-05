@@ -91,6 +91,21 @@ export const POSTES: Record<Espace, Tuile[]> = {
 
 export const ESPACES: Espace[] = Object.keys(POSTES) as Espace[]
 
+/** Libellés des espaces (clés i18n) — miroir de ProfilsMetier::ESPACES. */
+export const LIBELLES_ESPACES: Record<Espace, string> = {
+  direction: 'Direction',
+  gerant: 'Gérant de site',
+  elevage: 'Technicien d’élevage',
+  terrain: 'Agent de terrain',
+  abattoir: 'Opérateur abattoir',
+  provenderie: 'Agent provenderie',
+  cultures: 'Technicien cultures',
+  vente: 'Vendeur / caissier',
+  magasin: 'Magasinier',
+  finance: 'Comptable / trésorier',
+  rh: 'Responsable RH',
+}
+
 export function estEspace(valeur: unknown): valeur is Espace {
   return typeof valeur === 'string' && (ESPACES as string[]).includes(valeur)
 }
@@ -129,4 +144,124 @@ export function espaceDeLaSession(workspace: string | null | undefined, can: Acc
  */
 export function tuilesDuPoste(espace: Espace, peutOuvrir: (chemin: string) => boolean): Tuile[] {
   return POSTES[espace].filter((tuile) => peutOuvrir(tuile.to))
+}
+
+/**
+ * TOUS MES ÉCRANS — le catalogue complet, par rubrique (écran « /menu »).
+ *
+ * Demande de l'exploitation : avec « Mon poste », l'accueil change selon le
+ * profil ; il faut pouvoir RETROUVER tout le reste facilement. Chaque écran
+ * qui s'ouvre sans paramètre y figure (vérifié par mobile/tests/postes.test.mjs) ;
+ * l'écran filtre par droits et cherche dans les libellés.
+ */
+export interface Rubrique {
+  /** Clé i18n du titre. */
+  titre: string
+  tuiles: Tuile[]
+}
+
+export const CATALOGUE: Rubrique[] = [
+  {
+    titre: 'Mon espace',
+    tuiles: [
+      T('/', '🏠', 'Accueil', 'mon poste · indicateurs'),
+      T('/nouvelle', '➕', 'Nouvelle saisie', 'toutes mes saisies'),
+      TACHES,
+      T('/alertes', '🔔', 'Alertes', 'notifications'),
+      T('/mon-espace', '👤', 'Mon espace', 'profil · site · langue'),
+      SEMAINE,
+      T('/appareils', '📱', 'Mes appareils', 'téléphones connectés'),
+    ],
+  },
+  {
+    titre: 'Élevage',
+    tuiles: [
+      POINTAGE, SCANNER, SOIN,
+      T('/elevage/mise-en-lot', '🐔', 'Mise en lot', 'arrivée d’une bande'),
+      T('/elevage/couvoir', '🐣', 'Couvoir', 'mirage · éclosion'),
+      TRAITE,
+    ],
+  },
+  {
+    titre: 'Ventes et caisse',
+    tuiles: [VENTE, ENCAISSER, T('/commerce/retour', '↩️', 'Retour de vente', 'avoir · restockage'), VENTES],
+  },
+  { titre: 'Argent', tuiles: [TRESORERIE, DEPENSE] },
+  {
+    titre: 'Stocks',
+    tuiles: [
+      STOCKS,
+      T('/logistique/mouvement', '🔁', 'Mouvement de stock', 'entrée · sortie'),
+      T('/logistique/inventaire', '🧮', 'Inventaire', 'comptage'),
+      RECEPTION_ALIMENT,
+      T('/logistique/conservation', '🗄️', 'Lots stockés', 'contrôle de conservation'),
+    ],
+  },
+  {
+    titre: 'Eau et énergie',
+    tuiles: [RELEVE, T('/ressources/ravitaillement', '🚰', 'Ravitaillement de citerne', 'volume livré')],
+  },
+  {
+    titre: 'Personnel',
+    tuiles: [T('/rh/presence', '🕘', 'Présences', 'pointage du personnel'), AFFECTER],
+  },
+  {
+    titre: 'Cultures',
+    tuiles: [
+      T('/cultures/semis', '🌱', 'Pointer un semis', 'parcelle · culture'),
+      T('/cultures/transformation', '🏭', 'Atelier de transformation', 'séchage · mouture'),
+      T('/cultures/journal', '📒', 'Journal des cultures', 'cycles · récoltes'),
+    ],
+  },
+  {
+    titre: 'Abattoir',
+    tuiles: [
+      T('/abattoir/reception', '🚚', 'Réception des animaux', 'arrivée · contrôle'),
+      T('/abattoir/temperature', '🌡️', 'Relevé de température', 'une chambre'),
+      T('/abattoir/temperature/tournee', '🌡️', 'Tournée des températures', 'chambres froides'),
+      T('/abattoir/ccp', '🛡️', 'Point critique (CCP)', 'mesure · action corrective'),
+      T('/abattoir/nettoyage', '🧽', 'Nettoyage', 'une zone'),
+      T('/abattoir/nettoyage/tournee', '🧽', 'Tournée de nettoyage', 'zones · produits'),
+      T('/abattoir/decoupe', '🔪', 'Découpe', 'pièces · rendement'),
+      T('/abattoir/sousproduit', '♻️', 'Sous-produits', 'un enregistrement'),
+      T('/abattoir/sousproduit/tournee', '♻️', 'Tournée des sous-produits', 'peaux · abats · plumes'),
+      T('/abattoir/journal', '📒', 'Journal de l’abattoir', 'ordres · abattages'),
+    ],
+  },
+  {
+    titre: 'Provenderie',
+    tuiles: [
+      T('/provenderie/lancer', '🏭', 'Lancer une fabrication', 'formule · quantité'),
+      T('/provenderie/journal', '📒', 'Journal de fabrication', 'OP en cours · clôturées'),
+    ],
+  },
+]
+
+/** Sans accents ni casse : « reception » trouve « Réception ». */
+const plat = (texte: string) => texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+/**
+ * Le catalogue que le profil peut ouvrir, filtré par une recherche (libellé,
+ * précision ou rubrique, déjà traduits par `traduire`). Les rubriques vides
+ * disparaissent.
+ */
+export function catalogueOuvert(
+  peutOuvrir: (chemin: string) => boolean,
+  recherche = '',
+  traduire: (cle: string) => string = (cle) => cle,
+): Rubrique[] {
+  const cherche = plat(recherche.trim())
+
+  return CATALOGUE
+    .map((rubrique) => ({
+      titre: rubrique.titre,
+      tuiles: rubrique.tuiles.filter((tuile) => peutOuvrir(tuile.to) && (cherche === ''
+        || plat(`${traduire(tuile.label)} ${traduire(tuile.hint)} ${traduire(rubrique.titre)}`).includes(cherche))),
+    }))
+    .filter((rubrique) => rubrique.tuiles.length > 0)
+}
+
+/** Les espaces que ce profil peut afficher (au moins deux tuiles ouvrables). */
+export function espacesAffichables(peutOuvrir: (chemin: string) => boolean): Espace[] {
+  return ESPACES.filter((espace) => tuilesDuPoste(espace, peutOuvrir).length >= 2)
 }
