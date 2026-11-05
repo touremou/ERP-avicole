@@ -90,7 +90,9 @@ class TechnicianWeekService
     {
         $worstMortality = $this->worst($batches, 'mortality_rate');
         $worstFeedGap   = $this->worst($batches, 'feed_gap_percent', abs: true);
-        $fcrAvg         = $this->average($batches, 'fcr');
+        // Σ aliment ÷ Σ biomasse des lots du technicien (Batch::consommationDe),
+        // le calcul du tableau de bord — pas la moyenne simple des indices.
+        $fcrAvg         = Batch::consommationDe(Batch::whereIn('id', array_column($batches, 'id'))->get())['fcr'];
 
         return [
             [
@@ -340,17 +342,6 @@ class TechnicianWeekService
         }
 
         return ['value' => $worst[$key], 'label' => $label];
-    }
-
-    /** Moyenne d'une colonne sur les lots qui la renseignent (null si aucune). */
-    private function average(array $batches, string $key): ?float
-    {
-        $values = array_values(array_filter(
-            array_map(fn ($b) => $b[$key], $batches),
-            fn ($v) => $v !== null && $v > 0,
-        ));
-
-        return $values === [] ? null : round(array_sum($values) / count($values), 2);
     }
 
     /** Couleur d'un indicateur « plus haut = mieux ». */
