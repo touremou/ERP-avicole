@@ -83,9 +83,15 @@ test('un profil large peut changer de vue de poste ; un agent n’a que la sienn
   const direction = espacesAffichables(ouvrable(profil({ admin: 'LCMS', elevage: 'LCMS', commerce: 'LCMS', logistique: 'LCMS', rh: 'LCMS', tresorerie: 'LCMS', production: 'LCMS', ressources: 'LCMS' })))
   assert.ok(direction.includes('vente') && direction.includes('terrain') && direction.length > 3)
 
-  const vendeur = espacesAffichables(ouvrable(profil(VENDEUR)))
+  const vendeur = espacesAffichables(ouvrable(profil(VENDEUR)), 'vente')
   assert.ok(vendeur.includes('vente'))
   assert.ok(!vendeur.includes('terrain'))
+  // La vue « comptable » ne lui apporterait que ses propres gestes : pas de choix à faire.
+  assert.deepEqual(vendeur, ['vente'])
+
+  // Le gérant peut regarder le poste d'un autre métier, et garde le sien.
+  const gerant = espacesAffichables(ouvrable(profil({ elevage: 'LCM', production: 'LCM', commerce: 'LCM', logistique: 'LCM', abattoir: 'LCM', provenderie: 'LCM', cultures: 'LCM', ressources: 'LCM', rh: 'LCM', depenses: 'LCM', tresorerie: 'L' })), 'gerant')
+  assert.ok(gerant.includes('gerant') && gerant.includes('abattoir') && gerant.includes('vente'))
 })
 
 test('les libellés des postes, du menu et des espaces sont traduits (données : le scan des t() ne les voit pas)', () => {

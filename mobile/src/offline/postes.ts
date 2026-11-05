@@ -46,6 +46,9 @@ const TRESORERIE = T('/tresorerie/journal', '🏦', 'Trésorerie', 'mouvements �
 const AFFECTER = T('/taches/affecter', '🗂️', 'Affecter une tâche', 'à un agent ou au pool')
 const SEMAINE = T('/mon-espace/semaine', '📊', 'Ma semaine', 'indicateurs · réalisé')
 
+/** Tuiles personnelles, ouvertes à tout compte : elles ne font pas un métier. */
+const PERSONNELLES = new Set([TACHES.to, SAISIES.to, SEMAINE.to])
+
 export const POSTES: Record<Espace, Tuile[]> = {
   terrain: [POINTAGE, SCANNER, SOIN, TRAITE, RELEVE, TACHES],
   elevage: [
@@ -162,18 +165,6 @@ export interface Rubrique {
 
 export const CATALOGUE: Rubrique[] = [
   {
-    titre: 'Mon espace',
-    tuiles: [
-      T('/', '🏠', 'Accueil', 'mon poste · indicateurs'),
-      T('/nouvelle', '➕', 'Nouvelle saisie', 'toutes mes saisies'),
-      TACHES,
-      T('/alertes', '🔔', 'Alertes', 'notifications'),
-      T('/mon-espace', '👤', 'Mon espace', 'profil · site · langue'),
-      SEMAINE,
-      T('/appareils', '📱', 'Mes appareils', 'téléphones connectés'),
-    ],
-  },
-  {
     titre: 'Élevage',
     tuiles: [
       POINTAGE, SCANNER, SOIN,
@@ -235,6 +226,18 @@ export const CATALOGUE: Rubrique[] = [
       T('/provenderie/journal', '📒', 'Journal de fabrication', 'OP en cours · clôturées'),
     ],
   },
+  {
+    titre: 'Mon espace',
+    tuiles: [
+      T('/', '🏠', 'Accueil', 'mon poste · indicateurs'),
+      T('/nouvelle', '➕', 'Nouvelle saisie', 'toutes mes saisies'),
+      TACHES,
+      T('/alertes', '🔔', 'Alertes', 'notifications'),
+      T('/mon-espace', '👤', 'Mon espace', 'profil · site · langue'),
+      SEMAINE,
+      T('/appareils', '📱', 'Mes appareils', 'téléphones connectés'),
+    ],
+  },
 ]
 
 /** Sans accents ni casse : « reception » trouve « Réception ». */
@@ -261,7 +264,22 @@ export function catalogueOuvert(
     .filter((rubrique) => rubrique.tuiles.length > 0)
 }
 
-/** Les espaces que ce profil peut afficher (au moins deux tuiles ouvrables). */
-export function espacesAffichables(peutOuvrir: (chemin: string) => boolean): Espace[] {
-  return ESPACES.filter((espace) => tuilesDuPoste(espace, peutOuvrir).length >= 2)
+/**
+ * Les vues que ce profil peut choisir à l'accueil : son propre poste, et
+ * chaque autre poste qui a au moins deux tuiles ouvrables ET en apporte une
+ * que le sien n'a pas. Sinon le choix ne ferait que remontrer les mêmes
+ * gestes : un vendeur ne se voit pas proposer une vue « comptable » réduite à
+ * ses propres « Encaisser » et « Journal des ventes ».
+ */
+export function espacesAffichables(peutOuvrir: (chemin: string) => boolean, espaceDuProfil?: Espace): Espace[] {
+  // Seuls les gestes du MÉTIER comptent : tâches, semaine et saisies sont
+  // ouverts à tous et figurent déjà dans le menu.
+  const duMetier = (espace: Espace) => tuilesDuPoste(espace, peutOuvrir).filter((tuile) => !PERSONNELLES.has(tuile.to))
+  const siens = new Set(espaceDuProfil ? duMetier(espaceDuProfil).map((tuile) => tuile.to) : [])
+
+  return ESPACES.filter((espace) => {
+    if (espace === espaceDuProfil) return true
+    const tuiles = duMetier(espace)
+    return tuiles.length >= 2 && tuiles.some((tuile) => !siens.has(tuile.to))
+  })
 }

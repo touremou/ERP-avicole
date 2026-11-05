@@ -54,8 +54,7 @@ export function MonPoste() {
   }
 
   const espaceDuProfil = espaceDeLaSession(me?.role.workspace, can)
-  const choix = espacesAffichables(peutOuvrir)
-  if (!choix.includes(espaceDuProfil)) choix.unshift(espaceDuProfil)
+  const choix = espacesAffichables(peutOuvrir, espaceDuProfil)
 
   // Une vue retenue que les droits n'ouvrent plus (profil changé) : retour au poste du profil.
   const espace = vue !== null && choix.includes(vue) ? vue : espaceDuProfil
