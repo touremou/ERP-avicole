@@ -32,7 +32,7 @@ function agentAvecLeProfil(string $profil): User
     return User::factory()->create(['role_id' => Role::where('name', $profil)->value('id')]);
 }
 
-test('les onze profils sont installés, et une réinstallation ne refait rien', function () {
+test('les profils métier sont installés, et une réinstallation ne refait rien', function () {
     expect(Role::whereIn('name', array_keys(ProfilsMetier::PROFILS))->count())->toBe(count(ProfilsMetier::PROFILS));
 
     // L'administrateur a ajusté un profil : la réinstallation respecte son travail.

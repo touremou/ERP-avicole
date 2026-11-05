@@ -59,7 +59,19 @@ class UserController extends Controller
             }
         }
 
-        return view('users.index', compact('users', 'roles', 'modules', 'moduleMatrix'));
+        // Les SITES de chaque compte (cloisonnement, App\Support\SitesDuCompte),
+        // et ceux qu'on peut lui ouvrir à la création.
+        $sitesParCompte = DB::table('farm_user')
+            ->join('farms', 'farms.id', '=', 'farm_user.farm_id')
+            ->whereIn('farm_user.user_id', $users->pluck('id'))
+            ->whereNull('farms.deleted_at')
+            ->orderBy('farms.name')
+            ->get(['farm_user.user_id', 'farms.name'])
+            ->groupBy('user_id')
+            ->map(fn ($lignes) => $lignes->pluck('name')->all());
+        $sites = \App\Models\Farm::active()->orderBy('name')->get(['id', 'name']);
+
+        return view('users.index', compact('users', 'roles', 'modules', 'moduleMatrix', 'sitesParCompte', 'sites'));
     }
 
     /**
@@ -222,14 +234,20 @@ class UserController extends Controller
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role_id'  => ['required', 'exists:roles,id'],
+            // Les sites du compte (cloisonnement) — à défaut, le site courant.
+            'farm_ids'   => ['nullable', 'array'],
+            'farm_ids.*' => ['integer', 'exists:farms,id'],
         ]);
 
-        User::create([
+        $compte = User::create([
             'name'     => $request->name,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
             'role_id'  => $request->role_id,
         ]);
+
+        // Rattaché à ses sites : sans eux, il retombait sur la ferme principale.
+        \App\Support\SitesDuCompte::rattacher($compte, $request->input('farm_ids') ?: [session('current_farm_id')]);
 
         return back()->with('success', "Accès créé pour {$request->name}.");
     }
