@@ -61,6 +61,7 @@ beforeEach(function () {
         'farm_id'            => $this->farm->id,
         'building_id'        => $this->building->id,
         'status'             => 'Actif',
+        'arrival_date'       => today()->subDays(90)->toDateString(),
         'initial_quantity'   => 50,
         'current_quantity'   => 50,
         'species_id'         => $vache->id,
@@ -224,4 +225,32 @@ test('une traite du terrain après une saisie au BUREAU le même jour : fusion, 
     expect($resultat['status'])->toBe('success')
         ->and(MilkProduction::withoutGlobalScopes()->where('batch_id', $this->lotLaitier->id)->count())->toBe(1)
         ->and((float) articleLait()->current_quantity)->toBe(72.0);
+});
+
+test('la vie du lot vaut pour la traite, au bureau comme au terrain', function () {
+    // Traite datée d'avant l'arrivée du troupeau : refusée des deux côtés.
+    $avant = today()->subDays(120)->toDateString();
+    expect(pousserTraite($this->lotLaitier->id, matin: 10, soir: 5, date: $avant)['status'])->toBe('validation_failed');
+    $this->post(route('milk-productions.store'), [
+        'batch_id' => $this->lotLaitier->id, 'production_date' => $avant, 'morning_liters' => 10,
+    ])->assertSessionHasErrors('production_date');
+
+    // Lot soldé (effectif à zéro) : plus d'événement d'élevage, traite comprise.
+    $this->lotLaitier->update(['current_quantity' => 0]);
+    expect($this->lotLaitier->fresh()->status)->toBe('Soldé')
+        ->and(pousserTraite($this->lotLaitier->id, matin: 10, soir: 5)['status'])->toBe('validation_failed');
+    $this->post(route('milk-productions.store'), [
+        'batch_id' => $this->lotLaitier->id, 'production_date' => today()->toDateString(), 'morning_liters' => 10,
+    ])->assertSessionHasErrors('batch_id');
+
+    expect(\App\Models\MilkProduction::count())->toBe(0);
+});
+
+test('au bureau aussi, une fiche sans aucune traite est refusée', function () {
+    $this->post(route('milk-productions.store'), [
+        'batch_id' => $this->lotLaitier->id, 'production_date' => today()->toDateString(),
+        'morning_liters' => 0, 'evening_liters' => 0,
+    ])->assertSessionHasErrors('morning_liters');
+
+    expect(\App\Models\MilkProduction::count())->toBe(0);
 });
