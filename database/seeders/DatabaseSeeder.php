@@ -25,6 +25,11 @@ class DatabaseSeeder extends Seeder
         // avec leur matrice module_permissions. Idempotent.
         $this->call(UserSeeder::class);
 
+        // Profils métier prêts à l'emploi (rôles limités à leurs modules, espace
+        // de travail du terrain). La migration les installe sur une base déjà
+        // peuplée ; ici, sur une installation neuve, une fois les modules semés.
+        \App\Support\ProfilsMetier::installer();
+
         // Rôles de base (alignés sur ceux garantis par la migration roles).
         $admin = Role::firstOrCreate(
             ['name' => 'admin'],

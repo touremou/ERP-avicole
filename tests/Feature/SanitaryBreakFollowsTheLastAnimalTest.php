@@ -158,8 +158,11 @@ test('un profil autorisé corrige le pointage d’un lot soldé, et c’est jour
     expect($pointage->fresh()->mortality)->toBe(4)
         ->and($journal)->not->toBeNull()
         ->and($journal->causer_id)->toBe($this->adminUser->id)
-        ->and($journal->properties['avant']['mortality'])->toBe(5)
-        ->and($journal->properties['apres']['mortality'])->toBe(4);
+        ->and($journal->properties['old']['mortality'])->toBe(5)
+        ->and($journal->properties['attributes']['mortality'])->toBe(4);
+
+    // La page « Journal d'audit » la montre, avant → après.
+    $this->get(route('notifications.audit'))->assertOk()->assertSee('mortality');
 
     // Un animal revenu au compte : le lot redevient actif, le bâtiment occupé.
     expect($this->lot->fresh()->status)->toBe(Batch::STATUS_ACTIF)

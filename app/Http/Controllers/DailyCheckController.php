@@ -496,7 +496,7 @@ class DailyCheckController extends Controller
         }
         if ($check->batch?->isSolde()) {
             activity('audit')->performedOn($check)->causedBy(auth()->user())
-                ->withProperties(['lot' => $check->batch->code, 'avant' => $check->only($check->getFillable()), 'apres' => []])
+                ->withProperties(['lot' => $check->batch->code, 'old' => $check->only($check->getFillable()), 'attributes' => []])
                 ->log('Suppression d’un pointage sur lot soldé');
         }
 
@@ -568,8 +568,10 @@ class DailyCheckController extends Controller
             ->causedBy(auth()->user())
             ->withProperties([
                 'lot'   => $check->batch?->code,
-                'avant' => array_intersect_key($avant, array_flip($changes)),
-                'apres' => array_intersect_key($apres, array_flip($changes)),
+                // Les clés du journal d'audit (old / attributes) : la page « Journal
+                // d'audit » les affiche, comme pour les autres modèles.
+                'old'        => array_intersect_key($avant, array_flip($changes)),
+                'attributes' => array_intersect_key($apres, array_flip($changes)),
             ])
             ->log($quoi);
     }

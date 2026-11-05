@@ -1086,6 +1086,7 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle_active');
         Route::put('/users/{user}/password', [UserController::class, 'resetPassword'])->name('users.reset_password');
         Route::post('/roles', [UserController::class, 'storeRole'])->name('roles.store');
+        Route::patch('/roles/{role}/workspace', [UserController::class, 'updateRoleWorkspace'])->name('roles.update_workspace');
         Route::delete('/roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
         Route::post('/roles/module-matrix', [UserController::class, 'updateModuleMatrix'])->name('roles.update_module_matrix');
 

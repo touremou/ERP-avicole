@@ -304,6 +304,13 @@
                     <input type="text" name="display_name" placeholder="{{ __('NOM DU RÔLE') }}" required class="flex-1 bg-white border-none rounded-xl p-3 text-xs font-black uppercase shadow-sm outline-none">
                     <button type="submit" class="bg-slate-900 text-white px-6 rounded-xl font-black text-[9px] uppercase hover:bg-blue-600 transition-all border-none cursor-pointer italic">{{ __("Créer") }}</button>
                 </div>
+                {{-- Espace de travail du terrain : ce que l'application met en avant pour ce rôle. --}}
+                <select name="workspace" class="mt-3 w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                    <option value="">{{ __("Espace terrain : déduit des droits") }}</option>
+                    @foreach(\App\Support\ProfilsMetier::ESPACES as $cle => $libelle)
+                        <option value="{{ $cle }}">{{ __('Espace terrain : :espace', ['espace' => __($libelle)]) }}</option>
+                    @endforeach
+                </select>
             </form>
 
             {{-- FORMULAIRES DE SUPPRESSION CACHÉS (Pour éviter l'imbrication HTML invalide) --}}
@@ -341,6 +348,18 @@
                     <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">
                         <i class="fa-solid fa-table-cells mr-1"></i>{{ __("Droits gérés via la Matrice des Modules") }}
                     </p>
+
+                    {{-- Espace de travail du terrain (« Mon poste ») : ne change aucun droit. --}}
+                    <form action="{{ route('roles.update_workspace', $role) }}" method="POST" class="mt-3 flex gap-2 items-center">
+                        @csrf @method('PATCH')
+                        <i class="fa-solid fa-mobile-screen text-slate-300 text-[10px]"></i>
+                        <select name="workspace" onchange="this.form.submit()" class="flex-1 bg-slate-50 border-none rounded-lg p-2 text-[9px] font-black uppercase outline-none">
+                            <option value="" @selected(! $role->workspace)>{{ __("Espace terrain : déduit des droits") }}</option>
+                            @foreach(\App\Support\ProfilsMetier::ESPACES as $cle => $libelle)
+                                <option value="{{ $cle }}" @selected($role->workspace === $cle)>{{ __('Espace terrain : :espace', ['espace' => __($libelle)]) }}</option>
+                            @endforeach
+                        </select>
+                    </form>
                 </div>
                 @endforeach
             </div>

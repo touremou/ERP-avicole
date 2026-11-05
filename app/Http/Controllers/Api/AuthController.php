@@ -67,6 +67,9 @@ class AuthController extends Controller
             'role'        => [
                 'slug'  => $user->userRole?->name,
                 'label' => $user->userRole?->display_name ?? $user->userRole?->label ?? $user->userRole?->name,
+                // Espace de travail (ProfilsMetier) : l'écran « Mon poste » du terrain.
+                'workspace'       => $workspace = $user->espaceDeTravail(),
+                'workspace_label' => \App\Support\ProfilsMetier::ESPACES[$workspace],
             ],
             'permissions' => $this->permissionsMatrix($user),
             'scope'       => $this->scope($user),
