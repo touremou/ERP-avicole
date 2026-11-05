@@ -26,6 +26,8 @@ class UpdateStockRequest extends FormRequest
             'metadata'         => 'nullable|array',
             // Teneur en matière sèche (%) : l'autonomie fourragère du troupeau.
             'metadata.dry_matter_pct' => 'nullable|numeric|min:1|max:100',
+            // Nature (ensilage, foin…) : la teneur par défaut, à défaut de saisie.
+            'metadata.forage_nature' => 'nullable|in:' . implode(',', array_keys(\App\Models\Stock::NATURES_FOURRAGERES)),
         ];
     }
 

@@ -31,3 +31,13 @@ test('les événements d’élevage ne se consignent que sur une bande active, c
   assert.match(motifSansEvenement('Soldé'), /soldé/)
   assert.equal(motifSansEvenement('Actif'), null)
 })
+
+test('un bâtiment en vide sanitaire ne reçoit pas de bande tant que le délai court (miroir serveur)', async () => {
+  const { joursDeVideSanitaire } = await import('../src/offline/statutsDeLot.ts')
+  assert.equal(joursDeVideSanitaire({ status: 'En désinfection', sanitary_break_remaining_days: 6 }), 6)
+  // Délai écoulé, ou protocole validé (bâtiment passé « Disponible ») : libre.
+  assert.equal(joursDeVideSanitaire({ status: 'En désinfection', sanitary_break_remaining_days: 0 }), 0)
+  assert.equal(joursDeVideSanitaire({ status: 'Disponible', sanitary_break_remaining_days: 6 }), 0)
+  // Référentiel ancien, sans les jours : pas de blocage, le serveur tranche.
+  assert.equal(joursDeVideSanitaire({ status: 'En désinfection' }), 0)
+})

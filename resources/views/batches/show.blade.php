@@ -615,8 +615,14 @@
                         <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAutonomy['stock_kg'], 0) }} {{ $feedAutonomy['unite'] ?? 'kg' }} dispo</p>
                         @if(!empty($feedAutonomy['troupeau']))
                             <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ __('Rupture prévue le :date', ['date' => $feedAutonomy['rupture_le']->format('d/m/Y')]) }}</p>
-                            @if(!empty($feedAutonomy['sans_teneur_ms']))
-                                <p class="text-[8px] font-black text-amber-500 uppercase mt-1" title="{{ implode(', ', $feedAutonomy['sans_teneur_ms']) }}">{{ __('Teneur en MS à renseigner : :n aliment(s), comptés bruts', ['n' => count($feedAutonomy['sans_teneur_ms'])]) }}</p>
+                            @if(!empty($feedAutonomy['recoltes_comptees']))
+                                <p class="text-[8px] font-black text-lime-600 uppercase mt-1">{{ __('Dont :n récolte(s) fourragère(s) à venir', ['n' => count($feedAutonomy['recoltes_comptees'])]) }}</p>
+                            @endif
+                            @if(!empty($feedAutonomy['rupture_avant_recolte']))
+                                <p class="text-[8px] font-black text-rose-500 uppercase mt-1">{{ __('Rupture :j j avant la récolte de :culture (:date)', ['j' => $feedAutonomy['jours_de_soudure'], 'culture' => $feedAutonomy['prochaine_recolte']['culture'], 'date' => $feedAutonomy['prochaine_recolte']['date']->format('d/m/Y')]) }}</p>
+                            @endif
+                            @if(!empty($feedAutonomy['teneurs_par_defaut']))
+                                <p class="text-[8px] font-black text-amber-500 uppercase mt-1" title="{{ collect($feedAutonomy['teneurs_par_defaut'])->map(fn ($t) => $t['aliment'] . ' : ' . $t['nature'] . ' ' . $t['ms'] . ' %')->join(', ') }}">{{ __('MS par défaut de la nature : :n aliment(s)', ['n' => count($feedAutonomy['teneurs_par_defaut'])]) }}</p>
                             @endif
                             @if(!empty($feedAutonomy['lots_sans_bareme']))
                                 <p class="text-[8px] font-black text-amber-500 uppercase mt-1">{{ __('Sans barème, hors du besoin : :lots', ['lots' => implode(', ', $feedAutonomy['lots_sans_bareme'])]) }}</p>
@@ -1076,9 +1082,10 @@
                                         {{ __("Ext.") }}
                                     </span>
                                     @endif
-                                    @if($batch->isActive())
+                                    {{-- Lot actif, ou soldé pour un profil autorisé (journalisé) : Batch::motifRefusCorrection. --}}
+                                    @if($batch->motifRefusCorrection() === null)
                                         @can('elevage.M')
-                                        <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition"><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>
+                                        <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition" @if($batch->isSolde()) title="{{ __('Correction sur lot soldé : journalisée') }}" @endif><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>
                                         @endcan
                                         @can('elevage.S')
                                         <form action="{{ route('daily-checks.destroy', $check->id) }}" method="POST" onsubmit="return confirm(@js(__('Supprimer ?')))">

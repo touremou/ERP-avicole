@@ -139,6 +139,16 @@
                             <p class="text-[9px] font-black text-slate-400 mt-1 ml-2 italic" x-text="yieldHint()"></p>
                         </template>
                     </div>
+                    {{-- CULTURE FOURRAGÈRE : elle nourrit le troupeau (autonomie fourragère). --}}
+                    <div class="md:col-span-2 bg-lime-50/60 border border-lime-100 rounded-2xl p-4">
+                        <label class="flex items-center gap-3 text-[10px] font-black text-lime-700 uppercase italic cursor-pointer">
+                            <input type="checkbox" name="is_forage" value="1" @checked(old('is_forage', $cycle->is_forage)) class="rounded">
+                            {{ __("Culture fourragère / auto-consommation") }}
+                        </label>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 mt-3 italic">{{ __("Rendement estimé (kg de matière sèche)") }}</label>
+                        <input type="number" step="1" min="0" name="expected_dm_yield_kg" value="{{ old('expected_dm_yield_kg', $cycle->expected_dm_yield_kg) }}" class="w-full bg-white border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <p class="text-[9px] font-black text-slate-400 mt-1 ml-2 italic">{{ __("Avec la date de récolte prévue, il entre dans l'autonomie fourragère du troupeau.") }}</p>
+                    </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût semences/intrants") }} ({{ $currency }})</label>
                         <input type="number" step="1" min="0" name="total_acquisition_cost" value="{{ old('total_acquisition_cost', $cycle->total_acquisition_cost) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">

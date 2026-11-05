@@ -111,6 +111,7 @@ export const en: Record<string, string> = {
   'Client comptoir': 'Walk-in customer',
   'Soldé': 'Paid',
   'lot soldé': 'sold out',
+  'vide sanitaire : :n j': 'sanitary break: :n d',
   'Anormaux / sales': 'Abnormal / dirty',
   'Autres déclassés (non incubables)': 'Other downgraded (not for hatching)',
   'Incubables : :n': 'Hatching eggs: :n',

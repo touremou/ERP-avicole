@@ -40,6 +40,13 @@ class TransferBatch
             }
 
             $newBuilding = Building::lockForUpdate()->findOrFail($data['target_building_id']);
+
+            // Vide sanitaire en cours dans le bâtiment d'arrivée : pas de transfert
+            // (Building::refusDeMiseEnPlace). Une transformation SUR PLACE garde
+            // son bâtiment : elle n'y entre pas.
+            if ($newBuilding->id !== $batch->building_id && ($motif = $newBuilding->refusDeMiseEnPlace())) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['target_building_id' => $motif]);
+            }
             $oldBuilding = $batch->building;
             $newProtocol = Protocol::findOrFail($data['new_protocol_id']);
 

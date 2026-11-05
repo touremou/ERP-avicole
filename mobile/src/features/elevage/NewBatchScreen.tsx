@@ -27,6 +27,7 @@ import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t } from '../../i18n'
 import type { RefBuilding, RefEmployee, RefProductionType, RefProvider } from '../../api/types'
+import { joursDeVideSanitaire } from '../../offline/statutsDeLot'
 
 /** Bâtiments capables d'accueillir une bande : libres, jamais occupés. */
 const AVAILABLE_STATUSES = ['Vide', 'Disponible']
@@ -114,6 +115,7 @@ export function NewBatchScreen() {
 
   const valid =
     buildingId !== '' &&
+    joursDeVideSanitaire(building) === 0 &&
     type !== '' &&
     initialQuantity > 0 &&
     deadOnArrival <= initialQuantity &&
@@ -210,8 +212,10 @@ export function NewBatchScreen() {
       <select id="building" value={buildingId} onChange={(e) => setBuildingId(e.target.value)} required>
         <option value="">{t('— Choisir —')}</option>
         {buildings.map((b) => (
-          <option key={b.id} value={b.id}>
+          // Vide sanitaire en cours : le serveur refuserait la mise en place.
+          <option key={b.id} value={b.id} disabled={joursDeVideSanitaire(b) > 0}>
             {b.name} ({t(':n places', { n: String(b.capacity) })})
+            {joursDeVideSanitaire(b) > 0 ? ` — ${t('vide sanitaire : :n j', { n: String(joursDeVideSanitaire(b)) })}` : ''}
           </option>
         ))}
       </select>

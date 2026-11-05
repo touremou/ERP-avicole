@@ -59,6 +59,8 @@ class CropCycle extends Model
         'code', 'crop_name', 'variety', 'area_used_ha',
         'planting_date', 'expected_harvest_date', 'closing_date',
         'seed_quantity', 'seed_unit', 'expected_yield_kg',
+        // Culture fourragère : elle nourrit le troupeau (autonomie fourragère).
+        'is_forage', 'expected_dm_yield_kg',
         'status', 'total_acquisition_cost', 'additional_costs', 'total_revenue',
         'notes', 'photo_path',
     ];
@@ -72,6 +74,8 @@ class CropCycle extends Model
         'area_used_ha'           => 'decimal:4',
         'seed_quantity'          => 'decimal:3',
         'expected_yield_kg'      => 'decimal:3',
+        'is_forage'              => 'boolean',
+        'expected_dm_yield_kg'   => 'decimal:2',
         'total_acquisition_cost' => 'decimal:2',
         'additional_costs'       => 'decimal:2',
         'total_revenue'          => 'decimal:2',
@@ -391,5 +395,20 @@ class CropCycle extends Model
             ->value('total') ?? 0;
 
         $this->updateQuietly(['total_revenue' => (float) $revenue]);
+    }
+
+    /**
+     * RÉCOLTES FOURRAGÈRES À VENIR — les cycles en cours marqués « culture
+     * fourragère », dont la récolte est prévue aujourd'hui ou plus tard, dans
+     * l'ordre. Lues par l'autonomie fourragère du troupeau
+     * (BatchAdvisorService::autonomieDuTroupeau).
+     */
+    public function scopeFourrageresAVenir($query)
+    {
+        return $query->where('is_forage', true)
+            ->whereIn('status', self::IN_PROGRESS_STATUSES)
+            ->whereNotNull('expected_harvest_date')
+            ->whereDate('expected_harvest_date', '>=', today()->toDateString())
+            ->orderBy('expected_harvest_date');
     }
 }

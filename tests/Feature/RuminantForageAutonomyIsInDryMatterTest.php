@@ -112,13 +112,17 @@ test('dix jours de foin : la fiche du lot est en alerte critique, avec sa date d
         ->and($autonomie['rupture_le']->toDateString())->toBe(today()->addDays(10)->toDateString());
 });
 
-test('un aliment sans teneur en MS compte brut, et c’est dit', function () {
+test('un aliment sans teneur saisie prend celle de sa nature, et c’est dit', function () {
+    // Décision de l'exploitation : plus de comptage à 100 % de MS. Une ration
+    // nommée d'après sa phase est une provende : concentré, 88 %.
     alimentDuRatelier($this->farm->id, $this->ration, 500, null);
 
     $autonomie = autonomieDuTroupeau();
 
-    expect($autonomie['stock_kg'])->toEqual(500.0)
-        ->and($autonomie['sans_teneur_ms'])->toBe([$this->ration]);
+    expect($autonomie['stock_kg'])->toEqual(440.0)
+        ->and($autonomie['teneurs_par_defaut'])->toBe([
+            ['aliment' => $this->ration, 'nature' => 'Concentré / provende', 'ms' => 88.0],
+        ]);
 });
 
 test('l’aliment des poulets n’entre pas au râtelier, même sous un nom libre', function () {

@@ -85,12 +85,24 @@
 
                             {{-- TENEUR EN MATIÈRE SÈCHE (rations de ruminants) --}}
                             <template x-if="cat === 'conso' && consoType === 'Aliment'">
-                                <div class="text-left">
-                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Teneur en matière sèche (%)") }}</label>
-                                    <input type="number" name="metadata[dry_matter_pct]" min="1" max="100" step="0.1" value="{{ old('metadata.dry_matter_pct') }}"
-                                           placeholder="{{ __('Foin ~85 · ensilage ~35 · concentré ~88') }}"
-                                           class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-sm focus:ring-2 focus:ring-slate-900 shadow-inner italic">
-                                    <p class="text-[9px] text-slate-400 ml-6 mt-2 italic">{{ __("Sert à l'autonomie fourragère du troupeau de ruminants, calculée en kg de matière sèche.") }}</p>
+                                <div class="space-y-6">
+                                    <div class="text-left">
+                                        <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Nature de l'aliment (ration des ruminants)") }}</label>
+                                        <select name="metadata[forage_nature]" class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-sm focus:ring-2 focus:ring-slate-900 shadow-inner italic">
+                                            <option value="">{{ __("Déduite du nom (concentré à défaut)") }}</option>
+                                            @foreach(\App\Models\Stock::NATURES_FOURRAGERES as $cle => $nature)
+                                                <option value="{{ $cle }}" @selected(old('metadata.forage_nature') === $cle)>{{ __($nature['label']) }} — {{ \App\Models\Stock::teneurParDefaut($cle) }} % MS</option>
+                                            @endforeach
+                                        </select>
+                                        <p class="text-[9px] text-slate-400 ml-6 mt-2 italic">{{ __("Sans teneur saisie, l'aliment compte à la teneur par défaut de sa nature (Paramètres → Stocks).") }}</p>
+                                    </div>
+                                    <div class="text-left">
+                                        <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Teneur en matière sèche (%)") }}</label>
+                                        <input type="number" name="metadata[dry_matter_pct]" min="1" max="100" step="0.1" value="{{ old('metadata.dry_matter_pct') }}"
+                                               placeholder="{{ __('Vide : la teneur de sa nature') }}"
+                                               class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-sm focus:ring-2 focus:ring-slate-900 shadow-inner italic">
+                                        <p class="text-[9px] text-slate-400 ml-6 mt-2 italic">{{ __("Sert à l'autonomie fourragère du troupeau de ruminants, calculée en kg de matière sèche.") }}</p>
+                                    </div>
                                 </div>
                             </template>
 

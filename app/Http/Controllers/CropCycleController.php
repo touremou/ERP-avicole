@@ -111,12 +111,16 @@ class CropCycleController extends Controller
             'seed_quantity' => 'nullable|numeric|min:0',
             'seed_unit' => 'nullable|string|max:20',
             'expected_yield_kg' => 'nullable|numeric|min:0',
+            // Culture fourragère : rendement estimé en kg de matière sèche.
+            'is_forage' => 'nullable|boolean',
+            'expected_dm_yield_kg' => 'nullable|numeric|min:0',
             'total_acquisition_cost' => 'nullable|numeric|min:0',
             'additional_costs' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
         ]);
 
         $validated['total_acquisition_cost'] = $validated['total_acquisition_cost'] ?? 0;
+        $validated['is_forage'] = $request->boolean('is_forage');
         $validated['additional_costs'] = $validated['additional_costs'] ?? 0;
 
         $plot = Plot::findOrFail($validated['plot_id']);
@@ -389,6 +393,9 @@ class CropCycleController extends Controller
             'seed_quantity' => 'nullable|numeric|min:0',
             'seed_unit' => 'nullable|string|max:20',
             'expected_yield_kg' => 'nullable|numeric|min:0',
+            // Culture fourragère : rendement estimé en kg de matière sèche.
+            'is_forage' => 'nullable|boolean',
+            'expected_dm_yield_kg' => 'nullable|numeric|min:0',
             'total_acquisition_cost' => 'nullable|numeric|min:0',
             'additional_costs' => 'nullable|numeric|min:0',
             'status' => 'required|in:'.implode(',', CropCycle::EDITABLE_STATUSES),
@@ -411,6 +418,8 @@ class CropCycleController extends Controller
                 ]);
             }
         }
+
+        $validated['is_forage'] = $request->boolean('is_forage');
 
         DB::transaction(function () use ($cropCycle, $validated) {
             $cropCycle->update($validated);

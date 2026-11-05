@@ -306,24 +306,84 @@ class Stock extends Model
     }
 
     /**
-     * Teneur en MATIÈRE SÈCHE de l'aliment, en % (metadata.dry_matter_pct) :
-     * foin ~85 %, ensilage ~35 %, concentré ~88 %, fourrage vert ~20 %. Null
-     * tant que la ferme ne l'a pas renseignée.
+     * NATURES D'ALIMENT DES RUMINANTS et leur teneur en MS PAR DÉFAUT (%),
+     * réglable par la ferme (stocks.dm_default_<nature>).
+     *
+     * Décision de l'exploitation : un aliment sans teneur renseignée ne compte
+     * plus à 100 % de MS (un ensilage de maïs contient ~65 % d'eau) — il prend
+     * la valeur de sa nature.
      */
-    public function teneurMatiereSeche(): ?float
+    public const NATURES_FOURRAGERES = [
+        'ensilage'    => ['label' => 'Ensilage',             'ms' => 33, 'reglage' => 'stocks.dm_default_ensilage'],
+        'enrubannage' => ['label' => 'Enrubannage',          'ms' => 50, 'reglage' => 'stocks.dm_default_enrubannage'],
+        'foin'        => ['label' => 'Foin',                 'ms' => 85, 'reglage' => 'stocks.dm_default_foin'],
+        'paille'      => ['label' => 'Paille',               'ms' => 88, 'reglage' => 'stocks.dm_default_paille'],
+        'concentre'   => ['label' => 'Concentré / provende', 'ms' => 88, 'reglage' => 'stocks.dm_default_concentre'],
+    ];
+
+    /** Mots qui désignent une nature dans un nom d'article, à défaut de la nature déclarée. */
+    private const MOTS_DES_NATURES = [
+        'ensilage'    => ['ensilage', 'ensilé', 'silage'],
+        'enrubannage' => ['enrubann', 'balle ronde'],
+        'foin'        => ['foin'],
+        'paille'      => ['paille'],
+    ];
+
+    /**
+     * La nature de l'aliment : celle déclarée sur la fiche (metadata.forage_nature),
+     * sinon celle que dit son nom (« Foin de brachiaria »), sinon concentré —
+     * les articles des secteurs d'élevage portent des noms de provende.
+     */
+    public function natureFourragere(): string
+    {
+        $declaree = $this->metadata['forage_nature'] ?? null;
+        if (is_string($declaree) && isset(self::NATURES_FOURRAGERES[$declaree])) {
+            return $declaree;
+        }
+
+        $nom = mb_strtolower((string) ($this->feed_type ?: $this->item_name));
+        foreach (self::MOTS_DES_NATURES as $nature => $mots) {
+            foreach ($mots as $mot) {
+                if (str_contains($nom, $mot)) {
+                    return $nature;
+                }
+            }
+        }
+
+        return 'concentre';
+    }
+
+    /** Teneur en MS par défaut d'une nature, au réglage de la ferme. */
+    public static function teneurParDefaut(string $nature): float
+    {
+        $meta   = self::NATURES_FOURRAGERES[$nature] ?? self::NATURES_FOURRAGERES['concentre'];
+        $defaut = $meta['ms'];
+        $reglee = (float) setting($meta['reglage'], $defaut);
+
+        return $reglee > 0 ? min(100.0, $reglee) : (float) $defaut;
+    }
+
+    /**
+     * Teneur en MATIÈRE SÈCHE de l'aliment, en % : celle de la fiche
+     * (metadata.dry_matter_pct), sinon celle de sa nature.
+     */
+    public function teneurMatiereSeche(): float
+    {
+        return $this->teneurMatiereSecheSaisie() ?? self::teneurParDefaut($this->natureFourragere());
+    }
+
+    /** La teneur renseignée sur la fiche, ou null. */
+    public function teneurMatiereSecheSaisie(): ?float
     {
         $pct = $this->metadata['dry_matter_pct'] ?? null;
 
         return is_numeric($pct) && (float) $pct > 0 ? min(100.0, (float) $pct) : null;
     }
 
-    /**
-     * Le stock exprimé en kg de MS. Sans teneur renseignée, l'article compte
-     * à son poids brut — comme avant — et l'autonomie le signale.
-     */
+    /** Le stock exprimé en kg de MS. */
     public function stockEnMatiereSecheKg(): float
     {
-        return (float) $this->current_quantity * ($this->teneurMatiereSeche() ?? 100.0) / 100;
+        return (float) $this->current_quantity * $this->teneurMatiereSeche() / 100;
     }
 
     public function getIsLowAttribute(): bool

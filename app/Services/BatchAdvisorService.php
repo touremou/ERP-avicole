@@ -535,14 +535,16 @@ class BatchAdvisorService
      *     pointage, Batch::accepteAliment, et pas un aliment d'un secteur
      *     volaille), convertis en MS par leur teneur (Stock::teneurMatiereSeche).
      *
-     * Ce qui manque est DIT, pas deviné : aliments sans teneur en MS (comptés
-     * bruts), bandes sans barème (hors du besoin).
+     * Ce qui manque est DIT : aliments comptés à la teneur de leur nature (aucune
+     * teneur saisie), bandes sans barème (hors du besoin). Les récoltes
+     * fourragères à venir entrent dans la projection (projectionFourragere).
      *
      * @return array{stock_kg: float, stock_brut_kg: float, daily_kg: float, days: int,
      *   rupture_le: \Illuminate\Support\Carbon, niveau: ?string, seuil: int,
      *   is_critical: bool, is_warning: bool, item_names: string, unite: string,
      *   troupeau: bool, lots: array<int, string>, lots_sans_bareme: array<int, string>,
-     *   sans_teneur_ms: array<int, string>}|null
+     *   teneurs_par_defaut: array<int, array>, jours_stock_seul: int, recoltes_comptees: array,
+     *   prochaine_recolte: ?array, rupture_avant_recolte: bool, jours_de_soudure: ?int}|null
      */
     public function autonomieDuTroupeau(): ?array
     {
@@ -604,15 +606,26 @@ class BatchAdvisorService
         }
 
         $stockMs = (float) $aliments->sum(fn (Stock $s) => $s->stockEnMatiereSecheKg());
-        $jours   = (int) floor($stockMs / $besoin);
-        $niveau  = Stock::niveauAutonomieFourragere($jours);
+        $projection = $this->projectionFourragere($stockMs, $besoin);
+        $jours   = $projection['jours'];
+
+        // Le niveau se juge sur l'autonomie PROJETÉE (récoltes comprises) ; une
+        // rupture avant la prochaine récolte fourragère alerte au moins
+        // « attention » (décision de l'exploitation).
+        $niveau  = Stock::niveauAutonomieFourragere($jours)
+            ?? ($projection['rupture_avant_recolte'] ? 'attention' : null);
 
         return [
             'stock_kg'         => round($stockMs, 1),
             'stock_brut_kg'    => round((float) $aliments->sum('current_quantity'), 1),
             'daily_kg'         => round($besoin, 1),
             'days'             => $jours,
+            'jours_stock_seul' => (int) floor($stockMs / $besoin),
             'rupture_le'       => today()->addDays($jours),
+            'recoltes_comptees'     => $projection['recoltes_comptees'],
+            'prochaine_recolte'     => $projection['prochaine_recolte'],
+            'rupture_avant_recolte' => $projection['rupture_avant_recolte'],
+            'jours_de_soudure'      => $projection['jours_de_soudure'],
             'niveau'           => $niveau,
             'seuil'            => Stock::seuilAutonomieFourragere(),
             'is_critical'      => $niveau === 'critique',
@@ -623,8 +636,63 @@ class BatchAdvisorService
             'troupeau'         => true,
             'lots'             => $lots->pluck('code')->all(),
             'lots_sans_bareme' => $sansBareme,
-            'sans_teneur_ms'   => $aliments->filter(fn (Stock $s) => $s->teneurMatiereSeche() === null)
-                ->pluck('item_name')->values()->all(),
+            // Les aliments comptés à la teneur de leur NATURE (aucune teneur saisie).
+            'teneurs_par_defaut' => $aliments->filter(fn (Stock $s) => $s->teneurMatiereSecheSaisie() === null)
+                ->map(fn (Stock $s) => [
+                    'aliment' => $s->item_name,
+                    'nature'  => Stock::NATURES_FOURRAGERES[$s->natureFourragere()]['label'],
+                    'ms'      => $s->teneurMatiereSeche(),
+                ])->values()->all(),
+        ];
+    }
+
+    /**
+     * PROJECTION D'AUTONOMIE AVEC LES RÉCOLTES FOURRAGÈRES À VENIR.
+     *
+     * Décision de l'exploitation : une culture fourragère (case du cycle) porte
+     * sa date de récolte et son rendement estimé en kg de MS. Une récolte qui
+     * arrive AVANT la rupture prolonge le stock de son rendement ; la première
+     * qui arrive après marque une SOUDURE — des jours sans fourrage — et l'alerte
+     * le dit.
+     *
+     * @return array{jours: int, recoltes_comptees: array<int, array>, prochaine_recolte: ?array,
+     *   rupture_avant_recolte: bool, jours_de_soudure: ?int}
+     */
+    private function projectionFourragere(float $stockMs, float $besoin): array
+    {
+        $disponible = $stockMs;
+        $rupture    = (int) floor($disponible / $besoin);
+        $comptees   = [];
+        $prochaine  = null;
+
+        foreach (\App\Models\CropCycle::fourrageresAVenir()->get() as $cycle) {
+            $dans = (int) today()->diffInDays($cycle->expected_harvest_date, false);
+            $recolte = [
+                'cycle'   => $cycle->code ?: $cycle->crop_name,
+                'culture' => $cycle->crop_name,
+                'date'    => $cycle->expected_harvest_date,
+                'ms_kg'   => (float) ($cycle->expected_dm_yield_kg ?? 0),
+            ];
+
+            if ($dans > $rupture) {
+                $prochaine = $recolte;
+                break;
+            }
+
+            // Arrive avant la rupture : son rendement prolonge le stock.
+            $disponible += $recolte['ms_kg'];
+            $rupture = (int) floor($disponible / $besoin);
+            $comptees[] = $recolte;
+        }
+
+        $soudure = $prochaine ? (int) today()->diffInDays($prochaine['date'], false) - $rupture : null;
+
+        return [
+            'jours'                 => $rupture,
+            'recoltes_comptees'     => $comptees,
+            'prochaine_recolte'     => $prochaine,
+            'rupture_avant_recolte' => $prochaine !== null,
+            'jours_de_soudure'      => $soudure,
         ];
     }
 

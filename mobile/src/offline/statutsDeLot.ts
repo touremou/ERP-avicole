@@ -40,3 +40,15 @@ export function motifSansEvenement(statut: string | null | undefined): string | 
     ? 'Lot soldé (effectif à zéro) : plus d’événement d’élevage. La clôture définitive se fait au bureau.'
     : 'Lot clôturé : consultation seule.'
 }
+
+/**
+ * BÂTIMENT EN VIDE SANITAIRE — miroir de Building::refusDeMiseEnPlace.
+ * Décision de l'exploitation : pas de nouvelle bande tant que le délai n'est
+ * pas écoulé (ou le protocole d'hygiène validé, ce que dit le statut). Les
+ * jours restants viennent du serveur ; un référentiel ancien sans eux ne bloque
+ * pas — le serveur tranchera.
+ */
+export function joursDeVideSanitaire(batiment: { status?: string; sanitary_break_remaining_days?: number } | null | undefined): number {
+  if (!batiment || batiment.status !== 'En désinfection') return 0
+  return Math.max(0, Number(batiment.sanitary_break_remaining_days ?? 0))
+}
