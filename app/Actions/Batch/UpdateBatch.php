@@ -119,7 +119,7 @@ class UpdateBatch
 
             // ─── Gestion statut bâtiment si changement ───
             if (isset($payload['building_id']) && $payload['building_id'] != $oldBuildingId) {
-                $this->updateBuildingStatuses($oldBuildingId, (int) $payload['building_id']);
+                $this->updateBuildingStatuses($batch, $oldBuildingId, (int) $payload['building_id']);
             }
 
             return $batch->fresh();
@@ -159,8 +159,18 @@ class UpdateBatch
 
     /**
      * Met à jour les statuts des bâtiments source et destination.
+     *
+     * DÉMÉNAGEMENT OU CORRECTION ? Décision de l'exploitation (recommandation
+     * standard) : un lot qui a déjà des POINTAGES a vécu dans l'ancien bâtiment —
+     * changer son bâtiment, c'est un déménagement : l'ancien entre en vide
+     * sanitaire s'il n'y vit plus personne, comme par un transfert
+     * (TransferBatch). Sans pointage, c'est une correction de saisie : les
+     * animaux n'y sont jamais entrés, le bâtiment redevient disponible.
+     *
+     * Le formulaire de modification libérait toujours l'ancien bâtiment : un
+     * déménagement fait par là sautait le vide sanitaire qu'un transfert impose.
      */
-    private function updateBuildingStatuses(int $oldBuildingId, int $newBuildingId): void
+    private function updateBuildingStatuses(Batch $batch, int $oldBuildingId, int $newBuildingId): void
     {
         // Ancien bâtiment : vérifier s'il reste des lots actifs
         $oldHasActive = Batch::where('building_id', $oldBuildingId)
@@ -168,7 +178,13 @@ class UpdateBatch
             ->exists();
 
         if ($oldBuilding = Building::find($oldBuildingId)) {
-            $oldHasActive ? $oldBuilding->markOccupied() : $oldBuilding->markAvailable();
+            $aVecuLa = $batch->dailyChecks()->exists();
+
+            match (true) {
+                $oldHasActive => $oldBuilding->markOccupied(),
+                $aVecuLa      => $oldBuilding->constaterLaSortieDuDernierAnimal($batch->id),
+                default       => $oldBuilding->markAvailable(),
+            };
         }
 
         // Nouveau bâtiment : forcément Occupé

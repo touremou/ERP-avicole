@@ -24,11 +24,21 @@
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                     <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Produit fini (30 j)") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ number_format($stats['output_30d'], 0, ',', ' ') }} <small class="text-[10px] opacity-40">kg</small></p>
+                    {{-- Une somme par unité de sortie : des kilos et des litres ne s'additionnent pas. --}}
+                    @forelse($stats['output_30d'] as $sortie)
+                        <p class="text-3xl font-black text-slate-900 leading-none {{ $loop->first ? '' : 'mt-2 text-xl' }}">{{ number_format($sortie['quantite'], 0, ',', ' ') }} <small class="text-[10px] opacity-40">{{ $sortie['unite'] }}</small></p>
+                    @empty
+                        <p class="text-3xl font-black text-slate-900 leading-none">0</p>
+                    @endforelse
                 </div>
                 <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
-                    <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Rendement moyen") }}</p>
-                    <p class="text-3xl font-black leading-none">{{ number_format($stats['avg_yield'], 1, ',', ' ') }} <small class="text-[10px] opacity-40">%</small></p>
+                    <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Rendement (90 j, pondéré)") }}</p>
+                    {{-- Par conversion : Σ sorties ÷ Σ entrées (kg → kg, kg → L…). --}}
+                    @forelse($stats['yield_by_unit'] as $ligne)
+                        <p class="text-3xl font-black leading-none {{ $loop->first ? '' : 'mt-2 text-xl' }}">{{ $ligne['rendement'] !== null ? number_format($ligne['rendement'], 1, ',', ' ') : '—' }} <small class="text-[10px] opacity-40">% · {{ $ligne['conversion'] }}</small></p>
+                    @empty
+                        <p class="text-3xl font-black leading-none">—</p>
+                    @endforelse
                 </div>
             </div>
 

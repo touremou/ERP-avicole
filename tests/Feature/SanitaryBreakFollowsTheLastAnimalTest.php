@@ -185,3 +185,26 @@ test('une fois le lot clôturé, plus aucune correction — même pour un admini
 
     expect($pointage->fresh()->mortality)->toBe(5);
 });
+
+// ── CHANGER LE BÂTIMENT D'UN LOT : DÉMÉNAGEMENT OU CORRECTION ───────────
+
+test('un lot qui a vécu là change de bâtiment : l’ancien entre en vide sanitaire', function () {
+    DailyCheck::create(['farm_id' => $this->farm->id, 'batch_id' => $this->lot->id,
+        'check_date' => today()->toDateString(), 'mortality' => 0]);
+    $nouveau = Building::factory()->create(['name' => 'B-NEUF', 'type' => 'chair', 'capacity' => 1000,
+        'status' => Building::STATUS_DISPONIBLE]);
+
+    app(\App\Actions\Batch\UpdateBatch::class)->execute($this->lot->fresh(), ['building_id' => $nouveau->id]);
+
+    expect($this->building->fresh()->status)->toBe(Building::STATUS_DESINFECTION)
+        ->and($nouveau->fresh()->status)->toBe(Building::STATUS_OCCUPE);
+});
+
+test('un lot sans pointage change de bâtiment : correction de saisie, l’ancien redevient disponible', function () {
+    $nouveau = Building::factory()->create(['name' => 'B-NEUF', 'type' => 'chair', 'capacity' => 1000,
+        'status' => Building::STATUS_DISPONIBLE]);
+
+    app(\App\Actions\Batch\UpdateBatch::class)->execute($this->lot->fresh(), ['building_id' => $nouveau->id]);
+
+    expect($this->building->fresh()->status)->toBe(Building::STATUS_DISPONIBLE);
+});
