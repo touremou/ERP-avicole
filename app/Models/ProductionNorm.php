@@ -271,27 +271,31 @@ class ProductionNorm extends Model
      * (ReferentielReproducteur) et l'analyse des œufs du matin.
      *
      *   • bande suivie sur un RÉFÉRENTIEL REPRODUCTEUR : alerte dès que la
-     *     ponte HD passe sous la courbe de 5 points (décision de l'exploitation,
-     *     elevage.breeder_laying_gap_points) — 60 % au lieu de 65 % ;
+     *     ponte HD passe sous norme × 0,95 (décision de l'exploitation : 5 %
+     *     RELATIFS, elevage.breeder_laying_gap_pct). Le seuil suit le stade du
+     *     lot — 61,75 % pour une norme à 65 %, 19 % pour une norme à 20 %. Les
+     *     5 points absolus d'avant valaient une chute de 25 % en début de ponte ;
      *   • autres bandes : la règle de l'analyse, ponte sous 85 % de la norme.
      */
     public static function ponteSousLaCourbe(Batch $batch, float $hdp, float $cible): bool
     {
-        if ($cible <= 0) {
-            return false;
-        }
-
-        if (static::estReferentielReproducteur(static::courbePour($batch))) {
-            return $hdp < $cible - static::ecartDePonteTolere();
-        }
-
-        return $hdp < $cible * 0.85;
+        return $cible > 0 && $hdp < static::seuilDePonte($batch, $cible);
     }
 
-    /** Points de ponte HD tolérés sous la courbe d'un référentiel reproducteur. */
-    public static function ecartDePonteTolere(): float
+    /** Le taux de ponte HD sous lequel la bande est en alerte, pour une norme donnée. */
+    public static function seuilDePonte(Batch $batch, float $cible): float
     {
-        return max(0.0, (float) setting('elevage.breeder_laying_gap_points', 5));
+        $tolere = static::estReferentielReproducteur(static::courbePour($batch))
+            ? static::ecartDePonteTolerePct()
+            : 15.0;
+
+        return $cible * (1 - $tolere / 100);
+    }
+
+    /** % de la norme tolérés sous la courbe d'un référentiel reproducteur. */
+    public static function ecartDePonteTolerePct(): float
+    {
+        return min(100.0, max(0.0, (float) setting('elevage.breeder_laying_gap_pct', 5)));
     }
 
     private static function lerp($a, $b, float $t): ?float

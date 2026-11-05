@@ -51,10 +51,10 @@ class Incubator extends Model
 
     public function getGlobalSuccessRateAttribute(): float
     {
+        // Pondéré par les œufs (Incubation::tauxPonderes), comme le Couvoir.
         $closedCycles = $this->incubations()->where('status', 'clos')->get();
-        if ($closedCycles->isEmpty()) return 0.0;
 
-        return round($closedCycles->avg('hatchability_rate'), 1);
+        return Incubation::tauxPonderes($closedCycles)['eclosion'] ?? 0.0;
     }
 
     /**

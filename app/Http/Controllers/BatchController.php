@@ -366,7 +366,7 @@ class BatchController extends Controller
                 'icon'     => 'fa-chart-line',
                 'title'    => 'Ponte sous le référentiel',
                 'message'  => "Semaine {$alerte['semaine']} : ponte HD {$alerte['reel']} % pour {$alerte['guide']} % au guide"
-                    . " ({$alerte['ecart']} points sous la courbe). Vérifier lumière, aliment, eau, état sanitaire et poids des femelles.",
+                    . " — seuil {$alerte['seuil']} %, {$alerte['ecart_pct']} % sous la courbe. Vérifier lumière, aliment, eau, état sanitaire et poids des femelles.",
             ];
         }
 

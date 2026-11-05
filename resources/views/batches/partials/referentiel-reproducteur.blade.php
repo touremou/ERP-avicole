@@ -13,7 +13,7 @@
     ];
     $nombre = fn ($v, $d = 1) => $v === null ? '—' : number_format((float) $v, $d, ',', ' ');
     $alerte = $referentiel['alerte'];
-    $seuil  = \App\Models\ProductionNorm::ecartDePonteTolere();
+    $seuil  = \App\Models\ProductionNorm::ecartDePonteTolerePct();
 @endphp
 
 <div class="mb-8 bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
@@ -22,13 +22,13 @@
             <i class="fa-solid fa-dna text-violet-500"></i> {{ __("Réel vs Référentiel") }}
             <span class="text-slate-400">· {{ $referentiel['souche'] ?? __('souche') }}</span>
         </h3>
-        <span class="text-[8px] font-black uppercase text-slate-400 italic">{{ __("Alerte si la ponte HD passe :n points sous la courbe", ['n' => $nombre($seuil, 0)]) }}</span>
+        <span class="text-[8px] font-black uppercase text-slate-400 italic">{{ __("Alerte si la ponte HD passe :n % sous la courbe", ['n' => $nombre($seuil, 0)]) }}</span>
     </div>
 
     @if($alerte)
         <div class="mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-black uppercase">
             <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-            {{ __("Semaine :s : ponte HD :reel % pour :guide % au guide (:ecart points sous la courbe)", ['s' => $alerte['semaine'], 'reel' => $nombre($alerte['reel']), 'guide' => $nombre($alerte['guide']), 'ecart' => $nombre($alerte['ecart'])]) }}
+            {{ __("Semaine :s : ponte HD :reel % pour :guide % au guide, seuil :seuil % (:ecart % sous la courbe)", ['s' => $alerte['semaine'], 'reel' => $nombre($alerte['reel']), 'guide' => $nombre($alerte['guide']), 'seuil' => $nombre($alerte['seuil'], 2), 'ecart' => $nombre($alerte['ecart_pct'])]) }}
         </div>
     @endif
 
