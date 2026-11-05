@@ -742,7 +742,7 @@ class SlaughterService
             ->map(function ($groupe) {
                 $espece = $groupe->first()->order?->batch?->species;
                 $bornes = ButcheryNomenclature::carcassYieldForSpecies($espece);
-                $moyenne = round((float) $groupe->avg('carcass_yield_percent'), 1);
+                $moyenne = $this->rendementCarcasse($groupe);
 
                 return [
                     'label'      => __($espece?->family_label ?? 'Volaille'),
@@ -762,6 +762,27 @@ class SlaughterService
     }
 
     /**
+     * RENDEMENT CARCASSE D'UN ENSEMBLE D'ABATTAGES — Σ poids carcasse ÷ Σ poids
+     * vif, en %. La définition de chaque abattage (carcasse ÷ vif), agrégée.
+     *
+     * L'écran moyennait les rendements de chaque abattage : un abattage de 10
+     * sujets pesait autant qu'une bande de 2 000, et le « rendement moyen »
+     * contredisait les poids vif et carcasse totaux affichés à côté de lui. La
+     * règle que l'exploitation a fixée pour le couvoir — pondérer — vaut ici.
+     */
+    private function rendementCarcasse($results): float
+    {
+        // Seuls les abattages PESÉS vifs : sans poids vif, la carcasse gonflerait
+        // le numérateur sans rien au dénominateur.
+        $peses = $results->filter(fn ($r) => (float) ($r->order?->total_live_weight_kg ?? 0) > 0);
+        $vif = (float) $peses->sum(fn ($r) => (float) $r->order->total_live_weight_kg);
+
+        return $vif > 0
+            ? round((float) $peses->sum('total_carcass_weight_kg') / $vif * 100, 1)
+            : 0.0;
+    }
+
+    /**
      * KPI abattoir sur une période.
      */
     public function getKPI(int $days = 30): array
@@ -775,13 +796,17 @@ class SlaughterService
         $totalLiveKg = $orders->sum('total_live_weight_kg');
         $totalCarcassKg = $results->sum('total_carcass_weight_kg');
         $totalCondemned = $results->sum('condemned_count');
-        $avgYield = $results->avg('carcass_yield_percent') ?? 0;
+        $avgYield = $this->rendementCarcasse($results);
 
+        // Pertes de découpe et rendement de transformation : Σ kg ÷ Σ kg, comme
+        // le rendement carcasse (voir rendementCarcasse).
         $cuttings = CuttingSession::where('session_date', '>=', $from)->get();
-        $avgCuttingLoss = $cuttings->avg('loss_percent') ?? 0;
+        $entreeDecoupe = (float) $cuttings->sum('total_input_kg');
+        $avgCuttingLoss = $entreeDecoupe > 0 ? (float) $cuttings->sum('loss_kg') / $entreeDecoupe * 100 : 0;
 
         $transformations = Transformation::where('production_date', '>=', $from)->where('status', 'termine')->get();
-        $avgTransformYield = $transformations->avg('yield_percent') ?? 0;
+        $entreeTransfo = (float) $transformations->sum('input_kg');
+        $avgTransformYield = $entreeTransfo > 0 ? (float) $transformations->sum('output_kg') / $entreeTransfo * 100 : 0;
 
         return [
             'total_slaughtered'  => $totalSlaughtered,
