@@ -194,14 +194,15 @@ class ConsolidatedSitesService
     private function elevage($batches): array
     {
         $rates = $batches->map(fn (Batch $b) => $b->mortality_rate)->filter(fn ($r) => $r !== null);
-        $fcrs = $batches->map(fn (Batch $b) => $b->fcr_corrected)->filter(fn ($f) => $f !== null && $f > 0);
 
         return [
             'active_batches'  => $batches->count(),
             'live_subjects'   => (int) $batches->sum('current_quantity'),
             // La PIRE mortalité, pas la moyenne : c'est elle qui appelle un appel.
             'worst_mortality' => $rates->isEmpty() ? null : round($rates->max(), 2),
-            'avg_fcr'         => $fcrs->isEmpty() ? null : round($fcrs->avg(), 2),
+            // Σ aliment ÷ Σ biomasse du site (Batch::consommationDe), le calcul
+            // du tableau de bord — pas la moyenne simple des indices des lots.
+            'avg_fcr'         => Batch::consommationDe($batches)['fcr'],
         ];
     }
 

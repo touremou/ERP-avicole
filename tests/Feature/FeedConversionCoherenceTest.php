@@ -115,10 +115,14 @@ test('l’IC moyen du tableau de bord suit la même convention', function () {
 
 test('la convention de biomasse n’existe qu’en un seul endroit', function () {
     // Le facteur 0,5 sur les sujets morts ne doit plus être recopié ailleurs.
+    // Le tableau de bord passe par le calcul de groupe (Batch::consommationDe),
+    // qui applique producedBiomassKg bande par bande.
     $insights = file_get_contents(app_path('Services/DashboardInsightsService.php'));
+    $groupe   = file_get_contents(app_path('Models/Batch.php'));
 
-    expect($insights)->toContain('producedBiomassKg')
-        ->and($insights)->not->toContain('current_quantity * $lastWeight');
+    expect($insights)->toContain('consommationDe')
+        ->and($insights)->not->toContain('current_quantity * $lastWeight')
+        ->and($groupe)->toContain('producedBiomassKg((float) ($pesees');
 
     $controller = file_get_contents(app_path('Http/Controllers/BatchController.php'));
     expect($controller)->toContain('fcr_corrected');
@@ -131,4 +135,24 @@ test('un lot sans mortalité donne le même indice dans les deux formules', func
 
     // 3 000 / (1 000 × 2) = 1,50
     expect($batch->fcr_corrected)->toBe(1.5);
+});
+
+test('l’IC d’un groupe se pondère : Σ aliment ÷ Σ biomasse, sur le tableau de bord, la fiche du technicien et les sites', function () {
+    // Une bande de 5 000 sujets à 1,50, un essai de 50 sujets à 3,00.
+    $grande = convertedBatch(initial: 5000, deaths: 0, feedKg: 15000, avgWeightKg: 2.0);   // 15 000 / 10 000
+    $essai  = convertedBatch(initial: 50, deaths: 0, feedKg: 300, avgWeightKg: 2.0);       // 300 / 100
+
+    // (15 000 + 300) / (10 000 + 100) = 1,51 — la moyenne simple aurait dit 2,25.
+    $groupe = Batch::consommationDe([$grande, $essai]);
+    expect($groupe['fcr'])->toBe(1.51);
+
+    $technical = app(DashboardInsightsService::class)
+        ->technical(Batch::whereIn('id', [$grande->id, $essai->id])->get(), 0.0);
+    expect($technical['fcr'])->toBe(1.51);
+
+    // La fiche hebdomadaire du technicien : ses deux lots.
+    $technicien = \App\Models\Employee::factory()->create(['status' => 'Actif']);
+    Batch::whereIn('id', [$grande->id, $essai->id])->update(['employee_id' => $technicien->id]);
+    $fiche = app(\App\Services\TechnicianWeekService::class)->forEmployee($technicien, now()->startOfWeek());
+    expect(collect($fiche['indicators'])->firstWhere('key', 'fcr')['value'])->toBe(1.51);
 });

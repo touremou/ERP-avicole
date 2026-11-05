@@ -1843,6 +1843,59 @@ class Batch extends Model
     }
 
     /**
+     * INDICE DE CONSOMMATION D'UN GROUPE DE BANDES — Σ aliment ÷ Σ biomasse
+     * produite, bande par bande à la convention de fcr_corrected (dernière
+     * pesée, morts comptés à demi-poids). Les bandes sans pesée n'entrent ni
+     * au numérateur ni au dénominateur.
+     *
+     * Le tableau de bord le calculait ainsi ; la fiche hebdomadaire du
+     * technicien et la vue multi-sites faisaient la MOYENNE SIMPLE des indices
+     * de chaque lot : un lot d'essai de 50 sujets pesait autant qu'une bande de
+     * 5 000 — la règle que l'exploitation a écartée pour le couvoir. Un seul
+     * calcul désormais, en trois requêtes quel que soit le nombre de bandes.
+     *
+     * @return array{fcr: ?float, aliment_kg: float, cout_aliment: float, biomasse_kg: float}
+     */
+    public static function consommationDe(iterable $bandes): array
+    {
+        $bandes = collect($bandes);
+        $ids    = $bandes->pluck('id')->all();
+        $vide   = ['fcr' => null, 'aliment_kg' => 0.0, 'cout_aliment' => 0.0, 'biomasse_kg' => 0.0];
+        if ($ids === []) {
+            return $vide;
+        }
+
+        $aliment = DailyCheck::whereIn('batch_id', $ids)
+            ->select('batch_id',
+                \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(feed_consumed), 0) AS kg'),
+                \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(feed_consumed * COALESCE(feed_unit_cost, 0)), 0) AS cout'),
+                \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(mortality), 0) AS morts'))
+            ->groupBy('batch_id')->get()->keyBy('batch_id');
+
+        // Dernière pesée de chaque bande (poids > 0, comme fcr_corrected).
+        $pesees = DailyCheck::whereIn('batch_id', $ids)->where('avg_weight', '>', 0)
+            ->orderBy('check_date')->get(['batch_id', 'avg_weight', 'check_date'])
+            ->groupBy('batch_id')->map(fn ($p) => (float) $p->last()->avg_weight);
+
+        $totaux = $vide;
+        foreach ($bandes as $bande) {
+            $ligne    = $aliment->get($bande->id);
+            $biomasse = $bande->producedBiomassKg((float) ($pesees[$bande->id] ?? 0), (int) ($ligne->morts ?? 0));
+            if ($biomasse === null) {
+                continue;
+            }
+
+            $totaux['biomasse_kg']  += $biomasse;
+            $totaux['aliment_kg']   += (float) ($ligne->kg ?? 0);
+            $totaux['cout_aliment'] += (float) ($ligne->cout ?? 0);
+        }
+
+        $totaux['fcr'] = $totaux['biomasse_kg'] > 0 ? round($totaux['aliment_kg'] / $totaux['biomasse_kg'], 2) : null;
+
+        return $totaux;
+    }
+
+    /**
      * Alias de compatibilité : `$batch->fcr` désigne LE même indice que
      * `fcr_corrected`. Il portait auparavant une seconde formule.
      */

@@ -55,23 +55,15 @@ class DashboardInsightsService
             ];
         }
 
-        // Agrégats aliment par lot (cumul vie du lot) — 1 requête.
-        $feedByBatch = DailyCheck::whereIn('batch_id', $ids)
-            ->select('batch_id',
-                DB::raw('COALESCE(SUM(feed_consumed), 0) AS feed_kg'),
-                DB::raw('COALESCE(SUM(feed_consumed * COALESCE(feed_unit_cost, 0)), 0) AS feed_cost'))
-            ->groupBy('batch_id')
-            ->get()->keyBy('batch_id');
+        // Indice de consommation, coût alimentaire du kilo et biomasse : LE
+        // calcul de groupe (Batch::consommationDe), celui de la fiche du
+        // technicien et de la vue multi-sites — à la convention de la fiche du lot.
+        $conso = \App\Models\Batch::consommationDe($activeBatches);
+        $fcr = $conso['fcr'];
+        $totalBiomass = $conso['biomasse_kg'];
+        $feedCostPerKg = $totalBiomass > 0 ? round($conso['cout_aliment'] / $totalBiomass, 0) : null;
 
-        // Mortalité troupeau par lot — 1 requête. Elle manquait : la biomasse
-        // agrégée ne comptait que les sujets VIVANTS, réintroduisant la double
-        // pénalité que la correction de mortalité existait pour supprimer.
-        $mortalityByBatch = DailyCheck::whereIn('batch_id', $ids)
-            ->select('batch_id', DB::raw('COALESCE(SUM(mortality), 0) AS deaths'))
-            ->groupBy('batch_id')
-            ->get()->pluck('deaths', 'batch_id');
-
-        // Pesées (1ère / dernière) par lot pour le GMQ — 1 requête.
+        // Pesées par lot pour le GMQ — 1 requête.
         $weighings = DailyCheck::whereIn('batch_id', $ids)
             ->whereNotNull('avg_weight')
             ->where('avg_weight', '>', 0)
@@ -79,41 +71,16 @@ class DashboardInsightsService
             ->get(['batch_id', 'avg_weight', 'check_date'])
             ->groupBy('batch_id');
 
-        $totalFeedKg   = 0.0;
-        $totalFeedCost = 0.0;
-        $totalBiomass  = 0.0;   // kg vif produit (effectif × dernier poids)
-        $gmqValues     = [];
-
+        // GMQ : la règle de la fiche (Batch::gmq), sur les pesées déjà
+        // chargées — on n'agrège que les gains positifs.
+        $gmqValues = [];
         foreach ($activeBatches as $batch) {
-            $feed = $feedByBatch->get($batch->id);
-            $w    = $weighings->get($batch->id);
-
-            $lastWeight = $w?->last()->avg_weight ? (float) $w->last()->avg_weight : 0.0;
-
-            // MÊME convention de biomasse que Batch::fcr_corrected — c'est ce qui
-            // garantit que l'« IC moyen » du tableau de bord et l'indice de la
-            // fiche du lot parlent du même chiffre.
-            $biomass = $batch->producedBiomassKg(
-                $lastWeight,
-                (int) ($mortalityByBatch[$batch->id] ?? 0)
-            );
-
-            if ($biomass !== null) {
-                $totalBiomass  += $biomass;
-                $totalFeedKg   += (float) ($feed->feed_kg ?? 0);
-                $totalFeedCost += (float) ($feed->feed_cost ?? 0);
-            }
-
-            // GMQ : la règle de la fiche (Batch::gmq), sur les pesées déjà
-            // chargées — on n'agrège que les gains positifs.
-            $gmqLot = $batch->gmq($w ?? []);
+            $gmqLot = $batch->gmq($weighings->get($batch->id) ?? []);
             if ($gmqLot !== null && $gmqLot > 0) {
                 $gmqValues[] = $gmqLot;
             }
         }
 
-        $fcr = $totalBiomass > 0 ? round($totalFeedKg / $totalBiomass, 2) : null;
-        $feedCostPerKg = $totalBiomass > 0 ? round($totalFeedCost / $totalBiomass, 0) : null;
         $gmq = ! empty($gmqValues) ? (int) round(array_sum($gmqValues) / count($gmqValues)) : null;
 
         return [
