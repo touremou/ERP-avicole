@@ -18,6 +18,9 @@ class Role extends Model
         'icon',         // Icone UI (ex: 🏗️)
         'label',
         'description',
+        // Espace de travail du terrain (App\Support\ProfilsMetier::ESPACES) :
+        // vide, il se déduit des droits (User::espaceDeTravail).
+        'workspace',
         // DÉPRÉCIÉ comme source d'autorisation : la matrice `module_permissions`
         // est désormais l'UNIQUE autorité (cf. hasPermission ci-dessous et
         // AppServiceProvider). Cette colonne ne subsiste que comme entrée de

@@ -13,6 +13,7 @@ import { safeLoad } from '../../offline/safeLoad'
 import { t, dateLocale } from '../../i18n'
 import { useFieldTasks } from './useFieldTasks'
 import { DashboardKpis } from './DashboardKpis'
+import { MonPoste } from './MonPoste'
 import { notifIcon } from '../notifications/notifIcon'
 import { TaskProofModal } from '../taches/TaskProofModal'
 import type { ApiNotification, RefTask } from '../../api/types'
@@ -149,6 +150,9 @@ export function HomeScreen() {
             : t('Rien d’urgent — bonne journée sur le terrain.')}
         </span>
       </div>
+
+      {/* Mon poste : les gestes du métier, d'abord (offline/postes). */}
+      <MonPoste />
 
       {/* KPIs consolidés, adaptés au rôle (gate hors-ligne par module). */}
       <DashboardKpis todo={totalTodo} />

@@ -241,6 +241,8 @@ class UserController extends Controller
         $request->validate([
             'display_name' => 'required|string|max:255|unique:roles,display_name',
             'icon'         => 'nullable|string|max:5',
+            // Espace de travail du terrain (vide : déduit des droits).
+            'workspace'    => 'nullable|in:' . implode(',', array_keys(\App\Support\ProfilsMetier::ESPACES)),
         ]);
 
         Role::create([
@@ -248,10 +250,28 @@ class UserController extends Controller
             'label'        => $request->display_name,
             'display_name' => $request->display_name,
             'icon'         => $request->icon ?? '👤',
+            'workspace'    => $request->workspace ?: null,
             'permissions'  => [],
         ]);
 
         return back()->with('success', 'Nouveau grade ajouté.');
+    }
+
+    /**
+     * L'ESPACE DE TRAVAIL d'un rôle — ce que l'application terrain met en avant
+     * (« Mon poste »). Vide : déduit des droits du rôle. Ne change AUCUN droit.
+     */
+    public function updateRoleWorkspace(Request $request, Role $role)
+    {
+        if (Gate::denies('admin.S')) return back();
+
+        $validated = $request->validate([
+            'workspace' => 'nullable|in:' . implode(',', array_keys(\App\Support\ProfilsMetier::ESPACES)),
+        ]);
+
+        $role->update(['workspace' => $validated['workspace'] ?: null]);
+
+        return back()->with('success', "Espace de travail du rôle « {$role->display_name} » mis à jour.");
     }
 
     /**

@@ -39,7 +39,12 @@
                                 </td>
                                 <td class="px-6 py-4 font-black text-slate-700">{{ class_basename($activity->subject_type) }} #{{ $activity->subject_id }}</td>
                                 <td class="px-6 py-4 text-slate-500">
-                                    @php $attrs = $activity->properties['attributes'] ?? []; $old = $activity->properties['old'] ?? []; @endphp
+                                    @php
+                                        $attrs = $activity->properties['attributes'] ?? []; $old = $activity->properties['old'] ?? [];
+                                        // Une valeur TABLEAU (droits d'un rôle, pesées d'un pointage) se lit
+                                        // en JSON : convertie en texte, elle faisait tomber la page.
+                                        $texte = fn ($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : (string) $v;
+                                    @endphp
                                     @if(empty($attrs))
                                         <span class="text-slate-300">—</span>
                                     @else
@@ -48,10 +53,10 @@
                                                 <div class="text-[10px]">
                                                     <span class="font-black text-slate-600">{{ $k }}</span> :
                                                     @if(array_key_exists($k, $old))
-                                                        <span class="text-rose-400 line-through">{{ \Illuminate\Support\Str::limit((string) $old[$k], 30) }}</span>
+                                                        <span class="text-rose-400 line-through">{{ \Illuminate\Support\Str::limit($texte($old[$k]), 30) }}</span>
                                                         <i class="fa-solid fa-arrow-right text-[7px] mx-1 text-slate-300"></i>
                                                     @endif
-                                                    <span class="text-emerald-600 font-black">{{ \Illuminate\Support\Str::limit((string) $v, 30) }}</span>
+                                                    <span class="text-emerald-600 font-black">{{ \Illuminate\Support\Str::limit($texte($v), 30) }}</span>
                                                 </div>
                                             @endforeach
                                         </div>

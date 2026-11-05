@@ -229,6 +229,21 @@ class User extends Authenticatable
     }
 
     /**
+     * L'ESPACE DE TRAVAIL du terrain (App\Support\ProfilsMetier::ESPACES) :
+     * celui que déclare son rôle, sinon celui que disent ses droits. Lu par
+     * l'application terrain pour son écran « Mon poste ».
+     */
+    public function espaceDeTravail(): string
+    {
+        $declare = $this->userRole?->workspace;
+        if ($declare && isset(\App\Support\ProfilsMetier::ESPACES[$declare])) {
+            return $declare;
+        }
+
+        return \App\Support\ProfilsMetier::espaceDeduit(fn (string $module, string $niveau) => $this->canModule($module, $niveau));
+    }
+
+    /**
      * Récupère tous les modules accessibles par l'utilisateur (au moins lecture).
      */
     public function getAccessibleModules(): \Illuminate\Support\Collection

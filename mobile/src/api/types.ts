@@ -26,7 +26,13 @@ export interface ApiUser {
 /** GET /auth/me — payload mis en cache pour la home par rôle + gate offline. */
 export interface MeResponse {
   user: ApiUser
-  role: { slug: string | null; label: string | null }
+  role: {
+    slug: string | null
+    label: string | null
+    /** Espace de travail (ProfilsMetier) : l'écran « Mon poste ». Absent d'un serveur ancien. */
+    workspace?: string | null
+    workspace_label?: string | null
+  }
   /** { elevage: ["L","C","M"], commerce: ["L"] } — déjà filtré par la licence. */
   permissions: Record<string, PermissionLevel[]>
   scope: {

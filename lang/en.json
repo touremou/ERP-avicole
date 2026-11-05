@@ -5165,5 +5165,18 @@
     "Rupture :j j avant la récolte de :culture (:date)": "Stock-out :j days before the :culture harvest (:date)",
     "MS par défaut de la nature : :n aliment(s)": "Default type DM: :n feed(s)",
     "Correction sur lot soldé : journalisée": "Correction on a sold-out batch: logged",
-    "Rendement (90 j, pondéré)": "Yield (90 d, weighted)"
+    "Rendement (90 j, pondéré)": "Yield (90 d, weighted)",
+    "Espace terrain : déduit des droits": "Field workspace: inferred from rights",
+    "Espace terrain : :espace": "Field workspace: :espace",
+    "Direction": "Management",
+    "Gérant de site": "Site manager",
+    "Technicien d'élevage": "Livestock technician",
+    "Agent de terrain": "Field worker",
+    "Opérateur abattoir": "Slaughterhouse operator",
+    "Agent provenderie": "Feed mill operator",
+    "Technicien cultures": "Crop technician",
+    "Vendeur / caissier": "Sales / cashier",
+    "Magasinier": "Storekeeper",
+    "Comptable / trésorier": "Accountant / treasurer",
+    "Responsable RH": "HR manager"
 }
