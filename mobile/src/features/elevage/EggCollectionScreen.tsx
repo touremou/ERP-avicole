@@ -21,6 +21,7 @@ export function EggCollectionScreen() {
   const [totalEggs, setTotalEggs] = useState(0)
   const [brokenEggs, setBrokenEggs] = useState(0)
   const [smallEggs, setSmallEggs] = useState(0)
+  const [downgradedEggs, setDowngradedEggs] = useState(0)
   const [observations, setObservations] = useState('')
   const [lastPass, setLastPass] = useState<{ eggs: number; date: string } | null>(null)
   const [saved, setSaved] = useState(false)
@@ -51,6 +52,7 @@ export function EggCollectionScreen() {
         total_eggs_collected: totalEggs,
         broken_eggs: brokenEggs,
         small_eggs: smallEggs,
+        downgraded_eggs: downgradedEggs,
         observations: observations || null,
       },
       t('Collecte :code', { code: batch.code }),
@@ -100,7 +102,10 @@ export function EggCollectionScreen() {
         <p className="muted">{t('↺ Dernier passage : :eggs œufs (:date).', { eggs: lastPass.eggs, date: lastPass.date })}</p>
       )}
       <NumberStepper label={t('Cassés / fêlés')} value={brokenEggs} onChange={setBrokenEggs} min={0} />
-      <NumberStepper label={t('Petits calibres')} value={smallEggs} onChange={setSmallEggs} min={0} />
+      {/* Le sens du bureau (rectification, tri, stock « Anomalie ») : anormaux et sales. */}
+      <NumberStepper label={t('Anormaux / sales')} value={smallEggs} onChange={setSmallEggs} min={0} />
+      <NumberStepper label={t('Autres déclassés (non incubables)')} value={downgradedEggs} onChange={setDowngradedEggs} min={0} />
+      <p className="muted">{t('Incubables : :n', { n: Math.max(0, totalEggs - brokenEggs - smallEggs - downgradedEggs) })}</p>
 
       <label htmlFor="observations">{t('Observations — optionnel')}</label>
       <textarea

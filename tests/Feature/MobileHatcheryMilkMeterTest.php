@@ -93,7 +93,7 @@ test('mirage : idempotence par mirage_uuid', function () {
         ->and((int) $incubation->fresh()->fertile_eggs)->toBe(400);
 });
 
-test('éclosion mobile : éclosabilité calculée, cycle clos, poussins à dispatcher', function () {
+test('éclosion mobile : taux d’éclosion calculé, cycle clos, poussins à dispatcher', function () {
     $incubation = openIncubation(500, 425);
 
     $res = $this->postJson('/api/v1/sync/push', ['operations' => [[
@@ -106,8 +106,8 @@ test('éclosion mobile : éclosabilité calculée, cycle clos, poussins à dispa
     $fresh = $incubation->fresh();
     expect($fresh->status)->toBe('clos')
         ->and((int) $fresh->hatched_chicks)->toBe(340)
-        // 340 / 425 = 80 %
-        ->and((float) $fresh->hatchability_rate)->toEqualWithDelta(80, 0.01)
+        // Taux d'éclosion sur les œufs mis à couver : 340 / 500 = 68 %.
+        ->and((float) $fresh->hatchability_rate)->toEqualWithDelta(68, 0.01)
         ->and((int) $fresh->chicks_remaining)->toBe(340)
         ->and((int) $fresh->chicks_dispatched)->toBe(0);
 });

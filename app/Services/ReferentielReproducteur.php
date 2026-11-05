@@ -19,21 +19,20 @@ use Illuminate\Support\Collection;
  *
  *   • ponte HD (%)          : moyenne des taux de ponte des collectes de la
  *                             semaine (le taux enregistré, sur les femelles) ;
- *   • œufs incubables (%)   : incubables ÷ œufs collectés — à défaut de saisie,
- *                             collectés moins cassés et petits ;
- *   • fertilité (%)         : fertiles ÷ œufs mis à couver, mirage fait ;
- *   • éclosion (%)          : poussins éclos ÷ œufs fertiles, éclosion faite
- *                             — les accesseurs d'Incubation, moyennés par
- *                             cycle comme sur l'écran Couvoir et la fiche de
- *                             l'incubateur (incubations commencées dans la
- *                             semaine) ;
+ *   • œufs incubables (%)   : incubables ÷ œufs collectés — collectés moins
+ *                             cassés, anormaux et autres déclassés
+ *                             (EggProduction::incubables) ;
+ *   • fertilité (%)         : Σ fertiles ÷ Σ œufs mis à couver, mirage fait ;
+ *   • éclosion (%)          : Σ poussins éclos ÷ Σ œufs mis à couver —
+ *                             Incubation::tauxPonderes, la règle du Couvoir
+ *                             (incubations commencées dans la semaine) ;
  *   • aliment / eau         : par sujet présent et par jour pointé ;
  *   • mortalité + réforme   : % des sujets présents en début de semaine ;
  *   • poids                 : dernière pesée de la semaine (le pointage ne
  *                             sépare pas mâles et femelles : le guide affiche
  *                             les deux cibles, le réel la moyenne pesée).
  *
- * Alerte : ponte HD sous la courbe de plus de 5 points
+ * Alerte : ponte HD sous norme × 0,95 — 5 % relatifs
  * (ProductionNorm::ponteSousLaCourbe, la règle de l'analyse du matin).
  *
  * Les valeurs du guide ne sont PAS fournies : elles viennent du guide de la
@@ -101,10 +100,12 @@ class ReferentielReproducteur
         }
 
         return [
-            'semaine' => $jugee['semaine'],
-            'reel'    => round($reel, 1),
-            'guide'   => round($guide, 1),
-            'ecart'   => round($guide - $reel, 1),
+            'semaine'   => $jugee['semaine'],
+            'reel'      => round($reel, 1),
+            'guide'     => round($guide, 1),
+            'seuil'     => round(ProductionNorm::seuilDePonte($batch, $guide), 2),
+            // Écart RELATIF à la norme, en % : la mesure de l'alerte.
+            'ecart_pct' => round(($guide - $reel) / $guide * 100, 1),
         ];
     }
 
@@ -125,20 +126,15 @@ class ReferentielReproducteur
             ->whereDate('production_date', '<=', $au->toDateString())
             ->get();
         $oeufs      = (int) $collectes->sum('total_eggs_collected');
-        // Œufs incubables : la colonne n'est écrite par aucune saisie (bureau ni
-        // terrain). À défaut, les œufs collectés moins les cassés et les petits
-        // — ceux que la collecte écarte déjà de la couvaison.
-        $incubables = (int) $collectes->sum(fn (EggProduction $c) => (int) $c->incubable_eggs > 0
-            ? (int) $c->incubable_eggs
-            : max(0, (int) $c->total_eggs_collected - (int) $c->broken_eggs - (int) $c->small_eggs));
+        // Œufs incubables : posés à chaque collecte (EggProduction::incubables).
+        $incubables = (int) $collectes->sum('incubable_eggs');
 
         // Incubations des œufs de la semaine (mises à couver dans la semaine).
         $couvees = Incubation::where('batch_id', $batch->id)
             ->whereDate('start_date', '>=', $du->toDateString())
             ->whereDate('start_date', '<=', $au->toDateString())
             ->get();
-        $mirees  = $couvees->filter(fn (Incubation $i) => $i->fertile_eggs !== null && (int) $i->eggs_count > 0);
-        $ecloses = $couvees->filter(fn (Incubation $i) => $i->hatched_chicks !== null && (int) $i->fertile_eggs > 0);
+        $tauxCouvoir = Incubation::tauxPonderes($couvees);
 
         // Sujets présents : effectif d'aujourd'hui + les pertes survenues
         // depuis (les pointages ne datent pas l'effectif ; un reproducteur se
@@ -156,9 +152,9 @@ class ReferentielReproducteur
         return [
             'laying'        => $collectes->isNotEmpty() ? round((float) $collectes->avg('laying_rate'), 1) : null,
             'hatching_eggs' => $oeufs > 0 ? round($incubables / $oeufs * 100, 1) : null,
-            // La règle du Couvoir : moyenne des taux de chaque cycle (accesseurs).
-            'fertility'     => $mirees->isNotEmpty() ? round($mirees->avg(fn (Incubation $i) => $i->fertility_rate), 1) : null,
-            'hatchability'  => $ecloses->isNotEmpty() ? round($ecloses->avg(fn (Incubation $i) => $i->hatchability_rate), 1) : null,
+            // La règle du Couvoir : pondérée par les œufs mis en incubation.
+            'fertility'     => $tauxCouvoir['fertilite'],
+            'hatchability'  => $tauxCouvoir['eclosion'],
             'feed'          => $joursPointes > 0
                 ? round((float) $dansLaSemaine->sum('feed_consumed') * 1000 / ($joursPointes * $presents), 1) : null,
             'water'         => $joursPointes > 0 && (float) $dansLaSemaine->sum('water_consumed') > 0

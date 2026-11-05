@@ -71,7 +71,8 @@ function pontesDeLaSemaine(Batch $lot, float $taux, int $jours = 3): void
         EggProduction::create([
             'farm_id' => $lot->farm_id, 'batch_id' => $lot->id,
             'production_date' => today()->subDays($i)->toDateString(),
-            'total_eggs_collected' => (int) round($taux), 'incubable_eggs' => (int) round($taux) - 2,
+            // 2 œufs déclassés par jour : incubables = collectés − 2 (EggProduction::incubables).
+            'total_eggs_collected' => (int) round($taux), 'downgraded_eggs' => 2,
             'laying_rate' => $taux,
         ]);
     }
@@ -106,32 +107,41 @@ test('la fiche compare chaque semaine au guide : ponte, incubables, fertilité, 
         ->and($semaine['reel']['laying'])->toEqual(64.0)
         ->and($semaine['reel']['hatching_eggs'])->toEqual(round(62 * 3 / (64 * 3) * 100, 1))
         ->and($semaine['reel']['fertility'])->toEqual(88.0)                  // 176 / 200
-        ->and($semaine['reel']['hatchability'])->toEqual(round(150 / 176 * 100, 1))
+        ->and($semaine['reel']['hatchability'])->toEqual(75.0)               // 150 / 200 mis à couver
         ->and($semaine['reel']['mortality'])->toEqual(round(1 / 110 * 100, 2));
 });
 
-test('ponte 5 points sous la courbe : alerte sur la fiche du lot', function () {
-    pontesDeLaSemaine($this->dindons, 59);   // guide 65 → 6 points dessous
+test('ponte sous norme × 0,95 : alerte sur la fiche du lot', function () {
+    pontesDeLaSemaine($this->dindons, 59);   // guide 65 → seuil 61,75
 
     $comparaison = app(ReferentielReproducteur::class)->comparer($this->dindons);
-    expect($comparaison['alerte'])->toMatchArray(['semaine' => 33, 'reel' => 59.0, 'guide' => 65.0, 'ecart' => 6.0]);
+    expect($comparaison['alerte'])->toMatchArray(['semaine' => 33, 'reel' => 59.0, 'guide' => 65.0, 'seuil' => 61.75, 'ecart_pct' => 9.2]);
 
     $page = $this->get(route('batches.show', $this->dindons))->assertOk();
     expect(collect($page->viewData('batchAdvisories'))->pluck('title'))->toContain('Ponte sous le référentiel');
 });
 
-test('dans les 5 points, pas d’alerte ; et le seuil se règle', function () {
-    pontesDeLaSemaine($this->dindons, 61);   // 4 points dessous
+test('dans les 5 %, pas d’alerte ; et le seuil se règle', function () {
+    pontesDeLaSemaine($this->dindons, 62);   // 62 ≥ 61,75
 
     expect(app(ReferentielReproducteur::class)->comparer($this->dindons)['alerte'])->toBeNull();
 
-    Setting::set('elevage.breeder_laying_gap_points', '3');
-    expect(app(ReferentielReproducteur::class)->comparer($this->dindons)['alerte']['ecart'])->toEqual(4.0);
+    Setting::set('elevage.breeder_laying_gap_pct', '3');   // seuil 63,05
+    expect(app(ReferentielReproducteur::class)->comparer($this->dindons)['alerte']['ecart_pct'])->toEqual(4.6);
+});
+
+test('le seuil suit le stade du lot : 5 % de la norme, pas 5 points', function () {
+    // Décision de l'exploitation : 5 points sur une ponte de 20 % valaient une
+    // chute de 25 %. Norme 65 → 61,75 ; norme 20 → 19.
+    expect(ProductionNorm::seuilDePonte($this->dindons, 65))->toEqualWithDelta(61.75, 0.001)
+        ->and(ProductionNorm::seuilDePonte($this->dindons, 20))->toEqualWithDelta(19.0, 0.001)
+        ->and(ProductionNorm::ponteSousLaCourbe($this->dindons, 18.9, 20))->toBeTrue()
+        ->and(ProductionNorm::ponteSousLaCourbe($this->dindons, 19.5, 20))->toBeFalse();
 });
 
 test('le résumé du matin juge la ponte du reproducteur à la même règle que la fiche', function () {
-    // Hier : 59 œufs pour 100 femelles, 59 %. Le guide dit 65 % : 6 points
-    // dessous. L'ancienne règle (85 % de la norme, 55,25 %) se taisait.
+    // Hier : 59 œufs pour 100 femelles, 59 %. Le guide dit 65 %, seuil 61,75 %.
+    // La règle des autres bandes (85 % de la norme, 55,25 %) se taisait.
     EggProduction::create([
         'farm_id' => $this->farm->id, 'batch_id' => $this->dindons->id,
         'production_date' => today()->subDay()->toDateString(), 'total_eggs_collected' => 59,
@@ -174,7 +184,7 @@ test('l’éditeur de normes enregistre la matrice du guide, et l’import CSV s
         ->and((float) $semaine41->target_mortality_weekly)->toEqual(0.45);
 });
 
-test('sans saisie des incubables, ce sont les œufs collectés moins cassés et petits', function () {
+test('les incubables : collectés moins cassés et anormaux, sans ajustement', function () {
     EggProduction::create([
         'farm_id' => $this->farm->id, 'batch_id' => $this->dindons->id,
         'production_date' => today()->subDay()->toDateString(),

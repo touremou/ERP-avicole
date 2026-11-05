@@ -99,20 +99,24 @@ test('le PARC MACHINES annonce le même taux que le COUVOIR', function () {
      */
     $cycle = cycleMeneAuBout($this->lot->id, $this->couveuse->id, 900, 800, 700);
 
-    expect($cycle->hatchability_rate)->toBe(87.5);
+    // Taux d'éclosion sur les œufs MIS À COUVER : 700 / 900 (décision de
+    // l'exploitation ; il se rapportait aux 800 fertiles, 87,5 %).
+    expect($cycle->hatchability_rate)->toBe(77.8);
 
     $page = $this->get(route('incubators.index'));
 
-    $page->assertOk()->assertSee('88%');          // round(87.5)
+    $page->assertOk()->assertSee('78%');          // round(77.8)
     expect($page->getContent())->not->toContain('>0%<');
 });
 
-test('la fiabilité de la machine EST la moyenne des cycles clos', function () {
-    // Deux cycles : 87,5 % et 50 % → 68,75, arrondi à 68,8 par l'accesseur.
+test('la fiabilité de la machine EST le taux des cycles clos, pondéré par les œufs', function () {
+    // Deux cycles : 700 éclos sur 900, 50 sur 200 → 750 / 1 100 = 68,2 %.
+    // La moyenne simple des deux taux (77,8 et 25) aurait dit 51,4 % : le petit
+    // cycle pesait autant que le grand.
     cycleMeneAuBout($this->lot->id, $this->couveuse->id, 900, 800, 700);
     cycleMeneAuBout($this->lot->id, $this->couveuse->id, 200, 100, 50);
 
-    expect($this->couveuse->fresh()->global_success_rate)->toBe(68.8);
+    expect($this->couveuse->fresh()->global_success_rate)->toBe(68.2);
 });
 
 test('un cycle EN COURS ne compte pas dans la fiabilité', function () {
@@ -123,7 +127,7 @@ test('un cycle EN COURS ne compte pas dans la fiabilité', function () {
      * nouvelle mise à couver — la machine paraîtrait mauvaise précisément
      * pendant qu'elle travaille.
      */
-    cycleMeneAuBout($this->lot->id, $this->couveuse->id, 900, 800, 700);   // 87,5 %
+    cycleMeneAuBout($this->lot->id, $this->couveuse->id, 900, 800, 700);   // 77,8 %
 
     (new StartIncubation())->execute([
         'incubator_id' => $this->couveuse->id, 'batch_id' => $this->lot->id,
@@ -131,7 +135,7 @@ test('un cycle EN COURS ne compte pas dans la fiabilité', function () {
         'eggs_count' => 300, 'source_type' => 'internal', 'egg_grade' => 'L', 'duration' => 21,
     ]);
 
-    expect($this->couveuse->fresh()->global_success_rate)->toBe(87.5);
+    expect($this->couveuse->fresh()->global_success_rate)->toBe(77.8);
 });
 
 test('une machine SANS cycle clos affiche zéro — non-régression', function () {
@@ -150,11 +154,11 @@ test('un cycle SUPPRIMÉ ne tire plus la fiabilité — non-régression', functi
     cycleMeneAuBout($this->lot->id, $this->couveuse->id, 900, 800, 700);
     $rate = cycleMeneAuBout($this->lot->id, $this->couveuse->id, 200, 100, 50);
 
-    expect($this->couveuse->fresh()->global_success_rate)->toBe(68.8);
+    expect($this->couveuse->fresh()->global_success_rate)->toBe(68.2);
 
     $rate->delete();   // SoftDeletes
 
-    expect($this->couveuse->fresh()->global_success_rate)->toBe(87.5);
+    expect($this->couveuse->fresh()->global_success_rate)->toBe(77.8);
 });
 
 test('le taux de FERTILITÉ reste juste après le mirage — non-régression', function () {

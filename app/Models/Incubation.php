@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Collection;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -149,10 +151,48 @@ class Incubation extends Model
         return round(($this->fertile_eggs / $this->eggs_count) * 100, 1);
     }
 
+    /**
+     * TAUX D'ÉCLOSION D'UN CYCLE — poussins éclos ÷ œufs MIS EN INCUBATION.
+     *
+     * Décision de l'exploitation : le taux d'éclosion se rapporte aux œufs mis
+     * à couver (il se rapportait aux fertiles). C'est la mesure des moyennes du
+     * Couvoir (Incubation::tauxPonderes) : un cycle seul et la moyenne d'un mois
+     * d'un seul cycle disent le même chiffre.
+     */
     public function getHatchabilityRateAttribute(): float
     {
-        if ($this->fertile_eggs <= 0) return 0.0;
-        return round(($this->hatched_chicks / $this->fertile_eggs) * 100, 1);
+        if ($this->eggs_count <= 0) return 0.0;
+        return round(((int) $this->hatched_chicks / $this->eggs_count) * 100, 1);
+    }
+
+    /**
+     * TAUX D'UN ENSEMBLE DE CYCLES, PONDÉRÉS PAR LES ŒUFS — une déclaration,
+     * lue par l'écran Couvoir (30 jours, machines, historique), la fiabilité
+     * de l'incubateur et le référentiel reproducteurs.
+     *
+     * Décision de l'exploitation : la moyenne SIMPLE des taux de chaque cycle
+     * faussait les indicateurs — un essai de 30 œufs à 50 % pesait autant
+     * qu'une couvée de 900. Désormais :
+     *
+     *   fertilité = Σ fertiles ÷ Σ œufs mis en incubation (cycles mirés)
+     *   éclosion  = Σ poussins éclos ÷ Σ œufs mis en incubation (cycles clos)
+     *
+     * @return array{fertilite: ?float, eclosion: ?float}  null : aucun cycle à mesurer
+     */
+    public static function tauxPonderes(iterable $cycles): array
+    {
+        $cycles = collect($cycles)->filter(fn (self $i) => (int) $i->eggs_count > 0);
+
+        $mires = $cycles->filter(fn (self $i) => $i->fertile_eggs !== null);
+        $eclos = $cycles->filter(fn (self $i) => $i->status === 'clos' && $i->hatched_chicks !== null);
+
+        $taux = fn (Collection $c, string $numerateur) => $c->isEmpty() ? null
+            : round($c->sum(fn (self $i) => (int) $i->{$numerateur}) / $c->sum(fn (self $i) => (int) $i->eggs_count) * 100, 1);
+
+        return [
+            'fertilite' => $taux($mires, 'fertile_eggs'),
+            'eclosion'  => $taux($eclos, 'hatched_chicks'),
+        ];
     }
 
     public function getProgressDaysAttribute(): int

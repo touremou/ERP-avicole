@@ -153,11 +153,13 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'production_date', 'Date', e, true)
     reqNum(p, 'total_eggs_collected', 'Œufs collectés', e, 0)
     optNum(p, 'broken_eggs', 'Œufs cassés', e, 0)
-    optNum(p, 'small_eggs', 'Petits œufs', e, 0)
-    // Cassés + petits ne dépassent pas le ramassage (miroir de RecordEggCollection).
+    optNum(p, 'small_eggs', 'Œufs anormaux / sales', e, 0)
+    optNum(p, 'downgraded_eggs', 'Autres déclassés', e, 0)
+    // Cassés + anormaux + déclassés ne dépassent pas le ramassage (miroir de
+    // RecordEggCollection / EggProduction::ecartes).
     const total = num(p.total_eggs_collected) ?? 0
-    const tries = (num(p.broken_eggs) ?? 0) + (num(p.small_eggs) ?? 0)
-    if (tries > total) e.push('Œufs cassés + petits : ne peuvent pas dépasser les œufs collectés.')
+    const ecartes = (num(p.broken_eggs) ?? 0) + (num(p.small_eggs) ?? 0) + (num(p.downgraded_eggs) ?? 0)
+    if (ecartes > total) e.push('Œufs cassés + anormaux + déclassés : ne peuvent pas dépasser les œufs collectés.')
     return e
   },
   'stock_movement.create': (p) => {

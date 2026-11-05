@@ -336,7 +336,7 @@
                             <input type="number" min="0" max="100" step="0.1" name="target_fertility_rate" x-model="currentNorm.target_fertility_rate" class="w-full bg-white border-none rounded-xl p-4 text-sm font-black text-center shadow-sm text-violet-600">
                         </div>
                         <div class="space-y-2 text-center">
-                            <label class="text-[9px] font-black uppercase text-violet-500 italic">{{ __("Éclosion des fertiles (%)") }}</label>
+                            <label class="text-[9px] font-black uppercase text-violet-500 italic">{{ __("Éclosion (% des œufs mis à couver)") }}</label>
                             <input type="number" min="0" max="100" step="0.1" name="target_hatchability_rate" x-model="currentNorm.target_hatchability_rate" class="w-full bg-white border-none rounded-xl p-4 text-sm font-black text-center shadow-sm text-violet-600">
                         </div>
                         <div class="space-y-2 text-center">

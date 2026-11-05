@@ -5133,8 +5133,6 @@
     "Fertilité": "Fertility",
     "Éclosion": "Hatchability",
     "Mortalité + réforme": "Mortality + culls",
-    "Alerte si la ponte HD passe :n points sous la courbe": "Alert when HD laying falls :n points below the curve",
-    "Semaine :s : ponte HD :reel % pour :guide % au guide (:ecart points sous la courbe)": "Week :s: HD laying :reel % vs :guide % in the guide (:ecart points below the curve)",
     "Réel vs Référentiel": "Actual vs Reference",
     "souche": "strain",
     "♂ :m · ♀ :f": "♂ :m · ♀ :f",
@@ -5144,8 +5142,13 @@
     "Poids femelles (g)": "Female weight (g)",
     "Œufs incubables (%)": "Hatching eggs (%)",
     "Fertilité (%)": "Fertility (%)",
-    "Éclosion des fertiles (%)": "Hatch of fertile (%)",
     "Mortalité + réforme / sem. (%)": "Mortality + culls / week (%)",
     "Référentiel reproducteurs — facultatif, d'après le guide de la souche": "Breeder reference — optional, from the strain guide",
-    "Reproducteurs, colonnes facultatives à la suite : target_weight_male, target_weight_female, target_hatching_egg_rate, target_fertility_rate, target_hatchability_rate, target_mortality_weekly": "Breeders, optional trailing columns: target_weight_male, target_weight_female, target_hatching_egg_rate, target_fertility_rate, target_hatchability_rate, target_mortality_weekly"
+    "Reproducteurs, colonnes facultatives à la suite : target_weight_male, target_weight_female, target_hatching_egg_rate, target_fertility_rate, target_hatchability_rate, target_mortality_weekly": "Breeders, optional trailing columns: target_weight_male, target_weight_female, target_hatching_egg_rate, target_fertility_rate, target_hatchability_rate, target_mortality_weekly",
+    "Éclosion (% des œufs mis à couver)": "Hatch (% of eggs set)",
+    "Alerte si la ponte HD passe :n % sous la courbe": "Alert when HD laying falls :n % below the curve",
+    "Semaine :s : ponte HD :reel % pour :guide % au guide, seuil :seuil % (:ecart % sous la courbe)": "Week :s: HD laying :reel % vs :guide % in the guide, threshold :seuil % (:ecart % below the curve)",
+    "Ajustement — autres déclassés (non incubables)": "Adjustment — other downgraded (not for hatching)",
+    "Œufs sains écartés du couvoir sans être cassés ni anormaux : deux jaunes, hors poids, déformés… Facultatif.": "Sound eggs kept out of the hatchery without being broken or abnormal: double yolk, off-weight, misshapen… Optional.",
+    "Dont incubables": "Of which hatching eggs"
 }

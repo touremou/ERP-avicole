@@ -18,6 +18,7 @@ class EggProduction extends Model
         'total_eggs_collected',
         'broken_eggs',
         'small_eggs',
+        'downgraded_eggs',   // ajustement : autres déclassés, non incubables
         'incubable_eggs',
         'grade_xl',
         'grade_l',
@@ -43,6 +44,7 @@ class EggProduction extends Model
         'total_eggs_collected' => 'integer',
         'broken_eggs'          => 'integer',
         'small_eggs'           => 'integer',
+        'downgraded_eggs'      => 'integer',
         'incubable_eggs'       => 'integer',
         'is_graded'            => 'boolean',
         'synced_uuids'         => 'array',
@@ -51,6 +53,39 @@ class EggProduction extends Model
     public function batch(): BelongsTo
     {
         return $this->belongsTo(Batch::class)->withTrashed();
+    }
+
+    /**
+     * ŒUFS INCUBABLES — une déclaration, posée à chaque enregistrement : la
+     * saisie, le cumul des passages, la rectification, le tri, le terrain.
+     *
+     * Décision de l'exploitation : collectés − cassés − anormaux − autres
+     * déclassés. L'ajustement (`downgraded_eggs`) rectifie la quantité
+     * réellement transférée au couvoir : œufs écartés sans être cassés ni
+     * anormaux (deux jaunes, hors poids, déformés…).
+     */
+    public static function incubables(int $collectes, int $casses, int $anormaux, int $declasses = 0): int
+    {
+        return max(0, $collectes - $casses - $anormaux - $declasses);
+    }
+
+    /** Ce que la collecte écarte de la couvaison : cassés + anormaux + autres déclassés. */
+    public static function ecartes(array $saisie): int
+    {
+        return (int) ($saisie['broken_eggs'] ?? 0) + (int) ($saisie['small_eggs'] ?? 0)
+            + (int) ($saisie['downgraded_eggs'] ?? 0);
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $collecte) {
+            $collecte->incubable_eggs = self::incubables(
+                (int) $collecte->total_eggs_collected,
+                (int) $collecte->broken_eggs,
+                (int) $collecte->small_eggs,
+                (int) $collecte->downgraded_eggs,
+            );
+        });
     }
 
     // -----------------------------------------------------------------

@@ -66,7 +66,8 @@ class IncubationController extends Controller
             return [
                 'name'         => $incubator->name,
                 'total_chicks' => $done->sum('hatched_chicks'),
-                'avg_hatch'    => round($done->avg('hatchability_rate') ?? 0, 1),
+                // Pondéré par les œufs (Incubation::tauxPonderes).
+                'avg_hatch'    => Incubation::tauxPonderes($done)['eclosion'] ?? 0.0,
                 'count_cycles' => $done->count()
             ];
         });
@@ -79,14 +80,16 @@ class IncubationController extends Controller
             ->groupBy(fn($val) => Carbon::parse($val->start_date)->translatedFormat('F Y'))
             ->map(fn($items) => [
                 'items'            => $items,
-                'avg_hatchability' => $items->avg('hatchability_rate'),
+                'avg_hatchability' => Incubation::tauxPonderes($items)['eclosion'] ?? 0.0,
                 'total_chicks'     => $items->sum('hatched_chicks'),
             ]);
 
         $stats = [
             'total_poussins'      => $statsData->where('status', 'clos')->sum('hatched_chicks'),
-            'avg_fertility'       => round($statsData->avg(fn($i) => $i->fertility_rate) ?? 0, 1),
-            'avg_reussite'        => round($statsData->where('status', 'clos')->avg(fn($i) => $i->hatchability_rate) ?? 0, 1),
+            // Σ fertiles ÷ Σ œufs, Σ éclos ÷ Σ œufs : un essai de 30 œufs ne pèse
+            // plus autant qu'une couvée de 900 (Incubation::tauxPonderes).
+            'avg_fertility'       => Incubation::tauxPonderes($statsData)['fertilite'] ?? 0.0,
+            'avg_reussite'        => Incubation::tauxPonderes($statsData)['eclosion'] ?? 0.0,
             'machine_performance' => $machineStats,
             'historique'          => $historique,
         ];

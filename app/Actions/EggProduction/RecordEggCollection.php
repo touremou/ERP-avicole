@@ -45,10 +45,11 @@ class RecordEggCollection
                 ]);
             }
 
-            $cassesEtPetits = (int) ($data['broken_eggs'] ?? 0) + (int) ($data['small_eggs'] ?? 0);
-            if ($cassesEtPetits > (int) $data['total_eggs_collected']) {
+            // Cassés + anormaux + autres déclassés : des œufs ramassés, jamais plus.
+            $ecartes = EggProduction::ecartes($data);
+            if ($ecartes > (int) $data['total_eggs_collected']) {
                 throw ValidationException::withMessages([
-                    'broken_eggs' => "Cassés + petits ({$cassesEtPetits}) > total collecté "
+                    'broken_eggs' => "Cassés + anormaux + déclassés ({$ecartes}) > total collecté "
                         . "({$data['total_eggs_collected']}).",
                 ]);
             }
@@ -114,6 +115,7 @@ class RecordEggCollection
             $newTotal = (int) $data['total_eggs_collected'];
             $newBroken = (int) ($data['broken_eggs'] ?? 0);
             $newSmall = (int) ($data['small_eggs'] ?? 0);
+            $newDowngraded = (int) ($data['downgraded_eggs'] ?? 0);
             $newObs = $data['observations'] ?? null;
 
             $finalObservations = $newObs;
@@ -123,6 +125,7 @@ class RecordEggCollection
                 $newTotal += (int) $production->total_eggs_collected;
                 $newBroken += (int) $production->broken_eggs;
                 $newSmall += (int) $production->small_eggs;
+                $newDowngraded += (int) $production->downgraded_eggs;
 
                 // CORRECTION : On force le marqueur "[Nouveau passage]" à chaque fois
                 $baseObs = $production->observations ? $production->observations . " | " : "";
@@ -157,6 +160,7 @@ class RecordEggCollection
                     'total_eggs_collected' => $newTotal,
                     'broken_eggs'          => $newBroken,
                     'small_eggs'           => $newSmall,
+                    'downgraded_eggs'      => $newDowngraded,   // incubables : EggProduction::incubables
                     'laying_rate'          => $layingRate,
                     'observations'         => $finalObservations,
                     'is_graded'            => false,
