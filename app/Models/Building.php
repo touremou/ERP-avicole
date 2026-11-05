@@ -285,6 +285,24 @@ class Building extends Model
         return $query->where('status', self::STATUS_DESINFECTION);
     }
 
+    /**
+     * VIDE SANITAIRE ÉCHU — en désinfection, délai réglé écoulé : le jour J+N.
+     *
+     * Comparaison de DATES, celle des jours restants
+     * (getSanitaryBreakRemainingDaysAttribute) et donc de la mise en place
+     * (refusDeMiseEnPlace). La libération automatique et l'alerte « vide
+     * sanitaire dépassé » comparaient des INSTANTS : le jour J+N au matin, une
+     * bande pouvait s'installer dans un bâtiment encore « En désinfection »,
+     * que la libération de minuit n'avait pas rendu et dont l'alerte se taisait
+     * jusqu'à l'heure du début du vide.
+     */
+    public function scopeVideSanitaireEchu($query)
+    {
+        return $query->inSanitaryBreak()
+            ->whereNotNull('disinfection_started_at')
+            ->whereDate('disinfection_started_at', '<=', today()->subDays(self::sanitaryBreakDays())->toDateString());
+    }
+
     // --- LOGIQUE MÉTIER (METHODS) ---
 
     /**
