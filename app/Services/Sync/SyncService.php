@@ -1608,6 +1608,12 @@ class SyncService
 
             $batch = Batch::findOrFail($data['batch_id']);
 
+            // La vie du lot (Batch::refusDeSaisie), la règle du bureau : lot
+            // actif, ni avant l'arrivée. Aucune des deux portes ne la posait.
+            if ($refus = $batch->refusDeSaisie($data['incident_date'], 'incident_date')) {
+                return $this->invalid(array_map(fn ($m) => [$m], $refus));
+            }
+
             $incident = HealthIncident::create([
                 'uuid'            => $data['uuid'],
                 'building_id'     => $batch->building_id,

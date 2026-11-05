@@ -13,7 +13,7 @@ beforeEach(function () {
     $this->batch = Batch::factory()->create([
         'farm_id'     => $this->farm->id,
         'building_id' => $this->building->id,
-        'status'      => 'actif',
+        'status'      => 'Actif',   // le statut réel (Batch::STATUS_ACTIF)
     ]);
 });
 

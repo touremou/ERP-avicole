@@ -234,3 +234,31 @@ test('le TERRAIN ne traite plus un lot avant son arrivée', function () {
     expect(estRefuse($resultat))->toBeTrue()
         ->and(HealthCheck::withoutGlobalScopes()->count())->toBe(0);
 });
+
+// ── INCIDENT SANITAIRE ───────────────────────────────────────────────────
+
+test('un incident ne se déclare plus sur un lot soldé ou clôturé — au terrain comme au bureau', function () {
+    $this->lot->update(['current_quantity' => 0]);   // le dernier animal est sorti
+    expect($this->lot->fresh()->status)->toBe('Soldé');
+
+    $resultat = pousserSurLeLot($this, $this->adminUser, 'health_incident.create', [
+        'batch_id' => $this->lot->id, 'incident_date' => today()->toDateString(),
+        'symptoms' => 'Toux', 'severity' => \App\Models\HealthIncident::SEVERITY_MINOR, 'action_taken' => 'Observation',
+    ]);
+    expect(estRefuse($resultat))->toBeTrue();
+
+    $this->actingAs($this->adminUser)->post(route('health.incidents.store'), [
+        'batch_id' => $this->lot->id, 'symptoms' => 'Toux', 'severity' => \App\Models\HealthIncident::SEVERITY_MINOR, 'action_taken' => 'Observation',
+    ])->assertSessionHasErrors('batch_id');
+
+    expect(\App\Models\HealthIncident::withoutGlobalScopes()->count())->toBe(0);
+});
+
+test('le TERRAIN ne date plus un incident d’avant l’arrivée du lot', function () {
+    $resultat = pousserSurLeLot($this, $this->adminUser, 'health_incident.create', [
+        'batch_id' => $this->lot->id, 'incident_date' => today()->subDays(40)->toDateString(),
+        'symptoms' => 'Toux', 'severity' => \App\Models\HealthIncident::SEVERITY_MINOR, 'action_taken' => 'Observation',
+    ]);
+
+    expect(estRefuse($resultat))->toBeTrue();
+});
