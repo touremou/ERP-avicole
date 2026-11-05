@@ -74,6 +74,12 @@ class HealthIncidentController extends Controller
 
         $batch = Batch::findOrFail($validated['batch_id']);
 
+        // La vie du lot (Batch::refusDeSaisie) : un incident est un événement
+        // d'élevage — lot actif. La règle du terrain aussi.
+        if ($refus = $batch->refusDeSaisie(now()->toDateString(), 'incident_date')) {
+            return back()->withErrors($refus)->withInput()->with('error', reset($refus));
+        }
+
         // 2.bis Composition des symptômes : tags standardisés puis détails libres.
         $symptoms = collect($validated['symptom_tags'] ?? [])->implode(', ');
         if (! empty($validated['symptoms'])) {

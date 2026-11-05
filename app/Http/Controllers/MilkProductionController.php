@@ -93,8 +93,10 @@ class MilkProductionController extends Controller
         $data = $this->validateData($request);
 
         $batch = Batch::with(['species', 'productionType'])->findOrFail($data['batch_id']);
-        if (! $batch->tracksMilk()) {
-            return back()->with('error', "Le lot {$batch->code} n'est pas un lot laitier.");
+
+        // La règle du terrain aussi (MilkProduction::refusDeTraite).
+        if ($refus = MilkProduction::refusDeTraite($batch, $data)) {
+            return back()->withErrors($refus)->withInput()->with('error', reset($refus));
         }
 
         // Une seule collecte par lot et par jour (contrainte unique) → upsert.

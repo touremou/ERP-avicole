@@ -40,6 +40,37 @@ class MilkProduction extends Model
         });
     }
 
+    /**
+     * PEUT-ON CONSIGNER CETTE TRAITE ? — une règle, lue par le bureau et le
+     * terrain.
+     *
+     *   • un lot laitier (Batch::tracksMilk) ;
+     *   • la vie du lot (Batch::refusDeSaisie), celle du pointage, de la
+     *     collecte et des soins : lot actif, ni avant l'arrivée ni dans le
+     *     futur. Aucune des deux portes ne la posait — une traite passait sur
+     *     un lot soldé ou clôturé, ou datée d'avant l'arrivée du troupeau ;
+     *   • au moins une traite (matin ou soir) : le terrain l'exigeait, le
+     *     bureau enregistrait une fiche à zéro litre.
+     *
+     * @return array<string, string>  vide si la traite est recevable
+     */
+    public static function refusDeTraite(?Batch $batch, array $saisie): array
+    {
+        if (! $batch || ! $batch->tracksMilk()) {
+            return ['batch_id' => __("Le lot :code n'est pas un lot laitier.", ['code' => $batch?->code ?? ($saisie['batch_id'] ?? '?')])];
+        }
+
+        if ($refus = $batch->refusDeSaisie($saisie['production_date'] ?? null, 'production_date')) {
+            return $refus;
+        }
+
+        if ((float) ($saisie['morning_liters'] ?? 0) + (float) ($saisie['evening_liters'] ?? 0) <= 0) {
+            return ['morning_liters' => __('Renseignez au moins une traite (matin ou soir).')];
+        }
+
+        return [];
+    }
+
     public function batch(): BelongsTo
     {
         return $this->belongsTo(Batch::class)->withTrashed();

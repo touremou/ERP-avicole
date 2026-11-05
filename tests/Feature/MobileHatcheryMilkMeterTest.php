@@ -150,6 +150,8 @@ function lotCaprinLaitier(string $code, int $effectif): Batch
 
     return Batch::factory()->create([
         'code'               => $code,
+        'status'             => 'Actif',
+        'arrival_date'       => today()->subDays(90)->toDateString(),
         'current_quantity'   => $effectif,
         'qty_alive'          => $effectif,
         'species_id'         => $chevre->id,

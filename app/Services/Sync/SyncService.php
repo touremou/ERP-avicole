@@ -605,10 +605,6 @@ class SyncService
 
         $data = $v->validated();
 
-        if ((float) ($data['morning_liters'] ?? 0) + (float) ($data['evening_liters'] ?? 0) <= 0) {
-            return $this->invalid(['morning_liters' => [__('Renseignez au moins une traite (matin ou soir).')]]);
-        }
-
         return DB::transaction(function () use ($data) {
             if (\App\Models\MilkProduction::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
                 return ['status' => 'already_synced'];
@@ -625,12 +621,10 @@ class SyncService
              * compris — pouvait recevoir une traite depuis le terrain, et la
              * production laitière du troupeau s'en trouvait faussée.
              */
-            if (! $batch || ! $batch->tracksMilk()) {
-                return $this->invalid([
-                    'batch_id' => [__("Le lot :code n'est pas un lot laitier.", [
-                        'code' => $batch?->code ?? $data['batch_id'],
-                    ])],
-                ]);
+            // La règle du bureau aussi (MilkProduction::refusDeTraite) : lot
+            // laitier, vie du lot, au moins une traite.
+            if ($refus = \App\Models\MilkProduction::refusDeTraite($batch, $data)) {
+                return $this->invalid(array_map(fn ($m) => [$m], $refus));
             }
 
             /*
@@ -1613,6 +1607,12 @@ class SyncService
             }
 
             $batch = Batch::findOrFail($data['batch_id']);
+
+            // La vie du lot (Batch::refusDeSaisie), la règle du bureau : lot
+            // actif, ni avant l'arrivée. Aucune des deux portes ne la posait.
+            if ($refus = $batch->refusDeSaisie($data['incident_date'], 'incident_date')) {
+                return $this->invalid(array_map(fn ($m) => [$m], $refus));
+            }
 
             $incident = HealthIncident::create([
                 'uuid'            => $data['uuid'],
