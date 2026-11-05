@@ -314,11 +314,11 @@ class Stock extends Model
      * la valeur de sa nature.
      */
     public const NATURES_FOURRAGERES = [
-        'ensilage'    => ['label' => 'Ensilage',            'ms' => 33],
-        'enrubannage' => ['label' => 'Enrubannage',         'ms' => 50],
-        'foin'        => ['label' => 'Foin',                'ms' => 85],
-        'paille'      => ['label' => 'Paille',              'ms' => 88],
-        'concentre'   => ['label' => 'Concentré / provende', 'ms' => 88],
+        'ensilage'    => ['label' => 'Ensilage',             'ms' => 33, 'reglage' => 'stocks.dm_default_ensilage'],
+        'enrubannage' => ['label' => 'Enrubannage',          'ms' => 50, 'reglage' => 'stocks.dm_default_enrubannage'],
+        'foin'        => ['label' => 'Foin',                 'ms' => 85, 'reglage' => 'stocks.dm_default_foin'],
+        'paille'      => ['label' => 'Paille',               'ms' => 88, 'reglage' => 'stocks.dm_default_paille'],
+        'concentre'   => ['label' => 'Concentré / provende', 'ms' => 88, 'reglage' => 'stocks.dm_default_concentre'],
     ];
 
     /** Mots qui désignent une nature dans un nom d'article, à défaut de la nature déclarée. */
@@ -356,8 +356,9 @@ class Stock extends Model
     /** Teneur en MS par défaut d'une nature, au réglage de la ferme. */
     public static function teneurParDefaut(string $nature): float
     {
-        $defaut = self::NATURES_FOURRAGERES[$nature]['ms'] ?? self::NATURES_FOURRAGERES['concentre']['ms'];
-        $reglee = (float) setting("stocks.dm_default_{$nature}", $defaut);
+        $meta   = self::NATURES_FOURRAGERES[$nature] ?? self::NATURES_FOURRAGERES['concentre'];
+        $defaut = $meta['ms'];
+        $reglee = (float) setting($meta['reglage'], $defaut);
 
         return $reglee > 0 ? min(100.0, $reglee) : (float) $defaut;
     }
