@@ -314,13 +314,14 @@ class EggProductionController extends Controller
             'total_eggs_collected' => 'required|integer|min:0',
             'broken_eggs'          => 'nullable|integer|min:0',
             'small_eggs'           => 'nullable|integer|min:0',
+            'downgraded_eggs'      => 'nullable|integer|min:0',
             'observations'         => 'nullable|string|max:500',
         ]);
 
         $batch = $eggProduction->batch;
 
-        // Le total ne peut pas descendre sous les pertes qu'il contient.
-        $pertes = (int) ($validated['broken_eggs'] ?? 0) + (int) ($validated['small_eggs'] ?? 0);
+        // Le total ne peut pas descendre sous les œufs écartés qu'il contient.
+        $pertes = EggProduction::ecartes($validated);
         if ($pertes > $validated['total_eggs_collected']) {
             return back()->withInput()->with('error',
                 "Pertes ({$pertes}) supérieures à la récolte ({$validated['total_eggs_collected']}) : "

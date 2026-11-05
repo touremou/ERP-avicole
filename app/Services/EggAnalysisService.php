@@ -147,13 +147,18 @@ class EggAnalysisService
             $prevTotal = $prevCollection ? (float) ($prevCollection->total_eggs_collected ?? 0) : null;
             $prevHdp = ($prevTotal !== null && $hens > 0) ? round(($prevTotal / $hens) * 100, 1) : null;
 
-            // Œufs cassés (le modèle ne trace pas d'« anomalies » distinctes).
+            // Cassés et ANORMAUX. `small_eggs` porte les anormaux / sales — le sens
+            // de la rectification, du tri et du stock (« Anomalie ») ; l'analyse
+            // les lisait comme le calibre S et comptait zéro anomalie.
             $broken = (float) ($collection->broken_eggs ?? 0);
-            $anomalies = 0.0;
+            $anomalies = (float) ($collection->small_eggs ?? 0);
             $brokenRate = ($totalCollected > 0) ? round((($broken + $anomalies) / $totalCollected) * 100, 1) : 0;
 
-            // Calibres (petits œufs).
-            $qtyS = (float) ($collection->small_eggs ?? 0);
+            // Calibre S : la colonne du tri (grade_s, en alvéoles). Une journée
+            // pas encore triée n'a pas de calibres : pas d'alerte.
+            $qtyS = $collection->is_graded
+                ? (float) $collection->grade_s * \App\Services\UnitConverter::eggsPerTray()
+                : 0.0;
             $smallRate = ($totalCollected > 0) ? round(($qtyS / $totalCollected) * 100, 1) : 0;
 
             $totalEggs += $totalCollected;

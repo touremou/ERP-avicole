@@ -21,6 +21,7 @@ class StoreEggProductionRequest extends FormRequest
             'total_eggs_collected' => 'required|integer|min:0',
             'broken_eggs'          => 'nullable|integer|min:0',
             'small_eggs'           => 'nullable|integer|min:0',
+            'downgraded_eggs'      => 'nullable|integer|min:0',
             'observations'         => 'nullable|string|max:500',
         ];
     }
@@ -61,13 +62,12 @@ class StoreEggProductionRequest extends FormRequest
             // ❌ LE BLOC DE VÉRIFICATION DES DOUBLONS A ÉTÉ SUPPRIMÉ ICI ❌
             // Les techniciens peuvent désormais soumettre autant de collectes que nécessaire dans la même journée.
 
-            // Cohérence : cassés + petits ne peuvent pas dépasser le total
-            $broken = (int) ($this->broken_eggs ?? 0);
-            $small  = (int) ($this->small_eggs ?? 0);
-            $total  = (int) ($this->total_eggs_collected ?? 0);
+            // Cohérence : cassés + anormaux + déclassés ne dépassent pas le total
+            $ecartes = \App\Models\EggProduction::ecartes($this->all());
+            $total   = (int) ($this->total_eggs_collected ?? 0);
 
-            if (($broken + $small) > $total) {
-                $validator->errors()->add('broken_eggs', "Cassés + petits ({$broken} + {$small}) > total collecté ({$total}).");
+            if ($ecartes > $total) {
+                $validator->errors()->add('broken_eggs', "Cassés + anormaux + déclassés ({$ecartes}) > total collecté ({$total}).");
             }
 
             // Le plafond de 100 % n'est plus recopié ici : il comptait sur

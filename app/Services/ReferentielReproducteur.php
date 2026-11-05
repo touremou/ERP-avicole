@@ -19,8 +19,9 @@ use Illuminate\Support\Collection;
  *
  *   • ponte HD (%)          : moyenne des taux de ponte des collectes de la
  *                             semaine (le taux enregistré, sur les femelles) ;
- *   • œufs incubables (%)   : incubables ÷ œufs collectés — à défaut de saisie,
- *                             collectés moins cassés et petits ;
+ *   • œufs incubables (%)   : incubables ÷ œufs collectés — collectés moins
+ *                             cassés, anormaux et autres déclassés
+ *                             (EggProduction::incubables) ;
  *   • fertilité (%)         : Σ fertiles ÷ Σ œufs mis à couver, mirage fait ;
  *   • éclosion (%)          : Σ poussins éclos ÷ Σ œufs mis à couver —
  *                             Incubation::tauxPonderes, la règle du Couvoir
@@ -125,12 +126,8 @@ class ReferentielReproducteur
             ->whereDate('production_date', '<=', $au->toDateString())
             ->get();
         $oeufs      = (int) $collectes->sum('total_eggs_collected');
-        // Œufs incubables : la colonne n'est écrite par aucune saisie (bureau ni
-        // terrain). À défaut, les œufs collectés moins les cassés et les petits
-        // — ceux que la collecte écarte déjà de la couvaison.
-        $incubables = (int) $collectes->sum(fn (EggProduction $c) => (int) $c->incubable_eggs > 0
-            ? (int) $c->incubable_eggs
-            : max(0, (int) $c->total_eggs_collected - (int) $c->broken_eggs - (int) $c->small_eggs));
+        // Œufs incubables : posés à chaque collecte (EggProduction::incubables).
+        $incubables = (int) $collectes->sum('incubable_eggs');
 
         // Incubations des œufs de la semaine (mises à couver dans la semaine).
         $couvees = Incubation::where('batch_id', $batch->id)

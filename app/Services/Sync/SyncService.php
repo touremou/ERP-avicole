@@ -348,6 +348,7 @@ class SyncService
             'total_eggs_collected' => 'required|integer|min:0',
             'broken_eggs'          => 'nullable|integer|min:0',
             'small_eggs'           => 'nullable|integer|min:0',
+            'downgraded_eggs'      => 'nullable|integer|min:0',
             'observations'         => 'nullable|string|max:500',
         ]);
 
@@ -382,6 +383,7 @@ class SyncService
                 'total_eggs_collected' => $validated['total_eggs_collected'],
                 'broken_eggs'          => $validated['broken_eggs'] ?? 0,
                 'small_eggs'           => $validated['small_eggs'] ?? 0,
+                'downgraded_eggs'      => $validated['downgraded_eggs'] ?? 0,
                 'observations'         => $validated['observations'] ?? null,
             ]);
 

@@ -28,6 +28,16 @@ test('plus de cassés et de petits que d’œufs ramassés est refusé', () => {
   assert.notEqual(erreurs.length, 0)
 })
 
+test('les autres déclassés comptent dans ce que la collecte écarte (miroir d’EggProduction::ecartes)', () => {
+  const erreurs = validateOp('egg_collection.create', {
+    batch_id: 3, production_date: aujourdhui, total_eggs_collected: 10, broken_eggs: 4, small_eggs: 3, downgraded_eggs: 4,
+  })
+  assert.notEqual(erreurs.length, 0)
+  assert.deepEqual(validateOp('egg_collection.create', {
+    batch_id: 3, production_date: aujourdhui, total_eggs_collected: 10, broken_eggs: 4, small_eggs: 3, downgraded_eggs: 3,
+  }), [])
+})
+
 test('une collecte cohérente passe — non-régression', () => {
   assert.deepEqual(validateOp('egg_collection.create', {
     batch_id: 3, production_date: aujourdhui, total_eggs_collected: 80, broken_eggs: 2, small_eggs: 3,

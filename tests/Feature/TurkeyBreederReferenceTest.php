@@ -71,7 +71,8 @@ function pontesDeLaSemaine(Batch $lot, float $taux, int $jours = 3): void
         EggProduction::create([
             'farm_id' => $lot->farm_id, 'batch_id' => $lot->id,
             'production_date' => today()->subDays($i)->toDateString(),
-            'total_eggs_collected' => (int) round($taux), 'incubable_eggs' => (int) round($taux) - 2,
+            // 2 œufs déclassés par jour : incubables = collectés − 2 (EggProduction::incubables).
+            'total_eggs_collected' => (int) round($taux), 'downgraded_eggs' => 2,
             'laying_rate' => $taux,
         ]);
     }
@@ -183,7 +184,7 @@ test('l’éditeur de normes enregistre la matrice du guide, et l’import CSV s
         ->and((float) $semaine41->target_mortality_weekly)->toEqual(0.45);
 });
 
-test('sans saisie des incubables, ce sont les œufs collectés moins cassés et petits', function () {
+test('les incubables : collectés moins cassés et anormaux, sans ajustement', function () {
     EggProduction::create([
         'farm_id' => $this->farm->id, 'batch_id' => $this->dindons->id,
         'production_date' => today()->subDay()->toDateString(),

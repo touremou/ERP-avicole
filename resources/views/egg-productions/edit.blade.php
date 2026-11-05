@@ -82,6 +82,15 @@
                         </div>
                     </div>
 
+                    {{-- AJUSTEMENT : autres déclassés, écartés de la couvaison --}}
+                    <div class="bg-white p-8 rounded-[2.5rem] border-2 border-violet-50 shadow-sm text-left">
+                        <label class="block text-[10px] font-black text-violet-500 uppercase mb-3 tracking-widest italic leading-none">{{ __("Ajustement — autres déclassés (non incubables)") }}</label>
+                        <input type="number" min="0" name="downgraded_eggs" id="downgraded" oninput="majResume()"
+                               value="{{ old('downgraded_eggs', $eggProduction->downgraded_eggs ?? 0) }}"
+                               class="w-full bg-violet-50/50 border-none rounded-2xl p-4 font-black text-4xl text-violet-600 text-center focus:ring-0 italic outline-none">
+                        <p class="text-[9px] text-slate-400 italic mt-2">{{ __("Œufs sains écartés du couvoir sans être cassés ni anormaux : deux jaunes, hors poids, déformés… Facultatif.") }}</p>
+                    </div>
+
                     {{-- SECTION 3 : OBSERVATIONS --}}
                     <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm text-left">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest italic leading-none">{{ __("Observations") }}</label>
@@ -93,6 +102,8 @@
                     <div class="bg-slate-900 p-8 rounded-[2.5rem] text-white text-center italic">
                         <p class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] m-0">{{ __("Œufs sains à calibrer") }}</p>
                         <p id="sains" class="text-4xl font-black m-0 mt-2">—</p>
+                        <p class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] m-0 mt-4">{{ __("Dont incubables") }}</p>
+                        <p id="incubables" class="text-2xl font-black text-violet-300 m-0 mt-1">—</p>
                         <p id="alerte-pertes" class="text-[9px] font-black text-red-400 uppercase tracking-widest mt-3 m-0 hidden">
                             {{ __("⚠️ Les pertes dépassent la récolte") }}
                         </p>
@@ -135,14 +146,18 @@
             const info = document.getElementById('info-display');
             if (info) info.innerText = `≈ ${(total / EGGS_PER_TRAY).toFixed(2)} Alvéoles`;
 
+            const declasses = parseInt(document.getElementById('downgraded')?.value) || 0;
+
             const sains = total - (broken + small);
             document.getElementById('sains').innerText = sains;
+            // EggProduction::incubables : collectés − cassés − anormaux − autres déclassés.
+            document.getElementById('incubables').innerText = Math.max(0, sains - declasses);
 
             // Un œuf cassé fait partie des œufs ramassés : les pertes ne peuvent
             // pas dépasser la récolte. Le serveur le refuse aussi.
             const alerte = document.getElementById('alerte-pertes');
             const btn    = document.getElementById('submit-btn');
-            if (sains < 0) {
+            if (sains - declasses < 0) {
                 alerte.classList.remove('hidden');
                 btn.disabled = true;
                 btn.style.opacity = "0.4";
