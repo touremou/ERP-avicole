@@ -364,6 +364,58 @@ class Building extends Model
         return $remaining > 0 ? (int) $remaining : 0;
     }
 
+    /**
+     * PEUT-ON Y METTRE UNE BANDE ? — la règle de toute mise en place : création
+     * (bureau, planning, terrain), changement de bâtiment, transfert.
+     *
+     * Décision de l'exploitation : un bâtiment en vide sanitaire est BLOQUÉ tant
+     * que le délai réglementaire (elevage.sanitary_break_days) n'est pas écoulé,
+     * ou que le protocole d'hygiène n'est pas validé — le responsable passe
+     * alors le bâtiment « Disponible ». Un lot soldé mais non clôturé ne bloque
+     * PAS : son effectif est à zéro, le bâtiment suit son vide sanitaire.
+     *
+     * Aucune porte ne le vérifiait : une bande s'installait dans un bâtiment en
+     * désinfection de la veille.
+     */
+    public function refusDeMiseEnPlace(): ?string
+    {
+        if (! $this->isInSanitaryBreak() || ! $this->disinfection_started_at) {
+            return null;
+        }
+
+        $reste = $this->sanitary_break_remaining_days;
+        if ($reste <= 0) {
+            return null;   // délai écoulé : la libération automatique n'est pas encore passée
+        }
+
+        $fin = $this->disinfection_started_at->copy()->addDays(self::sanitaryBreakDays());
+
+        return "Vide sanitaire en cours dans {$this->name} : encore {$reste} jour(s), jusqu'au {$fin->format('d/m/Y')}. "
+            . "Mise en place possible après le délai, ou dès la validation du protocole d'hygiène (bâtiment passé « Disponible »).";
+    }
+
+    /**
+     * LA SORTIE DU DERNIER ANIMAL — décision de l'exploitation : le vide
+     * sanitaire commence physiquement quand l'effectif tombe à zéro, pas à la
+     * clôture comptable du lot, souvent plusieurs semaines plus tard. Seulement
+     * si plus aucune bande active n'y vit (cf. CloseBatch, S-07).
+     */
+    public function constaterLaSortieDuDernierAnimal(?int $saufLot = null): void
+    {
+        if ($this->isInSanitaryBreak()) {
+            return;
+        }
+
+        $encoreHabite = $this->batches()->active()
+            ->when($saufLot, fn ($q) => $q->where('id', '!=', $saufLot))
+            ->where('current_quantity', '>', 0)
+            ->exists();
+
+        if (! $encoreHabite) {
+            $this->startSanitaryBreak();
+        }
+    }
+
     // --- ACCESSEURS (VIRTUAL ATTRIBUTES) ---
 
     /**

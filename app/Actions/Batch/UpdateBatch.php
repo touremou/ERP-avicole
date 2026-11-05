@@ -136,6 +136,11 @@ class UpdateBatch
         // concurrents, contrairement au consistent read du snapshot).
         $building = Building::lockForUpdate()->findOrFail($newBuildingId);
 
+        // Vide sanitaire en cours : pas de bande (Building::refusDeMiseEnPlace).
+        if ($motif = $building->refusDeMiseEnPlace()) {
+            throw ValidationException::withMessages(['building_id' => $motif]);
+        }
+
         $currentOccupation = Batch::where('building_id', $newBuildingId)
             ->active()
             ->where('id', '!=', $batch->id)

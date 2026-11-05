@@ -58,6 +58,9 @@ class SyncController extends Controller
             'model'   => Building::class,
             'gate'    => 'elevage.L',
             'columns' => ['id', 'name', 'type', 'capacity', 'status', 'updated_at'],
+            // Jours de vide sanitaire restants (Building::refusDeMiseEnPlace) : le
+            // terrain ne propose pas un bâtiment que le serveur refuserait.
+            'append'  => ['sanitary_break_remaining_days'],
         ],
         'stocks' => [
             'model'   => Stock::class,

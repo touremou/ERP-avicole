@@ -38,7 +38,12 @@ class CloseBatch
             throw new \DomainException("Le lot {$batch->code} est déjà clôturé (statut : {$batch->status}).");
         }
 
-        return DB::transaction(function () use ($batch, $data) {
+        // Un lot SOLDÉ a déjà vu sortir son dernier animal : son vide sanitaire
+        // court depuis (Batch::constaterEtatOperationnel). La clôture comptable
+        // ne le relance pas — le bâtiment peut même abriter la bande suivante.
+        $dernierAnimalDejaSorti = $batch->isSolde();
+
+        return DB::transaction(function () use ($batch, $data, $dernierAnimalDejaSorti) {
             // ─── REVENUS ───
             // Vente de réforme : effectif restant valorisé au prix de cession.
             $sellingPrice = (float) $data['actual_sell_price_per_unit'];
@@ -136,7 +141,11 @@ class CloseBatch
             ]);
 
             // ─── GESTION BÂTIMENT ───
-            $this->handleBuildingSanitaryBreak($batch);
+            // Les derniers animaux sortent à la clôture d'un lot actif : le vide
+            // sanitaire commence maintenant. Pour un lot soldé, il court déjà.
+            if (! $dernierAnimalDejaSorti) {
+                $this->handleBuildingSanitaryBreak($batch);
+            }
 
             // ─── PLANNING ───
             // La bande planifiée de ce lot se termine avec lui. C'était le

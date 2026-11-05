@@ -1082,9 +1082,10 @@
                                         {{ __("Ext.") }}
                                     </span>
                                     @endif
-                                    @if($batch->isActive())
+                                    {{-- Lot actif, ou soldé pour un profil autorisé (journalisé) : Batch::motifRefusCorrection. --}}
+                                    @if($batch->motifRefusCorrection() === null)
                                         @can('elevage.M')
-                                        <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition"><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>
+                                        <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition" @if($batch->isSolde()) title="{{ __('Correction sur lot soldé : journalisée') }}" @endif><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>
                                         @endcan
                                         @can('elevage.S')
                                         <form action="{{ route('daily-checks.destroy', $check->id) }}" method="POST" onsubmit="return confirm(@js(__('Supprimer ?')))">

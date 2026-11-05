@@ -32,6 +32,11 @@ class CreateBatch
         return DB::transaction(function () use ($data) {
             $building = Building::lockForUpdate()->findOrFail($data['building_id']);
 
+            // Vide sanitaire en cours : pas de mise en place (Building::refusDeMiseEnPlace).
+            if ($motif = $building->refusDeMiseEnPlace()) {
+                throw ValidationException::withMessages(['building_id' => $motif]);
+            }
+
             // ─── Vérification de capacité ───
             // AUDIT C5 (prouvé par drill parallèle) : le SUM en consistent read
             // (snapshot REPEATABLE READ) ne voyait pas le lot committé par une

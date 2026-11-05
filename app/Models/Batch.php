@@ -821,6 +821,46 @@ class Batch extends Model
         \Illuminate\Support\Facades\DB::table('batches')->where('id', $this->id)->update(['status' => $etat, 'updated_at' => now()]);
         $this->status = $etat;
         $this->syncOriginalAttribute('status');
+
+        // Le bâtiment suit l'effectif physique (décision de l'exploitation) :
+        // le dernier animal sorti ouvre le vide sanitaire ; des animaux revenus
+        // (correction d'un pointage) le referment.
+        $batiment = Building::find($this->building_id);
+        if (! $batiment) {
+            return;
+        }
+
+        if ($etat === self::STATUS_SOLDE) {
+            $batiment->constaterLaSortieDuDernierAnimal($this->id);
+        } elseif ($batiment->isInSanitaryBreak()) {
+            $batiment->markOccupied();
+        }
+    }
+
+    /**
+     * CORRIGER UN POINTAGE PASSÉ — décision de l'exploitation :
+     *   • lot actif : le droit de modification (elevage.M), comme avant ;
+     *   • lot SOLDÉ : un profil autorisé (elevage.S), et la correction est
+     *     journalisée — le dossier n'est pas clos, les chiffres peuvent encore
+     *     être justes ou faux ;
+     *   • lot CLÔTURÉ (terminé, avorté, annulé) : plus aucune correction.
+     *
+     * Le formulaire d'édition refusait tout lot non actif ; la route de mise à
+     * jour, elle, ne vérifiait rien.
+     */
+    public function motifRefusCorrection(): ?string
+    {
+        if ($this->isActive()) {
+            return null;
+        }
+
+        if ($this->isSolde()) {
+            return \Illuminate\Support\Facades\Gate::allows('elevage.S')
+                ? null
+                : "Lot {$this->code} soldé : la correction d'un pointage est réservée aux profils autorisés (droit S), et journalisée.";
+        }
+
+        return "Lot {$this->code} clôturé : modification impossible.";
     }
 
     /**

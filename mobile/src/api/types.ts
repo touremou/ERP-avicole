@@ -303,6 +303,8 @@ export interface RefBuilding {
   capacity: number
   status: string
   updated_at: string
+  /** Jours de vide sanitaire restants, calculés serveur (Building::refusDeMiseEnPlace). */
+  sanitary_break_remaining_days?: number
 }
 
 export interface RefStock {

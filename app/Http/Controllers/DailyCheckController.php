@@ -282,9 +282,9 @@ class DailyCheckController extends Controller
 
         $check = $daily_check->load(['batch.species', 'extension']);
 
-        if ($check->batch->status !== 'Actif') {
-            return redirect()->route('batches.show', $check->batch_id)
-                ->with('error', 'Lot clôturé : modification impossible.');
+        // Lot actif, ou soldé pour un profil autorisé (Batch::motifRefusCorrection).
+        if ($motif = $check->batch->motifRefusCorrection()) {
+            return redirect()->route('batches.show', $check->batch_id)->with('error', $motif);
         }
 
         // PRÉPARATION DES STOCKS POUR LA VUE (Évite les requêtes DB dans le Blade)
@@ -325,6 +325,13 @@ class DailyCheckController extends Controller
     {
         $check = $daily_check;
         $batch = $check->batch;
+
+        // La règle du formulaire, à la route aussi : elle ne vérifiait rien.
+        if ($motif = $batch->motifRefusCorrection()) {
+            return redirect()->route('batches.show', $check->batch_id)->with('error', $motif);
+        }
+        $lotSolde = $batch->isSolde();
+        $avant = $check->only($check->getFillable());
 
         $validated = $request->validated();
 
@@ -387,7 +394,7 @@ class DailyCheckController extends Controller
         $oldWater = (float) $check->water_consumed;
         $newWater = (float) ($validated['water_consumed'] ?? 0);
 
-        return DB::transaction(function () use ($request, $check, $batch, $validated, $oldManure, $newManure, $oldWater, $newWater) {
+        return DB::transaction(function () use ($request, $check, $batch, $validated, $oldManure, $newManure, $oldWater, $newWater, $lotSolde, $avant) {
             // Restitution de l'ancien stock
             if ((float) $check->feed_consumed > 0) {
                 StockIntegrationService::syncMovement(
@@ -421,6 +428,11 @@ class DailyCheckController extends Controller
 
             // Les hooks de DailyCheck::booted() gèrent le diff sur current_quantity
             $check->update($validated);
+
+            // Lot soldé : la correction est JOURNALISÉE (qui, quand, avant/après).
+            if ($lotSolde) {
+                $this->journaliserCorrectionSurLotSolde($check, $avant, 'Correction d’un pointage sur lot soldé');
+            }
 
             // Compensation du stock fumier (restitue l'ancien ramassage,
             // applique le nouveau) pour ne pas double-compter le fertilisant.
@@ -478,6 +490,16 @@ class DailyCheckController extends Controller
         $check = $daily_check;
         $batchId = $check->batch_id;
 
+        // Même règle que la correction : rien sur un lot clôturé, journal sur un lot soldé.
+        if ($check->batch && ($motif = $check->batch->motifRefusCorrection())) {
+            return redirect()->route('batches.show', $batchId)->with('error', $motif);
+        }
+        if ($check->batch?->isSolde()) {
+            activity('audit')->performedOn($check)->causedBy(auth()->user())
+                ->withProperties(['lot' => $check->batch->code, 'avant' => $check->only($check->getFillable()), 'apres' => []])
+                ->log('Suppression d’un pointage sur lot soldé');
+        }
+
         return DB::transaction(function () use ($check, $batchId) {
             // Restitution du stock aliment
             if ((float) $check->feed_consumed > 0) {
@@ -526,5 +548,29 @@ class DailyCheckController extends Controller
             Stock::CAT_CONSO,
             $stock->metadata['bag_weight'] ?? null
         );
+    }
+
+    /**
+     * JOURNAL D'AUDIT d'une correction sur lot soldé — décision de
+     * l'exploitation : le dossier n'est pas clos, la correction reste possible,
+     * mais elle se trace (spatie/laravel-activitylog, journal « audit »).
+     */
+    private function journaliserCorrectionSurLotSolde(DailyCheck $check, array $avant, string $quoi): void
+    {
+        $apres = $check->fresh()?->only($check->getFillable()) ?? [];
+
+        // Les seuls champs qui changent (une suppression garde tout l'« avant »).
+        $changes = array_keys(array_filter($avant, fn ($v, $k) => ! array_key_exists($k, $apres)
+            || json_encode($v) !== json_encode($apres[$k]), ARRAY_FILTER_USE_BOTH));
+
+        activity('audit')
+            ->performedOn($check)
+            ->causedBy(auth()->user())
+            ->withProperties([
+                'lot'   => $check->batch?->code,
+                'avant' => array_intersect_key($avant, array_flip($changes)),
+                'apres' => array_intersect_key($apres, array_flip($changes)),
+            ])
+            ->log($quoi);
     }
 }
