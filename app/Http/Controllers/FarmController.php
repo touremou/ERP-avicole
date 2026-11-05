@@ -264,6 +264,17 @@ class FarmController extends Controller
             ->pluck('user_id')
             ->toArray();
 
+        // On ne retire pas à un compte son DERNIER site : il retomberait sur la
+        // ferme principale, où il n'est affecté nulle part (SitesDuCompte).
+        $retires = DB::table('farm_user')->where('farm_id', $farm->id)
+            ->whereNotIn('user_id', array_merge($currentOwners, array_map('intval', $validated['user_ids'])))
+            ->pluck('user_id')->map(fn ($id) => (int) $id)->all();
+        if ($sansSite = \App\Support\SitesDuCompte::perdraientLeurDernierSite($farm->id, $retires)) {
+            return back()->with('error', __("Ce serait le dernier site de : :noms. Rattachez-les d'abord à un autre site, ou suspendez leur compte.", [
+                'noms' => implode(', ', $sansSite),
+            ]));
+        }
+
         // Supprimer les non-propriétaires
         DB::table('farm_user')
             ->where('farm_id', $farm->id)

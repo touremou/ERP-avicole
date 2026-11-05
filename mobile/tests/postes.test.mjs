@@ -4,8 +4,9 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { POSTES, ESPACES, espaceDeduit, espaceDeLaSession, tuilesDuPoste } from '../src/offline/postes.ts'
-import { accessForPath, allows } from '../src/offline/access.ts'
+import { POSTES, ESPACES, CATALOGUE, LIBELLES_ESPACES, espaceDeduit, espaceDeLaSession, tuilesDuPoste, catalogueOuvert, espacesAffichables } from '../src/offline/postes.ts'
+import { accessForPath, allows, ROUTE_ACCESS } from '../src/offline/access.ts'
+import { en } from '../src/i18n/en.ts'
 
 /** Le contrôle des routes, comme l'écran le passe. */
 const ouvrable = (ctx) => (chemin) => {
@@ -55,4 +56,52 @@ test('l’espace vient du serveur, sinon il se déduit des droits (miroir de Pro
   assert.equal(espaceDeduit(profil({ elevage: 'LCM', production: 'LCM' }).can), 'elevage')
   const partout = { elevage: 'LC', production: 'LC', abattoir: 'LC', commerce: 'LC', logistique: 'LC' }
   assert.equal(espaceDeduit(profil(partout).can), 'gerant')
+})
+
+test('« Tous mes écrans » : chaque écran qui s’ouvre sans paramètre y figure — rien n’est introuvable', () => {
+  const auCatalogue = new Set(CATALOGUE.flatMap((r) => r.tuiles.map((t) => t.to)))
+  const ouvrablesSeuls = Object.keys(ROUTE_ACCESS)
+    .filter((chemin) => !/:[a-zA-Z]+(?!\?)(\/|$)/.test(chemin))   // pas de paramètre obligatoire
+    .map((chemin) => chemin.replace(/\/:[a-zA-Z]+\?$/, ''))         // un paramètre facultatif s'omet
+    .filter((chemin) => chemin !== '/menu')
+
+  const absents = ouvrablesSeuls.filter((chemin) => !auCatalogue.has(chemin))
+  assert.deepEqual(absents, [])
+})
+
+test('le catalogue se filtre par droits et par recherche, sans accents', () => {
+  const vendeur = catalogueOuvert(ouvrable(profil(VENDEUR)))
+  const chemins = vendeur.flatMap((r) => r.tuiles.map((t) => t.to))
+  assert.ok(chemins.includes('/commerce/vente'))
+  assert.ok(!chemins.includes('/elevage/pointage'))
+
+  const recherche = catalogueOuvert(ouvrable(profil(AGENT_TERRAIN)), 'releve')
+  assert.deepEqual(recherche.flatMap((r) => r.tuiles.map((t) => t.to)), ['/ressources/releve'])
+})
+
+test('un profil large peut changer de vue de poste ; un agent n’a que la sienne utile', () => {
+  const direction = espacesAffichables(ouvrable(profil({ admin: 'LCMS', elevage: 'LCMS', commerce: 'LCMS', logistique: 'LCMS', rh: 'LCMS', tresorerie: 'LCMS', production: 'LCMS', ressources: 'LCMS' })))
+  assert.ok(direction.includes('vente') && direction.includes('terrain') && direction.length > 3)
+
+  const vendeur = espacesAffichables(ouvrable(profil(VENDEUR)), 'vente')
+  assert.ok(vendeur.includes('vente'))
+  assert.ok(!vendeur.includes('terrain'))
+  // La vue « comptable » ne lui apporterait que ses propres gestes : pas de choix à faire.
+  assert.deepEqual(vendeur, ['vente'])
+
+  // Le gérant peut regarder le poste d'un autre métier, et garde le sien.
+  const gerant = espacesAffichables(ouvrable(profil({ elevage: 'LCM', production: 'LCM', commerce: 'LCM', logistique: 'LCM', abattoir: 'LCM', provenderie: 'LCM', cultures: 'LCM', ressources: 'LCM', rh: 'LCM', depenses: 'LCM', tresorerie: 'L' })), 'gerant')
+  assert.ok(gerant.includes('gerant') && gerant.includes('abattoir') && gerant.includes('vente'))
+})
+
+test('les libellés des postes, du menu et des espaces sont traduits (données : le scan des t() ne les voit pas)', () => {
+  const cles = new Set(Object.values(LIBELLES_ESPACES))
+  for (const tuiles of Object.values(POSTES)) for (const tuile of tuiles) { cles.add(tuile.label); cles.add(tuile.hint) }
+  for (const rubrique of CATALOGUE) {
+    cles.add(rubrique.titre)
+    for (const tuile of rubrique.tuiles) { cles.add(tuile.label); cles.add(tuile.hint) }
+  }
+
+  assert.deepEqual([...cles].filter((cle) => !(cle in en)), [])
+  assert.deepEqual(Object.keys(LIBELLES_ESPACES).sort(), [...ESPACES].sort())
 })

@@ -116,6 +116,21 @@ final class ProfilsMetier
                 'admin' => '', 'rh' => '',
             ],
         ],
+        // Vétérinaire — souvent un praticien EXTERNE en Guinée, appelé sur un
+        // foyer : soins, diagnostics, prescriptions ; l'abattoir en lecture
+        // (inspection ante / post mortem) ; pas d'argent, pas de stock à toucher.
+        'profil-veterinaire' => [
+            'display_name' => 'Vétérinaire', 'icon' => '🩺', 'workspace' => 'elevage',
+            'modules' => [
+                'elevage' => 'LCM', 'production' => 'L', 'abattoir' => 'L', 'logistique' => 'L', 'annuaire' => 'L',
+            ],
+        ],
+        // Auditeur / contrôleur — bailleur, banque, partenaire d'un projet
+        // financé, commissaire aux comptes : TOUT en lecture, rien à saisir.
+        'profil-auditeur' => [
+            'display_name' => 'Auditeur / contrôleur', 'icon' => '🔍', 'workspace' => 'direction',
+            'modules' => ['*' => 'L', 'admin' => ''],
+        ],
         'profil-responsable-rh' => [
             'display_name' => 'Responsable RH', 'icon' => '🧑‍💼', 'workspace' => 'rh',
             'modules' => [

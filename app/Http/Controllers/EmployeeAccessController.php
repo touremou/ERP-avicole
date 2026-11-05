@@ -57,6 +57,10 @@ class EmployeeAccessController extends Controller
 
         $employee->update(['user_id' => $user->id]);
 
+        // Rattaché au site de l'employé : sans lui, le compte retombait sur la
+        // ferme principale (SitesDuCompte).
+        \App\Support\SitesDuCompte::rattacher($user, [$employee->farm_id]);
+
         Log::info("Accès créé pour l'employé {$employee->employee_id} → user #{$user->id} ({$user->email}).");
 
         return back()
@@ -107,6 +111,8 @@ class EmployeeAccessController extends Controller
 
             if ($existing) {
                 $employee->update(['user_id' => $existing->id]);
+                // Le compte lié rejoint le site de l'employé (SitesDuCompte).
+                \App\Support\SitesDuCompte::rattacher($existing, [$employee->farm_id]);
                 $linked[] = trim($employee->first_name . ' ' . $employee->last_name);
                 continue;
             }
@@ -124,6 +130,7 @@ class EmployeeAccessController extends Controller
             ]);
 
             $employee->update(['user_id' => $user->id]);
+            \App\Support\SitesDuCompte::rattacher($user, [$employee->farm_id]);
 
             $created[] = [
                 'name'     => $user->name,

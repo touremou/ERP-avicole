@@ -788,6 +788,25 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink); font-size: 0.85rem; line-height: 1.4;
 }
 .poste-accueil p { margin: 0; flex: 1 1 auto; }
+/* Choix de la vue : un autre métier que le sien, sans changer de droits. */
+.poste-vue {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 10px;
+  font-size: 0.8rem; font-weight: 700; color: var(--muted);
+}
+.poste-vue select { flex: 1 1 auto; min-height: 40px; font-size: 0.85rem; }
+.poste-tout-voir {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 48px; margin-top: 10px;
+  border: 1px dashed var(--line); border-radius: var(--radius-card);
+  color: var(--primary); font-weight: 700; font-size: 0.9rem; text-decoration: none;
+}
+
+/* ── Tous mes écrans (/menu) ── */
+.menu-recherche { width: 100%; margin: 6px 0 4px; }
+.menu-rubrique { display: flex; flex-direction: column; gap: 8px; }
+.menu-icone { flex: none; width: 28px; font-size: 1.35rem; line-height: 1; text-align: center; }
+.menu-texte { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.menu-aide { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
 .poste-accueil__ok {
   flex: none; min-height: 40px; padding: 0 14px;
   border: none; border-radius: var(--radius); background: var(--primary); color: #fff;

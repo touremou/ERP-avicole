@@ -138,6 +138,8 @@ export const ROUTE_ACCESS = {
   '/mon-espace/semaine': '@self',
   '/appareils': '@self',
   '/alertes': '@self',
+  // Tous mes écrans : le menu complet, qui ne liste que ce que le profil ouvre.
+  '/menu': '@self',
   '/taches': '@owner',
   // Affecter à autrui n'est pas une saisie personnelle : même droit que l'op
   // qu'il produit (règle énoncée ci-dessus).

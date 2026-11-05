@@ -436,6 +436,10 @@ export function MonEspaceScreen() {
         <Link to="/mon-espace/semaine" className="btn-secondary btn-link-row">
           📊 {t('Ma semaine (indicateurs)')}
         </Link>
+        {/* L'accueil met en avant le poste du profil ; le reste se retrouve ici. */}
+        <Link to="/menu" className="btn-secondary btn-link-row">
+          🗂️ {t('Tous mes écrans')}
+        </Link>
       </section>
 
       <section>

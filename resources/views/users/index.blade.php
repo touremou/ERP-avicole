@@ -61,6 +61,11 @@
                                         @endforeach
                                     </select>
                                 </form>
+                                {{-- Ses SITES : il n'agit que sur eux (cloisonnement multi-sites). --}}
+                                @php $sitesDuCompte = $sitesParCompte[$user->id] ?? []; @endphp
+                                <p class="text-[8px] font-black uppercase mt-1 {{ $sitesDuCompte ? 'text-slate-400' : 'text-rose-500' }}">
+                                    <i class="fa-solid fa-location-dot mr-1"></i>{{ $sitesDuCompte ? implode(' · ', $sitesDuCompte) : __('Aucun site rattaché') }}
+                                </p>
                             </td>
                             <td class="px-6 py-5 text-center">
                                 @php $accessibleCount = $user->getAccessibleModules()->count(); @endphp
@@ -404,6 +409,20 @@
                             @endforeach
                         </select>
                     </div>
+                    {{-- Les sites du compte : il n'agira que sur eux. --}}
+                    @if($sites->count() > 1)
+                        <div class="space-y-2">
+                            <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Sites") }}</label>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach($sites as $site)
+                                    <label class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 text-[10px] font-black uppercase cursor-pointer">
+                                        <input type="checkbox" name="farm_ids[]" value="{{ $site->id }}" @checked((int) session('current_farm_id') === (int) $site->id)>
+                                        {{ $site->name }}
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-blue-600 transition-all border-none cursor-pointer italic">
                         <i class="fas fa-user-plus mr-2"></i> {{ __("Créer l'accès") }}
                     </button>
