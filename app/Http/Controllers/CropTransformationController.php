@@ -26,10 +26,37 @@ class CropTransformationController extends Controller
             ->orderByDesc('production_date')
             ->paginate((int) setting('general.items_per_page', 20));
 
+        /*
+         * PAR UNITÉ — recommandation standard retenue par l'exploitation.
+         *
+         * Le « produit fini (30 j) » additionnait des kilos de farine et des
+         * litres d'huile, affichés en kg ; le « rendement moyen » faisait la
+         * moyenne simple de transformations de toutes natures. Désormais :
+         *   • produit fini : une somme par unité de sortie ;
+         *   • rendement : par conversion (unité d'entrée → unité de sortie),
+         *     Σ sorties ÷ Σ entrées — pondéré, comme les autres rendements.
+         */
+        $trente = CropTransformation::where('production_date', '>=', now()->subDays(30))->get(['output_quantity', 'output_unit']);
+        $nonante = CropTransformation::where('production_date', '>=', now()->subDays(90))
+            ->get(['input_quantity', 'input_unit', 'output_quantity', 'output_unit']);
+        $unite = fn (?string $u) => trim((string) $u) !== '' ? trim((string) $u) : 'kg';
+
         $stats = [
-            'count_30d'   => CropTransformation::where('production_date', '>=', now()->subDays(30))->count(),
-            'output_30d'  => (float) CropTransformation::where('production_date', '>=', now()->subDays(30))->sum('output_quantity'),
-            'avg_yield'   => (float) CropTransformation::where('production_date', '>=', now()->subDays(90))->avg('yield_percent'),
+            'count_30d'     => $trente->count(),
+            'output_30d'    => $trente->groupBy(fn ($t) => $unite($t->output_unit))
+                ->map(fn ($groupe, $u) => ['unite' => $u, 'quantite' => (float) $groupe->sum('output_quantity')])
+                ->sortByDesc('quantite')->values()->all(),
+            'yield_by_unit' => $nonante->groupBy(fn ($t) => $unite($t->input_unit) . ' → ' . $unite($t->output_unit))
+                ->map(function ($groupe, $conversion) {
+                    $entree = (float) $groupe->sum('input_quantity');
+
+                    return [
+                        'conversion' => $conversion,
+                        'rendement'  => $entree > 0 ? round((float) $groupe->sum('output_quantity') / $entree * 100, 1) : null,
+                        'nombre'     => $groupe->count(),
+                    ];
+                })
+                ->sortByDesc('nombre')->values()->all(),
         ];
 
         return view('cultures.transformations.index', compact('transformations', 'stats'));

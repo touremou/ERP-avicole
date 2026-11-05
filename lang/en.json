@@ -5164,5 +5164,6 @@
     "Dont :n récolte(s) fourragère(s) à venir": "Including :n upcoming forage harvest(s)",
     "Rupture :j j avant la récolte de :culture (:date)": "Stock-out :j days before the :culture harvest (:date)",
     "MS par défaut de la nature : :n aliment(s)": "Default type DM: :n feed(s)",
-    "Correction sur lot soldé : journalisée": "Correction on a sold-out batch: logged"
+    "Correction sur lot soldé : journalisée": "Correction on a sold-out batch: logged",
+    "Rendement (90 j, pondéré)": "Yield (90 d, weighted)"
 }
