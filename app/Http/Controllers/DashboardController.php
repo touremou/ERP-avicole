@@ -150,7 +150,6 @@ class DashboardController extends Controller
         // On exige donc un minimum de morts en valeur absolue AVANT d'évaluer le %.
         $dailyMortalityMin     = (int) setting('elevage.daily_mortality_alert_min', 3);
         $cumulMortalityPct     = \App\Models\Batch::cumulativeMortalityThreshold();
-        $sanitaryDays          = Building::sanitaryBreakDays();
         $protocolWindowDays    = (int) setting('elevage.protocol_overdue_window_days', 30);
 
         $criticalTypes = [];
@@ -267,9 +266,7 @@ class DashboardController extends Controller
         // moins de 14 jours, n'est PAS une alerte.
         $sanitaryAlertsCount = $canElevage
             ? Building::where('name', '!=', 'Zone Fournisseurs Externes')
-                ->inSanitaryBreak()
-                ->whereNotNull('disinfection_started_at')
-                ->where('disinfection_started_at', '<=', now()->subDays($sanitaryDays))
+                ->videSanitaireEchu()   // à la date, comme la mise en place et la libération
                 ->count()
             : 0;
 

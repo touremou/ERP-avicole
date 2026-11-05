@@ -19,9 +19,8 @@ class ReleaseBuildingsFromSanitaryVoid extends Command
         // réglage devait être honoré en premier. Il ne l'était nulle part.
         $days = Building::sanitaryBreakDays();
 
-        $buildings = Building::inSanitaryBreak()
-            ->where('disinfection_started_at', '<=', now()->subDays($days))
-            ->get();
+        // Le jour J+N, à la date — la règle de la mise en place (Building::scopeVideSanitaireEchu).
+        $buildings = Building::videSanitaireEchu()->get();
 
         foreach ($buildings as $building) {
             $building->update([

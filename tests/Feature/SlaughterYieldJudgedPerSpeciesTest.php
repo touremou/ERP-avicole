@@ -33,6 +33,8 @@ function abattage(string $espece, string $type, float $rendement): void
     $ordre = SlaughterOrder::create([
         'order_number' => SlaughterOrder::generateNumber(), 'batch_id' => $lot->id,
         'planned_date' => now()->toDateString(), 'planned_quantity' => 10, 'status' => 'termine',
+        // Le poids vif qui donne ce rendement : 100 kg de carcasse ÷ rendement.
+        'total_live_weight_kg' => round(100 / ($rendement / 100), 2),
         'requested_by' => User::query()->orderBy('id')->value('id'),
     ]);
     SlaughterResult::create([
@@ -78,3 +80,31 @@ test('le terrain reçoit les morceaux de l’ESPÈCE de chaque ordre — pas des
     expect($codes('mouton'))->toContain('gigot')->not->toContain('aile')
         ->and($codes('poulet'))->toContain('aile');
 });
+
+test('le rendement d’un ensemble se pondère par le poids vif : Σ carcasse ÷ Σ vif', function () {
+    // Une grosse bande à 72 % (poids vif 1 000 kg), un petit lot à 60 % (100 kg).
+    $grosse = abattageDe('poulet', 'chair', 720, 1000);
+    $petit  = abattageDe('poulet', 'chair', 60, 100);
+
+    $kpi = app(SlaughterService::class)->getKPI(30);
+
+    // (720 + 60) / (1 000 + 100) = 70,9 % — la moyenne simple aurait dit 66 %.
+    expect($kpi['avg_yield'])->toBe(70.9)
+        ->and($kpi['yield_by_family']['volaille']['avg'])->toBe(70.9);
+});
+
+function abattageDe(string $espece, string $type, float $carcasseKg, float $vifKg): void
+{
+    $sp = Species::where('slug', $espece)->first();
+    $lot = Batch::factory()->create(['species_id' => $sp->id, 'production_type_id' => ProductionType::resolveOrCreate($type, $sp->id)->id, 'current_quantity' => 100]);
+    $ordre = SlaughterOrder::create([
+        'order_number' => SlaughterOrder::generateNumber(), 'batch_id' => $lot->id,
+        'planned_date' => now()->toDateString(), 'planned_quantity' => 10, 'status' => 'termine',
+        'requested_by' => User::query()->orderBy('id')->value('id'), 'total_live_weight_kg' => $vifKg,
+    ]);
+    SlaughterResult::create([
+        'slaughter_order_id' => $ordre->id, 'total_carcass_weight_kg' => $carcasseKg,
+        'carcass_yield_percent' => round($carcasseKg / $vifKg * 100, 2),
+        'condemned_count' => 0, 'avg_live_weight_kg' => 40, 'avg_carcass_weight_kg' => 20, 'execution_date' => now()->toDateString(),
+    ]);
+}
