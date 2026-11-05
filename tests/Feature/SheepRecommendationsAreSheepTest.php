@@ -55,7 +55,8 @@ test('l’autonomie d’une bande de moutons ne compte pas l’aliment des poule
     Stock::create(['item_name' => $phase, 'feed_type' => $phase, 'category' => 'conso',
         'unit' => 'KG', 'current_quantity' => 600, 'alert_threshold' => 100, 'farm_id' => $this->farm->id]);
 
-    expect(app(BatchAdvisorService::class)->feedAutonomy($this->beliers)['stock_kg'])->toBe(600.0);
+    // En kg de matière sèche : une provende sans teneur saisie compte à 88 %.
+    expect(app(BatchAdvisorService::class)->feedAutonomy($this->beliers)['stock_kg'])->toBe(528.0);
 });
 
 test('un bélier adulte est à l’entretien, et ses poids se lisent en kilos', function () {

@@ -152,6 +152,9 @@
                                     <p class="text-[9px] opacity-70 uppercase font-black mt-1">
                                         {{ number_format($autonomieFourragere['stock_kg'], 0, ',', ' ') }} {{ __("kg MS pour") }} {{ number_format($autonomieFourragere['daily_kg'], 1, ',', ' ') }} {{ __("kg MS/j") }}
                                         · {{ __('Rupture prévue le :date', ['date' => $autonomieFourragere['rupture_le']->format('d/m/Y')]) }}
+                                        @if(!empty($autonomieFourragere['rupture_avant_recolte']))
+                                            · {{ __('Rupture :j j avant la récolte de :culture (:date)', ['j' => $autonomieFourragere['jours_de_soudure'], 'culture' => $autonomieFourragere['prochaine_recolte']['culture'], 'date' => $autonomieFourragere['prochaine_recolte']['date']->format('d/m/Y')]) }}
+                                        @endif
                                     </p>
                                 </div>
                                 <p class="text-xs font-black uppercase tracking-tight leading-none text-right">

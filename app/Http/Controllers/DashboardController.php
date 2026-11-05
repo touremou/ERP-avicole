@@ -686,7 +686,12 @@ class DashboardController extends Controller
                 'level' => $a['niveau'], 'icon' => 'fa-cow',
                 'title' => 'Autonomie fourragère',
                 'detail' => "Troupeau de ruminants — {$a['days']} j ({$a['stock_kg']} kg MS pour {$a['daily_kg']} kg MS/j),"
-                    . ' rupture prévue le ' . $a['rupture_le']->format('d/m/Y') . " (seuil : {$a['seuil']} j).",
+                    . ' rupture prévue le ' . $a['rupture_le']->format('d/m/Y') . " (seuil : {$a['seuil']} j)"
+                    // La soudure : des jours sans fourrage avant la prochaine récolte.
+                    . (! empty($a['rupture_avant_recolte'])
+                        ? ", {$a['jours_de_soudure']} j avant la récolte de {$a['prochaine_recolte']['culture']} ("
+                            . $a['prochaine_recolte']['date']->format('d/m/Y') . ').'
+                        : '.'),
                 'url' => route('stocks.index', ['category' => 'conso']),
             ]);
         }
