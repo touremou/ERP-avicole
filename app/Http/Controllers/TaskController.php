@@ -12,6 +12,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
+/**
+ * TÂCHES OPÉRATIONNELLES — droits du module PLANNING, pas de la RH.
+ *
+ * Décision de l'exploitation : le technicien d'élevage n'avait pas accès aux
+ * tâches. Elles étaient gardées par la RH (`rh.*`) : pour répartir le travail
+ * de son équipe, un chef d'équipe aurait dû recevoir aussi les fiches du
+ * personnel, la présence et la paie. Elles relèvent désormais du planning
+ * (Module::routePrefixMap : 'tasks.' → 'planning'), comme sur le terrain :
+ *
+ *   • titulaire (fiche employé liée au compte) — voit et coche SES tâches,
+ *     sans aucun droit ;
+ *   • planning.L — voit le planning de toute l'équipe du site ;
+ *   • planning.C — crée une tâche et l'affecte ;
+ *   • planning.M — modifie, réaffecte, clôt pour autrui, génère, gère les modèles ;
+ *   • planning.S — supprime (Direction).
+ *
+ * Les mêmes droits gardent les opérations du terrain (SyncService : task.*)
+ * et leur miroir hors-ligne (mobile/src/offline/access.ts).
+ */
 class TaskController extends Controller
 {
     /**
@@ -55,14 +74,10 @@ class TaskController extends Controller
 
     public function index(Request $request, TaskSchedulerService $service)
     {
-        // ACCÈS : encadrement (rh.L) OU titulaire de tâches. Un technicien de
-        // cultures n'a aucun droit RH et se voyait refuser SA propre liste — la
-        // logique de portée personnelle existait juste en dessous, mais était
-        // inatteignable. Le mobile, lui, la servait déjà : deux comportements
-        // pour la même donnée.
+        // ACCÈS : planning de l'équipe (planning.L) OU titulaire de tâches.
         $myEmployee = Auth::user()?->employee;
 
-        if (Gate::denies('rh.L') && ! $myEmployee) {
+        if (Gate::denies('planning.L') && ! $myEmployee) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
@@ -75,14 +90,14 @@ class TaskController extends Controller
         $category = $request->input('category');
         $priority = $request->input('priority');
 
-        // ═══ PORTÉE RBAC : espace perso vs encadrement ═══
-        // Un non-encadrant (sans admin.M) ne voit QUE ses propres tâches : on
-        // verrouille le filtre employé sur sa fiche RH, quels que soient les
-        // paramètres d'URL. Les liens « Mes tâches » du menu profil passent
-        // ?mine=1 pour présélectionner l'utilisateur courant — y compris pour
-        // un encadrant, qui peut ensuite élargir à toute l'équipe.
+        // ═══ PORTÉE : espace perso vs planning de l'équipe ═══
+        // Sans planning.L, on ne voit QUE ses propres tâches : le filtre employé
+        // est verrouillé sur sa fiche, quels que soient les paramètres d'URL.
+        // Le lien « Mes tâches » du menu profil passe ?mine=1 pour présélectionner
+        // l'utilisateur courant — y compris pour un encadrant, qui peut ensuite
+        // élargir à toute l'équipe.
         $myEmployeeId = $myEmployee?->id;
-        $canSeeAll    = Gate::allows('rh.M');
+        $canSeeAll    = Gate::allows('planning.L');
 
         if (! $canSeeAll) {
             $employeeId = $myEmployeeId;
@@ -168,7 +183,7 @@ class TaskController extends Controller
 
     public function generate(Request $request, TaskSchedulerService $service)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
 
         $date = Carbon::parse($request->input('date', now()->toDateString()));
         $result = $service->generateForDate($date, $this->farmId());
@@ -178,15 +193,13 @@ class TaskController extends Controller
 
     public function complete(Request $request, TaskAssignment $task)
     {
-        // Le TITULAIRE coche sa tâche sans droit RH ; l'encadrement (rh.M) peut
-        // la clore pour autrui. Même règle que SyncService::taskComplete, qui
-        // l'appliquait déjà côté terrain : exiger rh.M ici empêchait un
-        // technicien de valider depuis le bureau ce qu'il pouvait valider
-        // depuis son téléphone.
+        // Le TITULAIRE coche sa tâche sans aucun droit ; l'encadrement
+        // (planning.M) peut la clore pour autrui. Même règle que
+        // SyncService::taskComplete côté terrain.
         $myEmployeeId = Auth::user()?->employee?->id;
         $isOwner = $task->employee_id !== null && $task->employee_id === $myEmployeeId;
 
-        if (! $isOwner && Gate::denies('rh.M')) {
+        if (! $isOwner && Gate::denies('planning.M')) {
             return back()->with('error', 'Non autorisé.');
         }
 
@@ -241,7 +254,7 @@ class TaskController extends Controller
 
     public function assign(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate(['employee_id' => ['required', \App\Support\Ferme::employe()]]);
 
@@ -276,7 +289,7 @@ class TaskController extends Controller
 
     public function storeManual(Request $request)
     {
-        if (Gate::denies('rh.C')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.C')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
@@ -325,7 +338,7 @@ class TaskController extends Controller
 
     public function edit(TaskAssignment $task)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
         $employees = Employee::assignableInCurrentFarm()->orderBy('first_name')->get();
@@ -336,7 +349,7 @@ class TaskController extends Controller
 
     public function update(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
         $validated = $request->validate([
@@ -362,7 +375,7 @@ class TaskController extends Controller
 
     public function destroy(TaskAssignment $task)
     {
-        if (Gate::denies('rh.S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.S')) return back()->with('error', 'Non autorisé.');
 
         $date = $task->scheduled_date->toDateString();
         $task->delete();
@@ -374,7 +387,7 @@ class TaskController extends Controller
 
     public function templates()
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
 
         // Les modèles GLOBAUX plus ceux de ce site — même règle que le
         // générateur (`TaskTemplate::forFarm`). Cet écran listait ceux de TOUS
@@ -391,7 +404,7 @@ class TaskController extends Controller
 
     public function storeTemplate(Request $request)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
@@ -471,14 +484,14 @@ class TaskController extends Controller
 
     public function editTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
         $batchTypeOptions = TaskTemplate::batchTypeOptions();
         return view('tasks.edit-template', compact('template', 'batchTypeOptions'));
     }
 
     public function updateTemplate(Request $request, TaskTemplate $template)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
@@ -550,7 +563,7 @@ class TaskController extends Controller
 
     public function destroyTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('rh.S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.S')) return back()->with('error', 'Non autorisé.');
 
         $name = $template->name;
         $template->delete();
@@ -560,7 +573,7 @@ class TaskController extends Controller
 
     public function toggleTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('planning.M')) return back()->with('error', 'Non autorisé.');
 
         $template->update(['is_active' => ! $template->is_active]);
         $state = $template->is_active ? 'activé' : 'désactivé';

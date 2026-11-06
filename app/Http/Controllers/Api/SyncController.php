@@ -109,11 +109,11 @@ class SyncController extends Controller
         // M4/M6 — Employés actifs : superviseur d'un OP, et grille de présence.
         // Colonnes strictement nominatives : ni salaire, ni contrat, ni contact
         // d'urgence ne descendent sur un téléphone de terrain.
-        // Gate any-of : qui pointe la présence (rh.C) doit recevoir la liste,
-        // même sans lecture RH explicite (rh.L).
+        // Gate any-of : qui pointe la présence (rh.C) ou affecte une tâche
+        // (planning.C) doit recevoir la liste, même sans lecture RH (rh.L).
         'employees' => [
             'model'   => \App\Models\Employee::class,
-            'gate'    => ['provenderie.L', 'elevage.L', 'rh.L', 'rh.C'],
+            'gate'    => ['provenderie.L', 'elevage.L', 'rh.L', 'rh.C', 'planning.C'],
             // `department` : le terrain peut désormais AFFECTER une tâche
             // (task.dispatch), et le serveur refuse une affectation hors du
             // service concerné. Sans cette colonne, l'écran ne pourrait pas le
@@ -180,7 +180,8 @@ class SyncController extends Controller
         // Aucun motif ne descend : ni type, ni raison, ni validateur.
         'employee_leaves' => [
             'model'   => \App\Models\EmployeeLeave::class,
-            'gate'    => ['rh.L', 'rh.C'],
+            // planning.C : l'affectation d'une tâche refuse un agent en congé.
+            'gate'    => ['rh.L', 'rh.C', 'planning.C'],
             'columns' => ['id', 'employee_id', 'start_date', 'end_date', 'status', 'updated_at'],
             'scope'   => 'currentForSync',
         ],

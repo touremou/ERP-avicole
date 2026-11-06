@@ -22,8 +22,8 @@
                 </a>
                 @endcan
 
-                {{-- INTRANTS --}}
-                @can('cultures.L')
+                {{-- INTRANTS — coûts : règle « voir l'argent » (finances.voir). --}}
+                @if(Gate::allows('cultures.L') && Gate::allows('finances.voir'))
                 <a href="{{ route('crop-reports.inputs') }}" class="group bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
                     <div class="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-flask-vial text-lg"></i>
@@ -35,10 +35,10 @@
                     </div>
                     <i class="fa-solid fa-droplet absolute -right-4 -bottom-4 text-7xl text-slate-50 group-hover:text-amber-50 transition-colors"></i>
                 </a>
-                @endcan
+                @endif
 
-                {{-- CAMPAGNES --}}
-                @can('cultures.L')
+                {{-- CAMPAGNES — revenus et marge : règle « voir l'argent ». --}}
+                @if(Gate::allows('cultures.L') && Gate::allows('finances.voir'))
                 <a href="{{ route('crop-reports.campaigns') }}" class="group bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
                     <div class="w-12 h-12 bg-sky-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-calendar-days text-lg"></i>
@@ -50,7 +50,7 @@
                     </div>
                     <i class="fa-solid fa-cloud-sun absolute -right-4 -bottom-4 text-7xl text-slate-50 group-hover:text-sky-50 transition-colors"></i>
                 </a>
-                @endcan
+                @endif
 
                 {{-- TRANSFORMATIONS --}}
                 @can('cultures.L')

@@ -98,6 +98,8 @@
                         <p class="text-xl font-black {{ $data['water']['per_bird_per_day'] < 0.15 ? 'text-red-600' : 'text-slate-900' }}">{{ number_format($data['water']['per_bird_per_day'], 3) }}</p>
                         <p class="text-[8px] text-slate-400">{{ __("norme : 0.2-0.4L") }}</p>
                     </div>
+                    {{-- Montants : règle « voir l'argent » (finances.voir). --}}
+                    @can('finances.voir')
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / 1000 têtes") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['water']['cost_per_1000']) }}</p>
@@ -108,6 +110,7 @@
                         <p class="text-xl font-black text-cyan-600">{{ number_format($data['water']['cost_per_m3']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                     </div>
+                    @endcan
                     <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                         'bg-red-50 border-red-200' => $data['water']['ph_status'] === 'hors_norme',
                         'bg-emerald-50 border-emerald-200' => $data['water']['ph_status'] === 'optimal',
@@ -160,18 +163,20 @@
 
                 {{-- KPI ÉNERGIE --}}
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+                    @can('finances.voir')
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût total") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['energy']['total_cost']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                     </div>
+                    @endcan
                     {{-- Affichée seulement si des kWh ont RÉELLEMENT été relevés.
                          Le seul test du tarif ne suffisait pas : le paramètre est
                          semé à 1 500 GNF/kWh, donc la tuile s'affichait toujours —
                          et, faute de champ de saisie, annonçait 0 en permanence.
                          Un indicateur qui ne peut pas varier n'informe pas : il
                          apprend à ne plus regarder. --}}
-                    @if(setting('energie.kwh_price_edg', 0) > 0 && ($data['energy']['total_kwh'] ?? 0) > 0)
+                    @if(setting('energie.kwh_price_edg', 0) > 0 && ($data['energy']['total_kwh'] ?? 0) > 0 && Gate::allows('finances.voir'))
                     <div class="bg-emerald-50 p-5 rounded-[2rem] border border-emerald-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Valeur produite (éq. EDG)") }}</p>
                         <p class="text-xl font-black text-emerald-600">{{ number_format($data['energy']['edg_value']) }}</p>
@@ -191,7 +196,7 @@
                         <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['total_fuel_liters']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
                     </div>
-                    @if(($data['energy']['cost_per_kwh'] ?? 0) > 0)
+                    @if(($data['energy']['cost_per_kwh'] ?? 0) > 0 && Gate::allows('finances.voir'))
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / kWh") }}</p>
                         <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['cost_per_kwh']) }}</p>

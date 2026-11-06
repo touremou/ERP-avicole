@@ -27,10 +27,12 @@ export function NouvelleSaisieScreen() {
     (canCultures && cropCycles.length > 0)
   const canRessources = can('ressources', 'C')
   const canRh = can('rh', 'C')
+  // Affecter une tâche suit le planning (SyncService::taskDispatch), pas la RH.
+  const canAffecter = can('planning', 'C')
   const hasQuick =
     can('commerce', 'C') || can('commerce', 'M') || can('logistique', 'M') || can('logistique', 'C') ||
     can('depenses', 'C') || abattoirC || canRessources || canElevage || can('provenderie', 'C') ||
-    canProduction || canRh
+    canProduction || canRh || canAffecter
   const nothing = !hasContextual && !hasQuick && !(canElevage || canProduction)
 
   return (
@@ -146,7 +148,7 @@ export function NouvelleSaisieScreen() {
               <span className="task-meta">{t('toute l’équipe · 1 validation')}</span>
             </Link>
           )}
-          {canRh && (
+          {canAffecter && (
             <Link to="/taches/affecter" className="task-card">
               <span className="task-title">📋 {t('Affecter une tâche')}</span>
               <span className="task-meta">{t('au collègue ou au libre-service')}</span>

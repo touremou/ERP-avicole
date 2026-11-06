@@ -45,6 +45,7 @@
                     ['title' => 'Pilotage', 'color' => 'indigo', 'items' => [
                         ['label' => 'Rapports', 'icon' => 'fa-chart-line', 'route' => 'reports.index', 'can' => 'elevage.L'],
                         ['label' => 'Planning', 'icon' => 'fa-calendar-days', 'route' => 'planning.index', 'can' => 'planning.L'],
+                        ['label' => 'Tâches de l’équipe', 'icon' => 'fa-list-check', 'route' => 'tasks.index', 'can' => 'planning.L'],
                     ]],
                 ];
             @endphp

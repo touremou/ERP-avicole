@@ -563,7 +563,19 @@ class DashboardController extends Controller
             'energy'    => $series['energy'][$peakIdx],
         ] : null;
 
-        return view('dashboard-analytics', compact('series', 'days', 'totalMortality', 'totalWater', 'totalEnergy', 'peak'));
+        // L'énergie est relevée en MONTANT : elle suit la règle « voir l'argent »
+        // (finances.voir). Retirée des séries, elle n'atteint pas la page — pas
+        // seulement masquée à l'écran.
+        $voitLArgent = \Illuminate\Support\Facades\Gate::allows('finances.voir');
+        if (! $voitLArgent) {
+            $series['energy'] = [];
+            $totalEnergy = null;
+            if ($peak) {
+                $peak['energy'] = null;
+            }
+        }
+
+        return view('dashboard-analytics', compact('series', 'days', 'totalMortality', 'totalWater', 'totalEnergy', 'peak', 'voitLArgent'));
     }
 
     /**

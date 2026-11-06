@@ -27,7 +27,9 @@
                 <div class="bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm"><p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Incidents") }}</p><p class="text-2xl font-black text-slate-800">{{ $summary['total'] }}</p></div>
                 <div class="bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm"><p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Ouverts") }}</p><p class="text-2xl font-black {{ $summary['open'] > 0 ? 'text-rose-600' : 'text-slate-800' }}">{{ $summary['open'] }}</p></div>
                 <div class="bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm"><p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Cadavres signalés") }}</p><p class="text-2xl font-black text-rose-600">{{ number_format($summary['mortality'], 0, ',', ' ') }}</p></div>
+                @can('finances.voir')
                 <div class="bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm"><p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût traitements") }}</p><p class="text-xl font-black text-slate-800">{{ number_format($summary['cost'], 0, ',', ' ') }} <span class="text-[9px] text-slate-400">{{ currency() }}</span></p></div>
+                @endcan
                 <div class="bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm"><p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Délai résolution moyen") }}</p><p class="text-2xl font-black text-slate-800">{{ $summary['avg_resolution_days'] !== null ? $summary['avg_resolution_days'].' j' : '—' }}</p></div>
             </div>
 
@@ -43,7 +45,7 @@
                     <div class="px-6 py-4 bg-slate-50 border-b border-slate-100"><h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500">{{ __("Par maladie suspectée") }}</h3></div>
                     <table class="w-full text-left">
                         <thead><tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="px-6 py-3">{{ __("Maladie") }}</th><th class="px-6 py-3 text-right">{{ __("Cas") }}</th><th class="px-6 py-3 text-right">{{ __("Cadavres") }}</th><th class="px-6 py-3 text-right">{{ __("Coût") }}</th>
+                            <th class="px-6 py-3">{{ __("Maladie") }}</th><th class="px-6 py-3 text-right">{{ __("Cas") }}</th><th class="px-6 py-3 text-right">{{ __("Cadavres") }}</th>@can('finances.voir')<th class="px-6 py-3 text-right">{{ __("Coût") }}</th>@endcan
                         </tr></thead>
                         <tbody class="divide-y divide-slate-50">
                             @foreach($byDisease as $disease => $row)
@@ -51,7 +53,9 @@
                                 <td class="px-6 py-3 text-xs font-black text-slate-700">{{ $disease }}</td>
                                 <td class="px-6 py-3 text-right font-black text-slate-800">{{ $row['count'] }}</td>
                                 <td class="px-6 py-3 text-right font-black text-rose-600">{{ number_format($row['mortality'], 0, ',', ' ') }}</td>
+                                @can('finances.voir')
                                 <td class="px-6 py-3 text-right font-black text-slate-700">{{ number_format($row['cost'], 0, ',', ' ') }} {{ currency() }}</td>
+                                @endcan
                             </tr>
                             @endforeach
                         </tbody>

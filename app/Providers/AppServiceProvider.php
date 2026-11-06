@@ -425,5 +425,25 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('clients.read', $clientsGate('L'));
         Gate::define('clients.create', $clientsGate('C'));
         Gate::define('clients.modify', $clientsGate('M'));
+
+        // ─── E. VOIR L'ARGENT ───
+        // Décision de l'exploitation : un technicien d'élevage voyait les
+        // rapports financiers (bilan sanitaire en GNF), le compte de résultat
+        // d'un lot, la valeur du stock, le CA du lait. Les écrans opérationnels
+        // étaient gardés par leur module (elevage.L…), et l'argent qu'ils
+        // portent suivait le même droit.
+        //
+        // UNE règle, lue partout (rapports financiers, clôture d'un lot,
+        // indicateurs chiffrés des écrans opérationnels) : voit les montants
+        // qui gère l'argent — consultation des Dépenses OU de la Trésorerie
+        // (direction, gérant, comptable, auditeur). Aucun module de plus :
+        // l'administrateur règle ce droit dans la matrice qu'il connaît déjà.
+        // Les prix de VENTE restent au Commerce (le vendeur en a besoin).
+        Gate::define('finances.voir', function (?User $user) {
+            if (! $user) return false;
+
+            return Gate::forUser($user)->allows('depenses.L')
+                || Gate::forUser($user)->allows('tresorerie.L');
+        });
     }
 }

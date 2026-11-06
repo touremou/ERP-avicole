@@ -37,7 +37,9 @@ beforeEach(function () {
 });
 
 test('le KPI dashboard valorise TOUT le stock (pas seulement Aliment & Santé)', function () {
-    $user = User::factory()->create(['role_id' => lot1Role('gestionnaire_stock', ['logistique', 'elevage'])->id]);
+    // La valeur du stock est un montant : elle suit la règle « voir l'argent »
+    // (finances.voir — Dépenses ou Trésorerie), plus la seule lecture du stock.
+    $user = User::factory()->create(['role_id' => lot1Role('gestionnaire_stock', ['logistique', 'elevage', 'depenses'])->id]);
     DB::table('farm_user')->insert([
         'farm_id' => $this->farm->id, 'user_id' => $user->id,
         'is_default' => true, 'is_owner' => false, 'created_at' => now(), 'updated_at' => now(),

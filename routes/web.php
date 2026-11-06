@@ -167,8 +167,10 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/{batch}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{batch}', 'update')->name('update')->middleware('can:M');
-        Route::get('/{batch}/close', 'showCloseForm')->name('close_form')->middleware('can:M');
-        Route::put('/{batch}/close', 'close')->name('close')->middleware('can:M');
+        // Clôturer = arrêter le compte de résultat du lot (prix de vente, marge) :
+        // un acte de gestion, réservé à qui voit l'argent (finances.voir).
+        Route::get('/{batch}/close', 'showCloseForm')->name('close_form')->middleware(['can:M', 'can:finances.voir']);
+        Route::put('/{batch}/close', 'close')->name('close')->middleware(['can:M', 'can:finances.voir']);
         Route::put('/{batch}/reopen', 'reopen')->name('reopen')->middleware(['can:M', 'can:S']);
         Route::post('/{batch}/transfer', [BatchTransferController::class, 'transfer'])->name('transfer')->middleware('can:M');
 
@@ -417,10 +419,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/yield', 'yield')->name('yield');
         Route::get('/yield/pdf', 'yieldPdf')->name('yield.pdf');
-        Route::get('/inputs', 'inputs')->name('inputs');
-        Route::get('/inputs/pdf', 'inputsPdf')->name('inputs.pdf');
-        Route::get('/campaigns', 'campaigns')->name('campaigns');
-        Route::get('/campaigns/pdf', 'campaignsPdf')->name('campaigns.pdf');
+        // Coûts des intrants, bilan des campagnes (revenus, marge) : règle
+        // « voir l'argent » (finances.voir).
+        Route::get('/inputs', 'inputs')->name('inputs')->middleware('can:finances.voir');
+        Route::get('/inputs/pdf', 'inputsPdf')->name('inputs.pdf')->middleware('can:finances.voir');
+        Route::get('/campaigns', 'campaigns')->name('campaigns')->middleware('can:finances.voir');
+        Route::get('/campaigns/pdf', 'campaignsPdf')->name('campaigns.pdf')->middleware('can:finances.voir');
         Route::get('/transformations', 'transformations')->name('transformations');
         Route::get('/transformations/pdf', 'transformationsPdf')->name('transformations.pdf');
         // Confrontation délai avant récolte ↔ récoltes effectives : audit
@@ -638,8 +642,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/nursery', 'nurseryReport')->name('nursery');
         Route::get('/nursery/pdf', 'nurseryReportPdf')->name('nursery.pdf');
         Route::get('/health-incidents', 'healthIncidentsReport')->name('health_incidents');
-        Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
-        Route::get('/health-finance/pdf', 'healthFinancialReportPdf')->name('health_finance.pdf');
+        // Bilan financier sanitaire : règle « voir l'argent » (finances.voir).
+        Route::get('/health-finance', 'healthFinancialReport')->name('health_finance')->middleware('can:finances.voir');
+        Route::get('/health-finance/pdf', 'healthFinancialReportPdf')->name('health_finance.pdf')->middleware('can:finances.voir');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly')->middleware('can:admin.L');
         Route::get('/monthly/pdf', 'monthlyExpensesPdf')->name('monthly.pdf')->middleware('can:admin.L');
         Route::get('/gmq', 'gmqReport')->name('gmq');

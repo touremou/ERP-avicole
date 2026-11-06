@@ -220,7 +220,7 @@
                                             <option value="{{ $statusOption }}" {{ old('status', $batch->status) == $statusOption ? 'selected' : '' }}>{{ \Illuminate\Support\Str::upper($statusOption) }}</option>
                                         @endforeach
                                     </select>
-                                    @if($batch->isActive())
+                                    @if($batch->isActive() && Gate::allows('finances.voir'))
                                         <p class="text-[9px] text-slate-400 uppercase italic font-black mt-2 ml-1 leading-snug">
                                             {{ __('Pour terminer le lot :') }}
                                             <a href="{{ route('batches.close_form', $batch) }}" class="text-emerald-600 underline">{{ __('formulaire de clôture') }}</a>

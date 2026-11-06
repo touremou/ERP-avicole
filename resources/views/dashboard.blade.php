@@ -21,9 +21,10 @@
             </div>
 
             <div class="flex gap-4">
-                {{-- Données financières/stock masquées selon les droits modules :
-                     valorisation stock → logistique.L ; marge & encours → commerce.L. --}}
-                @can('logistique.L')
+                {{-- Données financières/stock masquées selon les droits :
+                     valorisation stock → qui voit l'argent (finances.voir) ;
+                     marge & encours → commerce.L. --}}
+                @can('finances.voir')
                 {{-- Valorisation CMUP du stock global, ventilée par catégorie en info-bulle --}}
                 @php
                     $stockTooltip = __('Valorisation CMUP de tout le stock.');

@@ -227,13 +227,14 @@
         {{-- Lot SOLDÉ : effectif à zéro, derniers coûts encore imputables ; la
              clôture définitive (bilan, marge, verrou) se prononce ici. --}}
         @if($batch->isSolde())
-            @can('elevage.M')
+            {{-- Même droit que la route : élevage M ET « voir l'argent ». --}}
+            @if(Gate::allows('elevage.M') && Gate::allows('finances.voir'))
             <a href="{{ route('batches.close_form', $batch->id) }}"
                class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-amber-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-amber-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
                 <i class="fa-solid fa-flag-checkered"></i>
                 <span>{{ __("Clôture définitive") }}</span>
             </a>
-            @endcan
+            @endif
         @endif
         @if($batch->isActive())
 
@@ -323,10 +324,12 @@
                     </button>
                     @endif
 
+                    @can('finances.voir')
                     <a href="{{ route('batches.close_form', $batch->id) }}"
                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all no-underline">
                         <i class="fa-solid fa-flag-checkered text-orange-400 w-4"></i> {{ __("Clôturer le lot") }}
                     </a>
+                    @endcan
 
                     <div class="h-px bg-slate-100 my-1 mx-2"></div>
                     @endcan

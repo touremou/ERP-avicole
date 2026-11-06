@@ -42,8 +42,10 @@ class Module extends Model
      * d'incohérence entre le middleware de route, le contrôleur et la nav.
      *
      * Note : « tasks » (tâches opérationnelles assignées au personnel) relève
-     * de l'Annuaire/RH, PAS du module Planning qui concerne la planification
-     * des bandes/lots.
+     * du PLANNING : répartir le travail de l'équipe est un acte d'encadrement,
+     * pas de gestion du personnel. Rattachées à la RH, elles obligeaient à
+     * ouvrir les fiches, la présence et la paie au chef d'équipe — ou à le
+     * priver des tâches (cf. TaskController).
      */
     public static function routePrefixMap(): array
     {
@@ -134,24 +136,24 @@ class Module extends Model
             // Notifications
             'notifications.'    => 'notifications',
 
-            // Planning (planification des bandes/lots)
+            // Planning (planification des bandes/lots, et tâches de l'équipe)
             'planning.'         => 'planning',
+            'tasks.'            => 'planning',
 
             // Abattoir
             'slaughter.'        => 'abattoir',
 
-            // Annuaire / RH (hub, employés, présence, fournisseurs, paie, tâches)
+            // Annuaire / RH (hub, employés, présence, fournisseurs, paie)
             // Annuaire = TIERS (fournisseurs) uniquement.
             'annuaire.'         => 'annuaire',
             'providers.'        => 'annuaire',
 
-            // RH INTERNE = employés, paie, pointage, congés, tâches — module
-            // distinct (cloisonnement : un accès Tiers n'ouvre pas la RH).
+            // RH INTERNE = employés, paie, pointage, congés — module distinct
+            // (cloisonnement : un accès Tiers n'ouvre pas la RH).
             'rh.'               => 'rh',
             'employees.'        => 'rh',
             'attendance.'       => 'rh',
             'payroll.'          => 'rh',
-            'tasks.'            => 'rh',
 
             // Administration
             'users.'            => 'admin',

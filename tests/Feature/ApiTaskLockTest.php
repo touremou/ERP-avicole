@@ -21,7 +21,8 @@ uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class
 function lockRole(string $name, array $levels): Role
 {
     $role = Role::firstOrCreate(['name' => $name], ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => []]);
-    $mod = Module::where('slug', 'rh')->value('id');
+    // Les tâches relèvent du planning (TaskController), plus de la RH.
+    $mod = Module::where('slug', 'planning')->value('id');
     DB::table('module_permissions')->updateOrInsert(
         ['role_id' => $role->id, 'module_id' => $mod],
         ['can_read' => true, 'can_create' => in_array('C', $levels), 'can_modify' => in_array('M', $levels),
@@ -35,7 +36,7 @@ beforeEach(function () {
     $this->farm = Farm::firstOrCreate(['code' => 'FT-LOCK'], ['name' => 'Ferme Lock', 'is_active' => true]);
     session(['current_farm_id' => $this->farm->id]);
 
-    // Ouvrier (propriétaire de la tâche) et superviseur (rh.M) — deux acteurs
+    // Ouvrier (propriétaire de la tâche) et superviseur (planning.M) — deux acteurs
     // pouvant agir sur la même tâche, donc pouvant se marcher dessus.
     $this->worker = User::factory()->create(['role_id' => lockRole('ouvrier_lock', ['L'])->id]);
     $this->supervisor = User::factory()->create(['role_id' => lockRole('chef_lock', ['L', 'C', 'M'])->id]);
@@ -104,7 +105,7 @@ test('une tâche déjà prise est refusée à un autre acteur (conflict « déj�
     Sanctum::actingAs($this->worker);
     $this->postJson('/api/v1/sync/push', ['operations' => [op('task.start', $task->id)]])->assertOk();
 
-    // Le superviseur (rh.M) tente de la prendre → refus.
+    // Le superviseur (planning.M) tente de la prendre → refus.
     Sanctum::actingAs($this->supervisor);
     $res = $this->postJson('/api/v1/sync/push', ['operations' => [op('task.start', $task->id)]])
         ->assertOk()->json('results.0');
