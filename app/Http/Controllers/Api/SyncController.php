@@ -35,7 +35,8 @@ class SyncController extends Controller
      * scope (périmètre sur le modèle), append (attributs dérivés), with
      * (relations préchargées pour ces attributs), full (envoi INTÉGRAL du
      * périmètre, `since` ignoré — pour une liste de travail dont on sort sans
-     * tombstone).
+     * tombstone), finances (colonnes de MONTANT de la liste blanche, retirées
+     * pour un profil qui ne voit pas l'argent — gate finances.voir).
      *
      * @var array<string, array{model: class-string, columns: array<int, string>}>
      */
@@ -254,6 +255,9 @@ class SyncController extends Controller
             'columns' => ['id', 'uuid', 'stock_id', 'label', 'quantity_initial', 'quantity_current',
                           'unit', 'unit_cost', 'target_unit_price', 'last_market_price',
                           'opened_at', 'hold_until', 'check_interval_days', 'status', 'updated_at'],
+            // Coût de revient et prix : à qui voit l'argent. Sans eux, l'écran de
+            // contrôle n'affiche ni marge ni objectif — il pèse et relève le cours.
+            'finances' => ['unit_cost', 'target_unit_price', 'last_market_price'],
             'scope'   => 'open',
             // Un lot vendu ou détruit quitte le périmètre SANS tombstone (il
             // change juste de statut) : sans envoi intégral, il resterait dans la
@@ -374,9 +378,17 @@ class SyncController extends Controller
                     if (Gate::allows($gate)) { $allowed = true; break; }
                 }
                 if (! $allowed) {
-                    $entities[$key] = ['upserts' => [], 'deletes' => []];
+                    // `forbidden` : le téléphone PURGE son miroir. Une liste vide
+                    // ne suffisait pas — un droit retiré laissait hors ligne les
+                    // clients ou les coûts téléchargés avant.
+                    $entities[$key] = ['upserts' => [], 'deletes' => [], 'forbidden' => true];
                     continue;
                 }
+            }
+
+            // Montants de la liste blanche : retirés pour qui ne voit pas l'argent.
+            if (! empty($config['finances']) && Gate::denies('finances.voir')) {
+                $config['columns'] = array_values(array_diff($config['columns'], $config['finances']));
             }
 
             /** @var class-string<\Illuminate\Database\Eloquent\Model> $model */

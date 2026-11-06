@@ -438,6 +438,16 @@ async function pullDelta(): Promise<void> {
       if (since === null) {
         await Promise.all(refTables.map((table) => table.clear()))
       }
+
+      // Droit retiré depuis la dernière synchro : le serveur ne renvoie plus
+      // rien, mais le miroir local gardait hors ligne ce qui avait été
+      // téléchargé avant (clients, coûts…). On le purge. Chaque miroir porte
+      // le nom de son référentiel, préfixé « ref_ ».
+      await Promise.all(
+        Object.entries(response.entities)
+          .filter(([, entity]) => (entity as { forbidden?: boolean } | undefined)?.forbidden === true)
+          .map(([name]) => refTables.find((table) => table.name === `ref_${name}`)?.clear()),
+      )
       await db.ref_batches.bulkPut(batches.upserts)
       await db.ref_batches.bulkDelete(batches.deletes)
       await db.ref_buildings.bulkPut(buildings.upserts)

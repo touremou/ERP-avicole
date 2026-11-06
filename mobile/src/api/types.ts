@@ -151,6 +151,8 @@ export interface PushResponse {
 export interface PullEntity<T = Record<string, unknown>> {
   upserts: T[]
   deletes: number[]
+  /** Le profil n'a pas (ou plus) le droit de lire ce référentiel : purger le miroir. */
+  forbidden?: boolean
 }
 
 export interface PullResponse {
@@ -390,9 +392,10 @@ export interface RefStoredLot {
   quantity_initial: number
   quantity_current: number
   unit: string
-  unit_cost: number | null
-  target_unit_price: number | null
-  last_market_price: number | null
+  /** Montants : absents pour un profil qui ne voit pas l'argent (finances.voir). */
+  unit_cost?: number | null
+  target_unit_price?: number | null
+  last_market_price?: number | null
   opened_at: string
   hold_until: string | null
   check_interval_days: number

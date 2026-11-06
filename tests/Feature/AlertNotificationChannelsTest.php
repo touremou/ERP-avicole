@@ -19,6 +19,16 @@ beforeEach(function () {
 /** Préférence de notif abonnée aux alertes stock (heures calmes neutralisées). */
 function stockPref(User $user, array $attrs = []): NotificationPreference
 {
+    // Une alerte ne va qu'à qui peut lire ce qu'elle dit (NotificationHub::
+    // droitRequis) : l'abonné aux alertes stock lit la logistique.
+    $role = \App\Models\Role::firstOrCreate(['name' => 'lecteur-stock'], ['label' => 'Stock', 'display_name' => 'Stock', 'permissions' => []]);
+    \Illuminate\Support\Facades\DB::table('module_permissions')->updateOrInsert(
+        ['role_id' => $role->id, 'module_id' => \App\Models\Module::where('slug', 'logistique')->value('id')],
+        ['can_read' => true, 'can_create' => false, 'can_modify' => false, 'can_delete' => false],
+    );
+    $user->update(['role_id' => $role->id]);
+    \Illuminate\Support\Facades\Cache::forget("rbac_perms_{$user->id}");
+
     // La ligne existe déjà (créée avec le compte) : on la RÈGLE.
     return NotificationPreference::updateOrCreate(['user_id' => $user->id], array_merge([
         'user_id'          => $user->id,

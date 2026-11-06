@@ -1155,7 +1155,7 @@ class NotificationHub
         $lines[] = '';
         $lines[] = "Préparez la main d'œuvre et la logistique de récolte.";
 
-        $this->broadcast('daily_summary', implode("\n", $lines), 'Calendrier cultural');
+        $this->broadcast('daily_summary', implode("\n", $lines), 'Calendrier cultural', droit: 'cultures.L');
 
         return $cycles->count();
     }
@@ -1230,7 +1230,7 @@ class NotificationHub
         // C'est la consigne d'aliment du jour, destinée aux techniciens — ceux-là
         // même qui n'ont pas forcément de numéro renseigné, et qui travaillent
         // depuis la PWA où la cloche et le push les atteignent.
-        $sent = $this->broadcast('daily_summary', $message, 'Dosage Aliment');
+        $sent = $this->broadcast('daily_summary', $message, 'Dosage Aliment', droit: 'elevage.L');
 
         Log::info("NotificationHub: dosage aliment remis à {$sent} destinataire(s), tous canaux.");
 
@@ -1288,7 +1288,7 @@ class NotificationHub
 
             $hasCritical = collect($alerts)->contains(fn ($a) => $a['severity'] === 'critique');
 
-            $this->broadcast('daily_summary', implode("\n", $lines), 'Météo ' . $farm->name, $hasCritical ? 'critique' : 'normal');
+            $this->broadcast('daily_summary', implode("\n", $lines), 'Météo ' . $farm->name, $hasCritical ? 'critique' : 'normal', droit: 'elevage.L|cultures.L');
             $signaled++;
         }
 
@@ -1343,7 +1343,8 @@ class NotificationHub
                 'daily_summary',
                 implode("\n", $lines),
                 'Agronomie ' . $cycle->crop_name,
-                $hasCritical ? 'critique' : 'normal'
+                $hasCritical ? 'critique' : 'normal',
+                droit: 'cultures.L',
             );
 
             $signaled++;
@@ -1567,8 +1568,16 @@ class NotificationHub
      *        WhatsApp étant en mode journal chez l'exploitant, elles n'atteignaient
      *        donc personne.
      */
-    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null, ?string $mobile = null, ?\Illuminate\Support\Collection $audience = null): int
+    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null, ?string $mobile = null, ?\Illuminate\Support\Collection $audience = null, ?string $droit = null): int
     {
+        // Le droit de LIRE ce que dit l'alerte (cf. droitRequis) : les abonnés
+        // qui ne l'ont pas ne la reçoivent pas. Une audience imposée (valideurs
+        // d'un congé, récepteur d'une expédition) est adressée à une fonction —
+        // elle n'est pas filtrée.
+        $droit ??= static::droitRequis($type);
+        $peutLire = fn (User $user): bool => $droit === null || collect(explode('|', $droit))
+            ->contains(fn (string $ability) => \Illuminate\Support\Facades\Gate::forUser($user)->allows($ability));
+
         // Nombre de personnes touchées sur AU MOINS un canal. Les appelants qui
         // rendaient « envoyé à N » comptaient les seuls envois WhatsApp : chez une
         // exploitation dont le WhatsApp est en mode journal, ils annonçaient donc 0
@@ -1588,7 +1597,7 @@ class NotificationHub
 
         $recipients = $audience
             ? $audience->filter(fn ($u) => filled($u->whatsapp_phone))->values()
-            : $this->getSubscribers($type);
+            : $this->getSubscribers($type)->filter($peutLire)->values();
 
         foreach ($recipients as $user) {
             $prefs = NotificationPreference::where('user_id', $user->id)->first();
@@ -1634,7 +1643,7 @@ class NotificationHub
         // Même alerte, autres canaux : on touche aussi les abonnés sans WhatsApp.
         // Les canaux retenus dépendent des préférences de chaque destinataire ;
         // la décision est centralisée ici, AlertNotification ne fait que les porter.
-        foreach ($audience ?? $this->typeRecipients($type) as $user) {
+        foreach ($audience ?? $this->typeRecipients($type)->filter($peutLire) as $user) {
             // Préférences EFFECTIVES : la ligne enregistrée, ou les valeurs
             // livrées si l'utilisateur n'a jamais ouvert l'écran des réglages.
             // Cette boucle écartait auparavant tout compte sans ligne — le même
@@ -1699,6 +1708,36 @@ class NotificationHub
      * getSubscribers) : un message sur le téléphone de quelqu'un coûte de l'argent
      * et s'impose à lui.
      */
+    /**
+     * DROIT DE LIRE UNE ALERTE — déclaration UNIQUE (« a|b » : l'un suffit).
+     *
+     * Audit de l'exploitation : les destinataires étaient choisis par leurs
+     * seules préférences, et la souscription « anti-fraude » ou « résumé
+     * quotidien » est cochée par défaut pour TOUS. Un agent de terrain recevait
+     * donc — cloche, push sur son téléphone, WhatsApp — le CA de la veille, un
+     * dépassement de budget en GNF, l'annulation d'une vente, un contrat à
+     * terme. Une alerte ne va plus qu'à qui peut lire ce qu'elle dit : la même
+     * règle que les écrans (finances.voir pour l'argent, le module sinon).
+     *
+     * Un appel peut préciser son droit (broadcast(..., droit:)) quand un même
+     * type porte des messages de nature différente : le résumé quotidien est
+     * financier, la météo ou le dosage d'aliment ne le sont pas.
+     */
+    public static function droitRequis(string $type): ?string
+    {
+        return match ($type) {
+            'daily_summary', 'activity_digest',
+            'alert_budget', 'alert_purchase', 'alert_fraud' => 'finances.voir',
+            'alert_sales'                                    => 'commerce.L',
+            'alert_mortality', 'alert_water'                 => 'elevage.L',
+            'alert_stock'                                    => 'logistique.L',
+            'alert_energy'                                   => 'ressources.L',
+            'alert_haccp'                                    => 'abattoir.L',
+            'alert_hr_contract', 'alert_hr_attendance'       => 'rh.L',
+            default                                          => null,
+        };
+    }
+
     /**
      * COLONNE DE SOUSCRIPTION D'UN TYPE D'ALERTE — déclaration UNIQUE.
      *
