@@ -41,6 +41,12 @@ class BatchController extends Controller
 
         $batch->load(['building:id,name', 'species:id,name_fr,slug']);
 
+        // Les montants du lot suivent la règle « voir l'argent » : la fiche
+        // complète les envoyait à tout profil qui lit l'élevage.
+        if (Gate::denies('finances.voir')) {
+            $batch->makeHidden(Batch::COLONNES_FINANCIERES);
+        }
+
         return response()->json([
             'data' => $batch,
             'last_check' => $batch->dailyChecks()->latest('check_date')->first(),

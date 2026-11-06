@@ -20,6 +20,12 @@ beforeEach(function () {
 
     $role = Role::firstOrCreate(['name' => 'gestion'], ['label' => 'Gestion', 'display_name' => 'Gestion', 'permissions' => ['L']]);
     $this->user = User::factory()->create(['role_id' => $role->id]);
+    // Une alerte ne va qu'à qui peut lire ce qu'elle dit (NotificationHub::
+    // droitRequis) : l'abonné aux citernes lit les ressources.
+    \Illuminate\Support\Facades\DB::table('module_permissions')->updateOrInsert(
+        ['role_id' => $role->id, 'module_id' => \App\Models\Module::where('slug', 'ressources')->value('id')],
+        ['can_read' => true, 'can_create' => false, 'can_modify' => false, 'can_delete' => false],
+    );
 
     // Abonné aux alertes ressources/énergie, canal in-app (cloche).
     // La ligne existe déjà (créée avec le compte) : on la RÈGLE.

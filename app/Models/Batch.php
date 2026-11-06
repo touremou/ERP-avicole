@@ -34,6 +34,16 @@ class Batch extends Model
     use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm, ReferencesEmployee;
 
     /**
+     * Les MONTANTS du lot (achat, vente, marge, frais). Ils suivent la règle
+     * « voir l'argent » (gate finances.voir) : l'API terrain les retire de la
+     * fiche d'un profil qui ne la voit pas (Api\BatchController::show).
+     */
+    public const COLONNES_FINANCIERES = [
+        'buy_price_per_unit', 'total_acquisition_cost', 'transport_loss_cost',
+        'actual_sell_price_per_unit', 'total_revenue', 'margin', 'additional_costs',
+    ];
+
+    /**
      * Statuts du cycle de vie d'un lot (valeurs stockées en base dans la
      * colonne `status`). Source unique de vérité référencée par les
      * Actions (CreateBatch, CloseBatch, ReopenBatch, TransferBatch,
