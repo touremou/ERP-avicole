@@ -32,11 +32,13 @@
                     <p class="text-3xl font-black text-cyan-600 leading-none">{{ number_format($totalWater) }}</p>
                     <p class="text-[8px] text-cyan-300 font-black uppercase mt-1">{{ __("litres") }}</p>
                 </div>
+                @if($voitLArgent)
                 <div class="bg-amber-50 border border-amber-100 p-6 rounded-[2.5rem] text-center">
                     <p class="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-1">{{ __("Coût énergie") }}</p>
                     <p class="text-3xl font-black text-amber-600 leading-none">{{ number_format($totalEnergy) }}</p>
                     <p class="text-[8px] text-amber-300 font-black uppercase mt-1">{{ currency() }}</p>
                 </div>
+                @endif
             </div>
 
             {{-- Insight de corrélation : jour de mortalité maximale --}}
@@ -49,8 +51,12 @@
                     <span class="text-rose-400 font-black uppercase tracking-widest text-[9px]">{{ __("Pic de mortalité") }}</span><br>
                     {{ __("Le") }} <span class="font-black text-white">{{ $peak['date'] }}</span> :
                     <span class="text-rose-400 font-black">{{ $peak['mortality'] }} {{ __("morts") }}</span>,
+                    @if($voitLArgent)
                     {{ __("avec") }} <span class="text-cyan-400 font-black">{{ number_format($peak['water']) }} L</span> {{ __("d'eau et") }}
                     <span class="text-amber-400 font-black">{{ number_format($peak['energy']) }} {{ currency() }}</span> {{ __("d'énergie") }}.
+                    @else
+                    {{ __("avec") }} <span class="text-cyan-400 font-black">{{ number_format($peak['water']) }} L</span> {{ __("d'eau.") }}
+                    @endif
                     <span class="text-slate-400">{{ __("Croisez les 3 courbes ci-dessous : une coupure d'énergie/ventilation ou une chute d'eau le même jour oriente le diagnostic.") }}</span>
                 </div>
             </div>
@@ -66,10 +72,12 @@
                     <p class="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-2"><i class="fa-solid fa-droplet mr-1"></i> {{ __("Eau (L) / jour") }}</p>
                     <div class="relative h-32"><canvas x-ref="waterChart"></canvas></div>
                 </div>
+                @if($voitLArgent)
                 <div class="pt-4 border-t border-slate-50">
                     <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2"><i class="fa-solid fa-bolt mr-1"></i> {{ __("Énergie (:devise) / jour", ['devise' => currency()]) }}</p>
                     <div class="relative h-32"><canvas x-ref="energyChart"></canvas></div>
                 </div>
+                @endif
                 <p class="text-[8px] text-slate-300 font-black uppercase tracking-widest text-center not-italic">
                     {{ __("Même échelle de temps — un alignement vertical des pics révèle une corrélation") }}
                 </p>

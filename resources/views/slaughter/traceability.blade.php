@@ -62,7 +62,7 @@
                             <span class="text-slate-400">{{ __("— sujets du client, sans coût matière") }}</span>
                         @else
                             <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">🛒 {{ __("Achat") }}</span>
-                            @if($order->reception->purchase_total_cost)
+                            @if($order->reception->purchase_total_cost && Gate::allows('finances.voir'))
                                 <span class="font-black text-slate-800">{{ number_format($order->reception->purchase_total_cost, 0, ',', ' ') }} {{ currency() }}</span>
                                 @if($order->reception->supplierInvoice)
                                     @can('depenses.L')
@@ -159,8 +159,8 @@
             </div>
 
             {{-- 5. ÉCONOMIE DU LOT — marge directe (coût d'achat vif vs valeur produite).
-                 Donnée financière : réservée au périmètre Dépenses. --}}
-            @can('depenses.L')
+                 Donnée financière : règle « voir l'argent » (finances.voir). --}}
+            @can('finances.voir')
             @php $eco = $order->economicSummary(); @endphp
             @if($eco['mode'] === 'facon' || $eco['cost'] > 0 || $eco['output_value'] > 0)
             <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">

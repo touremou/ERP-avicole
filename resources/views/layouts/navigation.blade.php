@@ -159,9 +159,11 @@
                             <i class="fa-solid fa-chevron-down text-[6px] text-slate-400 mr-1.5"></i>
                         </span>
                     </x-slot>
-                        @can('rh.L')
+                        {{-- « Mes tâches » : à tout titulaire (fiche employé liée) et à
+                             l'encadrement (planning.L) — plus seulement à la RH. --}}
+                        @if(Auth::user()->employee || Gate::allows('planning.L'))
                         <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">📋</span> {{ __("Mes Tâches") }}</a>
-                        @endcan
+                        @endif
                         <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">👤</span> {{ __("Profil") }}</a>
                         {{-- Centre d'alertes PERSONNEL : distinct des « Réglages de
                              notification » et du journal des envois. Sans cette entrée,

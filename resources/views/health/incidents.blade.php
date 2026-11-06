@@ -21,10 +21,12 @@
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Diagnostic en retard") }} <span class="text-slate-300">(>{{ $stats['sla_days'] }}j)</span></p>
                     <p class="text-3xl font-black {{ $stats['overdue'] > 0 ? 'text-amber-600' : 'text-slate-800' }} tracking-tighter">{{ $stats['overdue'] }}</p>
                 </div>
+                @can('finances.voir')
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût traitements") }}</p>
                     <p class="text-2xl font-black text-slate-800 tracking-tighter">{{ number_format($stats['cost'], 0, ',', ' ') }} <span class="text-[10px] text-slate-400">{{ currency() }}</span></p>
                 </div>
+                @endcan
             </div>
             @endisset
 

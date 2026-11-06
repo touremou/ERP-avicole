@@ -122,7 +122,7 @@ class SyncService
             'task.release'               => 'taskRelease',
             // Tâche PERSONNELLE créée depuis le terrain (auto-assignée).
             'task.create'                => 'taskCreate',
-            // Tâche AFFECTÉE (à un collègue ou au pool) — droit rh.C exigé.
+            // Tâche AFFECTÉE (à un collègue ou au pool) — droit planning.C exigé.
             'task.dispatch'              => 'taskDispatch',
         ];
     }
@@ -2534,7 +2534,7 @@ class SyncService
 
     // ─────────────────────────────────────────────────────────────
     //  TÂCHE ASSIGNÉE — cocher « faite » depuis le terrain. Autorisé pour
-    //  SA propre tâche (employé rattaché) ou pour un superviseur (rh.M).
+    //  SA propre tâche (employé rattaché) ou pour un superviseur (planning.M).
     //  Idempotent : re-cocher une tâche déjà faite = already_synced.
     // ─────────────────────────────────────────────────────────────
     private function taskComplete(array $payload): array
@@ -2579,7 +2579,7 @@ class SyncService
         $myEmployeeId = Auth::user()?->employee?->id;
         $isOwner = $task->employee_id !== null && $task->employee_id === $myEmployeeId;
 
-        if (! $isOwner && Gate::denies('rh.M')) {
+        if (! $isOwner && Gate::denies('planning.M')) {
             return $this->denied();
         }
 
@@ -2669,9 +2669,9 @@ class SyncService
             $myEmployeeId = Auth::user()?->employee?->id;
             $isOwner = $task->employee_id !== null && $task->employee_id === $myEmployeeId;
             // Tâche de POOL (libre-service) : tout ouvrier de la ferme (ayant une
-            // fiche employé) peut la prendre. Sinon, seul le titulaire ou rh.M.
+            // fiche employé) peut la prendre. Sinon, seul le titulaire ou planning.M.
             $canPool = $task->is_pool && $myEmployeeId !== null;
-            if (! $isOwner && ! $canPool && Gate::denies('rh.M')) {
+            if (! $isOwner && ! $canPool && Gate::denies('planning.M')) {
                 return $this->denied();
             }
 
@@ -2748,10 +2748,10 @@ class SyncService
             return ['status' => 'already_synced']; // rien à libérer, déjà close
         }
 
-        // On ne libère que SA propre prise (ou un superviseur rh.M). Une prise
+        // On ne libère que SA propre prise (ou un superviseur planning.M). Une prise
         // d'un autre n'est pas libérable ici (elle expirera au timeout).
         $isMine = $task->claimed_by === Auth::id();
-        if (! $isMine && Gate::denies('rh.M')) {
+        if (! $isMine && Gate::denies('planning.M')) {
             return $this->denied();
         }
 
@@ -2914,7 +2914,7 @@ class SyncService
     /**
      * Création d'une tâche PERSONNELLE depuis le terrain : auto-assignée à
      * l'employé connecté (comme le fait le web « Mes tâches »). L'affectation à
-     * autrui reste une opération web (rh.C) — ici, aucun droit RH requis, un
+     * autrui exige planning.C (task.dispatch) — ici, aucun droit requis, un
      * agent gère sa propre liste de tâches, à l'image de task.complete.
      */
     private function taskCreate(array $payload): array
@@ -2978,7 +2978,7 @@ class SyncService
      * Ce chemin porte les MÊMES règles que le formulaire web
      * (`TaskController::storeManual`), sans en assouplir une seule :
      *
-     *   1. droit `rh.C` — le même que le bureau ;
+     *   1. droit `planning.C` — le même que le bureau ;
      *   2. l'employé doit être AFFECTABLE sur la ferme courante. `find()` seul
      *      sautait silencieusement les garde-fous pour un agent prêté : on relit
      *      donc par le même scope que le sélecteur ;
@@ -2995,7 +2995,7 @@ class SyncService
      */
     private function taskDispatch(array $payload): array
     {
-        if (Gate::denies('rh.C')) {
+        if (Gate::denies('planning.C')) {
             return $this->denied();
         }
 

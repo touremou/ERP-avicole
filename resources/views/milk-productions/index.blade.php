@@ -11,9 +11,14 @@
             {{-- KPI --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <x-stat-tile :label="__('Litres aujourd\'hui')" :value="number_format($totalsToday->liters ?? 0, 1)" unit="L" accent="cyan" />
+                {{-- Montants : règle « voir l'argent » (finances.voir, AppServiceProvider). --}}
+                @can('finances.voir')
                 <x-stat-tile :label="__('Valeur du jour')" :value="number_format($totalsToday->value ?? 0)" :sub="currency()" accent="amber" />
+                @endcan
                 <x-stat-tile :label="__('Litres 30 jours')" :value="number_format($last30->liters ?? 0, 0)" unit="L" accent="slate" />
+                @can('finances.voir')
                 <x-stat-tile :label="__('CA lait 30 jours')" :value="number_format($last30->value ?? 0)" :sub="currency()" accent="cyan" :dark="true" />
+                @endcan
             </div>
 
             {{-- LOTS LAITIERS --}}

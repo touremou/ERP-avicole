@@ -27,7 +27,20 @@
     <a href="{{ route('annuaire.index') }}" class="{{ $linkClass }} {{ request()->routeIs('annuaire.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['rh.*', 'employees.*', 'payroll.*', 'tasks.*', 'attendance.*']))
+@elseif(request()->routeIs('tasks.*'))
+    {{-- Tâches = planning de l'équipe (TaskController), plus une page de la RH. --}}
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-list-check text-indigo-500 mr-1"></i> {{ __("Tâches") }}</span>
+    @if(Auth::user()?->employee)
+    <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="{{ $linkClass }} {{ request()->boolean('mine') ? $activeClass : $inactiveClass }}">{{ __("Mes Tâches") }}</a>
+    @endif
+    @can('planning.L')
+    <a href="{{ route('tasks.index') }}" class="{{ $linkClass }} {{ request()->routeIs('tasks.index') && ! request()->boolean('mine') ? $activeClass : $inactiveClass }}">{{ __("Tâches de l’équipe") }}</a>
+    @endcan
+    @can('planning.M')
+    <a href="{{ route('tasks.templates') }}" class="{{ $linkClass }} {{ request()->routeIs('tasks.templates*') ? $activeClass : $inactiveClass }}">{{ __("Templates") }}</a>
+    @endcan
+
+@elseif(request()->routeIs(['rh.*', 'employees.*', 'payroll.*', 'attendance.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-user-tie text-violet-500 mr-1"></i> {{ __("Ressources Humaines") }}</span>
     @can('rh.L')
     <a href="{{ route('rh.index') }}" class="{{ $linkClass }} {{ request()->routeIs('rh.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>

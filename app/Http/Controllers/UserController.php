@@ -39,7 +39,9 @@ class UserController extends Controller
     {
         if (Gate::denies('admin.S')) return redirect()->route('dashboard')->with('error', 'Accès réservé au Superviseur.');
 
-        $users = User::with('userRole')->paginate((int) setting('general.items_per_page', 20));
+        // `employee` : sans fiche employé liée, un compte n'a pas « Mes tâches »
+        // (portée personnelle, TaskController) — l'écran le signale.
+        $users = User::with(['userRole', 'employee'])->paginate((int) setting('general.items_per_page', 20));
         $roles = Role::withCount('users')->get();
         $modules = Module::active()->get();
 

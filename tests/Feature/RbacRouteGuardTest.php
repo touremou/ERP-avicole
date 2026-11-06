@@ -71,11 +71,11 @@ function technicianWithoutRh(): array
     test()->seedModuleMatrix($role, ['L', 'C']);
     $farmId = session('current_farm_id');
 
-    // On RETIRE tout droit RH : c'est la situation décrite (accès cultures et
-    // planning seulement).
+    // On RETIRE tout droit RH et tout droit au PLANNING (qui porte les tâches de
+    // l'équipe) : l'agent n'a que sa portée personnelle.
     DB::table('module_permissions')
         ->join('modules', 'modules.id', '=', 'module_permissions.module_id')
-        ->whereIn('modules.slug', ['rh', 'admin'])
+        ->whereIn('modules.slug', ['rh', 'admin', 'planning'])
         ->where('module_permissions.role_id', $role->id)
         ->update(['can_read' => false, 'can_create' => false, 'can_modify' => false, 'can_delete' => false]);
 
@@ -139,7 +139,7 @@ test('un technicien ne peut PAS cocher la tâche d’un collègue', function () 
     expect($task->fresh()->status)->toBe('a_faire');
 });
 
-test('un technicien sans droit RH ne voit pas les tâches de l’équipe', function () {
+test('un agent sans droit au planning ne voit pas les tâches de l’équipe', function () {
     [$user, $employee] = technicianWithoutRh();
     $other = Employee::factory()->create(['status' => 'Actif']);
 
@@ -161,7 +161,7 @@ test('un technicien sans droit RH ne voit pas les tâches de l’équipe', funct
         ->assertDontSee('Tache confidentielle du collegue');
 });
 
-test('un compte sans fiche employé et sans droit RH reste refusé', function () {
+test('un compte sans fiche employé et sans droit au planning reste refusé', function () {
     $role = \App\Models\Role::create([
         'name' => 'lecteur-' . Str::random(4), 'label' => 'Lecteur',
         'display_name' => 'Lecteur', 'permissions' => ['L'],
@@ -169,7 +169,7 @@ test('un compte sans fiche employé et sans droit RH reste refusé', function ()
     $this->seedModuleMatrix($role, ['L']);
     DB::table('module_permissions')
         ->join('modules', 'modules.id', '=', 'module_permissions.module_id')
-        ->whereIn('modules.slug', ['rh', 'admin'])
+        ->whereIn('modules.slug', ['rh', 'admin', 'planning'])
         ->where('module_permissions.role_id', $role->id)
         ->update(['can_read' => false]);
 

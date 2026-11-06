@@ -5,7 +5,7 @@
  * RH). Répartir le travail entre collègues restait une opération web : le chef
  * d'équipe notait sur un papier et ressaisissait plus tard.
  *
- * Contrat : SyncService::taskDispatch (gate rh.C), qui porte les MÊMES règles
+ * Contrat : SyncService::taskDispatch (gate planning.C), qui porte les MÊMES règles
  * que le formulaire du bureau — employé affectable, pas en congé à la date
  * prévue, service correspondant à la catégorie.
  *

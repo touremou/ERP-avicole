@@ -35,7 +35,8 @@
                 @php
                     $tiles = [
                         ['label' => __("Lots en conservation"), 'value' => $totals['open_count'], 'tone' => 'neutral'],
-                        ['label' => __("Valeur immobilisée"), 'value' => number_format($totals['value_at_cost'], 0, ',', ' '), 'sub' => $currency, 'tone' => 'neutral'],
+                        // Montant : règle « voir l'argent » (finances.voir).
+                        ...(Gate::allows('finances.voir') ? [['label' => __("Valeur immobilisée"), 'value' => number_format($totals['value_at_cost'], 0, ',', ' '), 'sub' => $currency, 'tone' => 'neutral']] : []),
                         ['label' => __("Freinte cumulée"), 'value' => number_format($totals['shrinkage_kg'], 1, ',', ' '), 'sub' => 'kg', 'tone' => $totals['shrinkage_kg'] > 0 ? 'warn' : 'ok'],
                         ['label' => __("À contrôler"), 'value' => $totals['to_check'], 'tone' => $totals['to_check'] > 0 ? 'warn' : 'ok'],
                         ['label' => __("Échéance dépassée"), 'value' => $totals['past_deadline'], 'tone' => $totals['past_deadline'] > 0 ? 'bad' : 'ok'],

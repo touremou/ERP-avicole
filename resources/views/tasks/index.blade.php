@@ -2,7 +2,7 @@
     <x-slot name="header">
         <x-page-header :title="__('Planning Opérationnel')" :subtitle="$date->translatedFormat('l d F Y')" icon="fa-clipboard-check" accent="indigo">
             <x-slot name="actions">
-                @can('rh.M')
+                @can('planning.M')
                 <a href="{{ route('tasks.templates') }}" class="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><i class="fa-solid fa-gear text-slate-400 mr-1"></i> {{ __("Templates") }}</a>
                 <form method="POST" action="{{ route('tasks.generate') }}">@csrf
                     <input type="hidden" name="date" value="{{ $date->toDateString() }}">
@@ -321,7 +321,7 @@
                                             <img src="{{ $task->employee->photo_url }}" alt="" class="w-5 h-5 rounded-full object-cover ring-1 ring-slate-200 bg-slate-100">
                                             <span class="text-[8px] font-black text-slate-500 uppercase">{{ $task->employee->first_name }}</span>
                                         </span>
-                                    @else
+                                    @elseif(Gate::allows('planning.M'))
                                         <form method="POST" action="{{ route('tasks.assign', $task) }}" class="inline">@csrf
                                             <select name="employee_id" onchange="this.form.submit()" class="text-[8px] bg-amber-50 border-none rounded-lg px-2 py-1 font-black text-amber-600 cursor-pointer outline-none">
                                                 <option>Assigner...</option>
@@ -329,7 +329,7 @@
                                             </select>
                                         </form>
                                     @endif
-                                    @if($task->status !== 'fait')
+                                    @if($task->status !== 'fait' && Gate::allows('planning.M'))
                                     <a href="{{ route('tasks.edit', $task) }}" class="w-6 h-6 rounded-md bg-slate-50 text-slate-300 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center no-underline transition-all" title="Modifier">
                                         <i class="fa-solid fa-pen text-[8px]"></i>
                                     </a>
@@ -347,7 +347,7 @@
                             @empty
                             <div class="px-8 py-12 text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-3">Aucune tâche pour cette date</p>
-                                @can('rh.M')
+                                @can('planning.M')
                                 <form method="POST" action="{{ route('tasks.generate') }}">@csrf
                                     <input type="hidden" name="date" value="{{ $date->toDateString() }}">
                                     <button class="bg-indigo-600 text-white px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer italic"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Générer automatiquement</button>
@@ -361,6 +361,8 @@
 
                 {{-- SIDEBAR : AJOUT MANUEL --}}
                 <div class="space-y-5">
+                    {{-- Créer et affecter : planning.C (TaskController::storeManual). --}}
+                    @can('planning.C')
                     <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-left">
                         <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <i class="fa-solid fa-plus text-indigo-500"></i> Tâche manuelle
@@ -391,6 +393,7 @@
                             <button type="submit" class="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-600 border-none cursor-pointer italic">Créer</button>
                         </form>
                     </div>
+                    @endcan
 
                     {{-- RÉSUMÉ PAR CATÉGORIE --}}
                     @if($stats['total'] > 0)

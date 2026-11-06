@@ -91,11 +91,14 @@
                     </h3>
                     <i class="fa-solid fa-syringe absolute -right-3 -bottom-3 text-white/10 text-7xl"></i>
                 </div>
+                {{-- Montants : règle « voir l'argent » (finances.voir). --}}
+                @can('finances.voir')
                 <div class="bg-blue-600 p-7 rounded-[2.5rem] text-white shadow-xl shadow-blue-200 relative overflow-hidden border-b-4 border-blue-800">
                     <p class="text-[9px] text-blue-200 tracking-widest mb-2 leading-none">{{ __("Budget (Page)") }}</p>
                     <h3 class="text-3xl leading-none tracking-tighter">{{ number_format($checks->sum('cost'), 0, ',', ' ') }} <small class="text-[10px]">{{ currency() }}</small></h3>
                     <i class="fa-solid fa-vial absolute -right-3 -bottom-3 text-white/10 text-7xl"></i>
                 </div>
+                @endcan
 
                 {{-- NOUVEAU : CAS PATHOLOGIQUES EN ATTENTE --}}
                 <div class="bg-rose-600 p-7 rounded-[2.5rem] text-white shadow-xl shadow-rose-200 relative overflow-hidden border-b-4 border-rose-800">
@@ -205,12 +208,14 @@
                             </td>
                             <td class="px-10 py-7 text-right">
                                 <div class="flex items-center justify-end gap-6 italic">
+                                    @can('finances.voir')
                                     <div class="text-right">
                                         <p class="font-black text-slate-900 text-base leading-none italic tracking-tighter">
                                             {{ number_format($check->cost, 0, ',', ' ') }}
                                         </p>
                                         <p class="text-[9px] text-slate-300 font-black italic tracking-[0.2em] leading-none mt-1">{{ currency() }}</p>
                                     </div>
+                                    @endcan
                                     
                                     {{-- Permission M/S : Actions --}}
                                     @can('elevage.M')

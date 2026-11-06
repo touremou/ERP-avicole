@@ -159,7 +159,9 @@
                                         <th class="px-4 py-5 text-right">{{ __("Quantité") }}</th>
                                         <th class="px-4 py-5 text-right">{{ __("Seuil Alerte") }}</th>
                                         <th class="px-4 py-5 text-center">{{ __("État") }}</th>
+                                        @can('finances.voir')
                                         <th class="px-4 py-5 text-right">{{ __("Dernier P.U.") }}</th>
+                                        @endcan
                                         <th class="px-6 py-5 text-right">{{ __("Actions") }}</th>
                                     </tr>
                                 </thead>
@@ -197,9 +199,11 @@
                                                 <span class="text-[8px] font-black uppercase px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">{{ __("OK") }}</span>
                                             @endif
                                         </td>
+                                        @can('finances.voir')
                                         <td class="px-4 py-4 text-right text-[10px] font-black text-slate-500">
                                             {{ $stock->unit_price ? number_format($stock->unit_price, 0, ',', ' ') : '—' }}
                                         </td>
+                                        @endcan
                                         <td class="px-6 py-4 text-right">
                                             <div class="flex gap-2 justify-end">
                                                 <a href="{{ route('stocks.show', $stock->id) }}" class="text-slate-400 hover:text-orange-600 no-underline" title="{{ __('Détails & mouvements') }}">

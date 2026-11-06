@@ -5182,5 +5182,9 @@
     "Aucun site rattaché": "No site attached",
     "Vétérinaire": "Veterinarian",
     "Auditeur / contrôleur": "Auditor / controller",
-    "Ce serait le dernier site de : :noms. Rattachez-les d'abord à un autre site, ou suspendez leur compte.": "This would be the last site of: :noms. Attach them to another site first, or suspend their account."
+    "Ce serait le dernier site de : :noms. Rattachez-les d'abord à un autre site, ou suspendez leur compte.": "This would be the last site of: :noms. Attach them to another site first, or suspend their account.",
+    "Tâches de l’équipe": "Team tasks",
+    "Fiche :nom": "Record :nom",
+    "Aucune fiche employé — pas de « Mes tâches »": "No employee record — no “My tasks”",
+    "d'eau.": "of water."
 }

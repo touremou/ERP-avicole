@@ -18,6 +18,8 @@
 
             {{-- KPIs --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {{-- Montants : règle « voir l'argent » (finances.voir). --}}
+                @can('finances.voir')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Démarque (pertes)") }}</p>
                     <p class="text-xl font-black text-rose-600 leading-none">{{ number_format($stats['loss_value'], 0, ',', ' ') }}</p>
@@ -33,6 +35,7 @@
                     <p class="text-xl font-black {{ $stats['net_value'] < 0 ? 'text-rose-600' : 'text-slate-800' }} leading-none">{{ number_format($stats['net_value'], 0, ',', ' ') }}</p>
                     <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
                 </div>
+                @endcan
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Ajustements") }}</p>
                     <p class="text-xl font-black text-slate-800 leading-none">{{ $stats['count'] }}</p>
@@ -70,7 +73,9 @@
                             <th class="px-3 py-3 text-left">{{ __("Article") }}</th>
                             <th class="px-3 py-3 text-left">{{ __("Motif") }}</th>
                             <th class="px-3 py-3 text-right">{{ __("Écart") }}</th>
+                            @can('finances.voir')
                             <th class="px-6 py-3 text-right">{{ __("Valeur") }}</th>
+                            @endcan
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -81,7 +86,9 @@
                             <td class="px-3 py-3 text-[10px] font-black text-slate-600 uppercase">{{ $a->stock->item_name ?? '—' }}</td>
                             <td class="px-3 py-3 text-[10px] font-bold text-slate-500">{{ $a->reason_label }}</td>
                             <td class="px-3 py-3 text-right text-[10px] font-black {{ $a->is_loss ? 'text-rose-600' : 'text-emerald-600' }}">{{ $a->delta > 0 ? '+' : '' }}{{ number_format($a->delta, 2, ',', ' ') }}</td>
+                            @can('finances.voir')
                             <td class="px-6 py-3 text-right text-[11px] font-black {{ $a->is_loss ? 'text-rose-600' : 'text-emerald-600' }}">{{ $a->is_loss ? '−' : '+' }}{{ number_format($a->value_impact, 0, ',', ' ') }}</td>
+                            @endcan
                         </tr>
                         @empty
                         <tr><td colspan="6" class="px-6 py-10 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ __("Aucun ajustement sur la période.") }}</td></tr>

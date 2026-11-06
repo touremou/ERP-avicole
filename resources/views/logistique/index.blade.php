@@ -13,11 +13,14 @@
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {{-- Montants : règle « voir l'argent » (finances.voir). --}}
+                @can('finances.voir')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Valeur du stock") }}</p>
                     <p class="text-2xl font-black text-slate-800 leading-none">{{ number_format($kpis['stock_value'], 0, ',', ' ') }}</p>
                     <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
                 </div>
+                @endcan
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Références") }}</p>
                     <p class="text-2xl font-black text-slate-800 leading-none">{{ $kpis['references'] }}</p>
@@ -26,11 +29,13 @@
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Sous seuil") }}</p>
                     <p class="text-2xl font-black {{ $kpis['low'] > 0 ? 'text-rose-600' : 'text-slate-800' }} leading-none">{{ $kpis['low'] }}</p>
                 </div>
+                @can('finances.voir')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Démarque (mois)") }}</p>
                     <p class="text-2xl font-black {{ $kpis['shrinkage'] > 0 ? 'text-rose-600' : 'text-slate-800' }} leading-none">{{ number_format($kpis['shrinkage'], 0, ',', ' ') }}</p>
                     <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
                 </div>
+                @endcan
             </div>
 
             @php

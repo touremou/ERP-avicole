@@ -23,6 +23,26 @@ use Illuminate\Support\Facades\DB;
  * Le stock (consultation Logistique) est accordé à tous les profils de
  * terrain : le pointage y choisit l'aliment, le soin son produit, la
  * provenderie et les cultures leurs intrants.
+ *
+ * MOINDRE PRIVILÈGE (révision du 2026-11-06, audit de l'exploitation : un
+ * technicien d'élevage voyait les clients, les fournisseurs, les budgets et
+ * des rapports financiers, et n'avait pas les tâches) :
+ *
+ *   • TIERS — l'Annuaire ouvre fournisseurs ET clients (gate clients.read) :
+ *     il ne va qu'à qui traite avec eux (direction, gérant, comptable,
+ *     auditeur). Le vendeur crée ses clients par le Commerce. Les listes
+ *     déroulantes des formulaires (fournisseur d'une bande…) ne dépendent pas
+ *     de l'Annuaire ;
+ *   • ARGENT — Dépenses ou Trésorerie en lecture = « voir l'argent »
+ *     (gate finances.voir) : coûts, valeurs de stock, rapports financiers,
+ *     clôture d'un lot. Ni le technicien ni le magasinier ne l'ont : achat,
+ *     réception et paiement sont trois fonctions séparées ;
+ *   • TÂCHES — le Planning (tasks.* → planning) : le chef d'équipe affecte le
+ *     travail sans recevoir la RH ; chacun voit SES tâches sans droit.
+ *
+ * Les cellules révisées sont réappliquées en production par la migration
+ * 2026_11_06_000001 (ProfilsMetier::reappliquer), sans toucher au reste de la
+ * matrice qu'un administrateur aurait ajusté.
  */
 final class ProfilsMetier
 {
@@ -69,7 +89,7 @@ final class ProfilsMetier
             'display_name' => "Technicien d'élevage", 'icon' => '🐔', 'workspace' => 'elevage',
             'modules' => [
                 'elevage' => 'LCM', 'production' => 'LCM', 'logistique' => 'LC', 'ressources' => 'LC',
-                'depenses' => 'LC', 'annuaire' => 'L', 'planning' => 'L',
+                'planning' => 'LCM',
             ],
         ],
         'profil-agent-terrain' => [
@@ -81,31 +101,31 @@ final class ProfilsMetier
         'profil-operateur-abattoir' => [
             'display_name' => 'Opérateur abattoir', 'icon' => '🔪', 'workspace' => 'abattoir',
             'modules' => [
-                'abattoir' => 'LCM', 'logistique' => 'L', 'elevage' => 'L', 'annuaire' => 'L',
+                'abattoir' => 'LCM', 'logistique' => 'L', 'elevage' => 'L',
             ],
         ],
         'profil-agent-provenderie' => [
             'display_name' => 'Agent provenderie', 'icon' => '🏭', 'workspace' => 'provenderie',
             'modules' => [
-                'provenderie' => 'LCM', 'logistique' => 'LC', 'annuaire' => 'L',
+                'provenderie' => 'LCM', 'logistique' => 'LC',
             ],
         ],
         'profil-technicien-cultures' => [
             'display_name' => 'Technicien cultures', 'icon' => '🌱', 'workspace' => 'cultures',
             'modules' => [
-                'cultures' => 'LCM', 'ressources' => 'LC', 'logistique' => 'LC',
+                'cultures' => 'LCM', 'ressources' => 'LC', 'logistique' => 'LC', 'planning' => 'LCM',
             ],
         ],
         'profil-vendeur' => [
             'display_name' => 'Vendeur / caissier', 'icon' => '🧾', 'workspace' => 'vente',
             'modules' => [
-                'commerce' => 'LC', 'caisse' => 'LCM', 'annuaire' => 'LC', 'logistique' => 'L',
+                'commerce' => 'LC', 'caisse' => 'LCM', 'logistique' => 'L',
             ],
         ],
         'profil-magasinier' => [
             'display_name' => 'Magasinier', 'icon' => '📦', 'workspace' => 'magasin',
             'modules' => [
-                'logistique' => 'LCM', 'provenderie' => 'L', 'depenses' => 'LC', 'annuaire' => 'L',
+                'logistique' => 'LCM', 'provenderie' => 'L',
             ],
         ],
         'profil-comptable' => [
@@ -122,7 +142,7 @@ final class ProfilsMetier
         'profil-veterinaire' => [
             'display_name' => 'Vétérinaire', 'icon' => '🩺', 'workspace' => 'elevage',
             'modules' => [
-                'elevage' => 'LCM', 'production' => 'L', 'abattoir' => 'L', 'logistique' => 'L', 'annuaire' => 'L',
+                'elevage' => 'LCM', 'production' => 'L', 'abattoir' => 'L', 'logistique' => 'L',
             ],
         ],
         // Auditeur / contrôleur — bailleur, banque, partenaire d'un projet
@@ -134,7 +154,7 @@ final class ProfilsMetier
         'profil-responsable-rh' => [
             'display_name' => 'Responsable RH', 'icon' => '🧑‍💼', 'workspace' => 'rh',
             'modules' => [
-                'rh' => 'LCM', 'planning' => 'LCM', 'annuaire' => 'L',
+                'rh' => 'LCM', 'planning' => 'LCM',
             ],
         ],
     ];
@@ -204,6 +224,54 @@ final class ProfilsMetier
         });
 
         return $crees;
+    }
+
+    /**
+     * Réapplique la définition ACTUELLE de quelques cellules (profil × module)
+     * aux profils déjà installés — une révision des profils, sans réécrire le
+     * reste de leur matrice. Un profil absent est ignoré.
+     *
+     * @param  array<string, array<int, string>>  $cellules  profil → modules
+     * @return int  le nombre de cellules réappliquées
+     */
+    public static function reappliquer(array $cellules): int
+    {
+        $n = 0;
+
+        DB::transaction(function () use ($cellules, &$n) {
+            foreach ($cellules as $profil => $slugs) {
+                $role = Role::query()->where('name', $profil)->first();
+                if (! $role) {
+                    continue;
+                }
+
+                foreach ($slugs as $slug) {
+                    $module = Module::query()->where('slug', $slug)->value('id');
+                    if (! $module) {
+                        continue;
+                    }
+
+                    $niveaux = self::niveaux($profil, $slug);
+                    ModulePermission::updateOrCreate(
+                        ['role_id' => $role->id, 'module_id' => $module],
+                        [
+                            'can_read'   => str_contains($niveaux, 'L'),
+                            'can_create' => str_contains($niveaux, 'C'),
+                            'can_modify' => str_contains($niveaux, 'M'),
+                            'can_delete' => str_contains($niveaux, 'S'),
+                        ],
+                    );
+                    $n++;
+                }
+
+                // Les droits sont mis en cache 5 minutes par compte.
+                foreach ($role->users()->pluck('id') as $userId) {
+                    \Illuminate\Support\Facades\Cache::forget("rbac_perms_{$userId}");
+                }
+            }
+        });
+
+        return $n;
     }
 
     /**

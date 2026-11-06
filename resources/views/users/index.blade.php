@@ -66,6 +66,11 @@
                                 <p class="text-[8px] font-black uppercase mt-1 {{ $sitesDuCompte ? 'text-slate-400' : 'text-rose-500' }}">
                                     <i class="fa-solid fa-location-dot mr-1"></i>{{ $sitesDuCompte ? implode(' · ', $sitesDuCompte) : __('Aucun site rattaché') }}
                                 </p>
+                                {{-- Sa FICHE EMPLOYÉ : sans elle, pas de « Mes tâches » (portée
+                                     personnelle). Le lien se fait depuis la fiche employé. --}}
+                                <p class="text-[8px] font-black uppercase mt-0.5 {{ $user->employee ? 'text-slate-400' : 'text-amber-500' }}">
+                                    <i class="fa-solid fa-id-badge mr-1"></i>{{ $user->employee ? __('Fiche :nom', ['nom' => trim($user->employee->first_name . ' ' . $user->employee->last_name)]) : __('Aucune fiche employé — pas de « Mes tâches »') }}
+                                </p>
                             </td>
                             <td class="px-6 py-5 text-center">
                                 @php $accessibleCount = $user->getAccessibleModules()->count(); @endphp

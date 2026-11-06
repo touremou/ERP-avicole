@@ -77,7 +77,7 @@
                                     <span class="text-[8px] font-black uppercase px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">🤝 {{ __("À façon") }}</span>
                                 @else
                                     <span class="text-[8px] font-black uppercase px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">🛒 {{ __("Achat") }}</span>
-                                    @if($r->purchase_total_cost)
+                                    @if($r->purchase_total_cost && Gate::allows('finances.voir'))
                                         <p class="text-[10px] font-black text-slate-900 mt-1">{{ number_format($r->purchase_total_cost, 0, ',', ' ') }} {{ currency() }}</p>
                                         @if($r->supplierInvoice)
                                             @can('depenses.L')
