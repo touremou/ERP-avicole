@@ -3,12 +3,12 @@
         <x-page-header :title="__('Matières Premières')" :subtitle="__('Provenderie • Inventaire & Labo')" icon="fa-seedling" accent="amber">
             <x-slot name="actions">
                 {{-- Permission C : Ajout de nouvel ingrédient --}}
-                @can('provenderie.C')
+                @if(Gate::allows('provenderie.C') && Gate::allows('finances.voir'))
                 <button onclick="document.getElementById('modalAddMaterial').classList.remove('hidden')"
                     class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-amber-500 transition-all active:scale-95">
                     <i class="fa-solid fa-plus mr-2 text-amber-400"></i> {{ __("Nouvel Ingrédient") }}
                 </button>
-                @endcan
+                @endif
             </x-slot>
         </x-page-header>
     </x-slot>
@@ -18,6 +18,7 @@
             
             {{-- 📊 STATS RAPIDES --}}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 text-left">
+@can('finances.voir')
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
                     <div class="absolute -right-2 -top-2 opacity-5 text-slate-900"><i class="fa-solid fa-vault text-6xl"></i></div>
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">{{ __("Valeur Totale Stock") }}</p>
@@ -26,6 +27,7 @@
                         <small class="text-xs opacity-40 font-black italic">{{ currency() }}</small>
                     </p>
                 </div>
+@endcan
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
                     <p class="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 italic">{{ __("Alertes Rupture") }}</p>
                     <p class="text-4xl font-black text-slate-900 tracking-tighter leading-none">{{ $materials->filter(fn($m) => $m->is_low_stock)->count() }}</p>
@@ -47,11 +49,12 @@
                         
                         {{-- Menu Options (Permissions M et S) --}}
                         <div class="absolute top-8 right-8 flex gap-2">
-                            @can('provenderie.M')
+                            {{-- Fixer le prix : finances.voir (la fiche porte le P.M.P.). --}}
+                            @if(Gate::allows('provenderie.M') && Gate::allows('finances.voir'))
                             <button onclick="openEditModal({{ json_encode($material) }})" class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center shadow-sm">
                                 <i class="fa-solid fa-pen-to-square text-[10px]"></i>
                             </button>
-                            @endcan
+                            @endif
                             
                             @can('provenderie.S')
                             <form action="{{ route('raw-materials.destroy', $material->id) }}" method="POST" onsubmit="return confirm({{ Js::from(__('Supprimer cet ingrédient ? Cela pourrait affecter l\'historique des productions.')) }})">
@@ -71,10 +74,12 @@
                             ])>
                                 <i class="fa-solid fa-box-open text-sm"></i>
                             </div>
+@can('finances.voir')
                             <div class="text-right">
                                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic leading-none">{{ __("P.M.P Actuel") }}</p>
                                 <p class="text-lg font-black text-slate-800 leading-none italic">{{ number_format($material->unit_cost, 0, ',', ' ') }} <small class="text-[10px] text-blue-500">{{ currency() }}/kg</small></p>
                             </div>
+@endcan
                         </div>
 
                         <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-1 leading-none">{{ $material->name }}</h3>
@@ -107,7 +112,7 @@
                             
                             {{-- Permission M : Analyse Labo --}}
                             @can('provenderie.M')
-                            <button onclick="openLaboModal({{ Js::from($material) }})"
+                            <button onclick="openLaboModal({{ Js::from(Gate::allows('finances.voir') ? $material : collect($material->toArray())->except(['unit_cost'])->all()) }})"
                                 class="flex-1 text-[9px] font-black text-amber-600 uppercase italic tracking-widest hover:text-slate-900 transition-colors border-l border-slate-100 pl-2">
                                 <i class="fa-solid fa-flask mr-1"></i> {{ __("Labo") }}
                             </button>

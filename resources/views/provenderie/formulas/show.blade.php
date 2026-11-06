@@ -33,11 +33,11 @@
                         <p class="text-[9px] font-black text-slate-300 uppercase text-center mb-4 italic tracking-widest">{{ __("Administration de la fiche") }}</p>
                         <div class="grid grid-cols-1 gap-3">
                             {{-- Permission M : Édition --}}
-                            @can('provenderie.M')
+                            @if(Gate::allows('provenderie.M') && Gate::allows('finances.voir'))
                             <a href="{{ route('formulas.edit', $formula->id) }}" class="flex items-center justify-center gap-2 p-4 bg-slate-900 text-white rounded-2xl hover:bg-blue-600 transition-all text-[10px] uppercase tracking-widest no-underline">
                                 <i class="fa-solid fa-pen-to-square text-amber-400"></i> {{ __("Optimiser la Recette") }}
                             </a>
-                            @endcan
+                            @endif
                             
                             {{-- Permission S : Suppression --}}
                             @can('provenderie.S')
@@ -107,6 +107,7 @@
                     </div>
                 </div>
 
+@can('finances.voir')
                 {{-- RÉSUMÉ FINANCIER --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm group hover:border-blue-200 transition-all text-left">
@@ -150,6 +151,7 @@
                         @endif
                     </div>
                 </div>
+@endcan
             </div>
         </div>
     </div>

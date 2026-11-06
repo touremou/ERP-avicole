@@ -35,6 +35,12 @@ beforeEach(function () {
     session(['current_farm_id' => $this->farm->id]);
 
     $this->formulateur = User::factory()->create(['role_id' => provenderieRole('formulateur', ['L', 'C', 'M'])->id]);
+    // Formuler = arbitrer le coût de l'aliment : le formulateur voit l'argent
+    // (finances.voir — consultation des Dépenses), comme un responsable de production.
+    DB::table('module_permissions')->updateOrInsert(
+        ['role_id' => $this->formulateur->role_id, 'module_id' => Module::where('slug', 'depenses')->value('id')],
+        ['can_read' => true, 'can_create' => false, 'can_modify' => false, 'can_delete' => false, 'created_at' => now(), 'updated_at' => now()]
+    );
     $this->chef = User::factory()->create(['role_id' => provenderieRole('chef_provenderie', ['L', 'S'])->id]);
 
     $this->formula = Formula::factory()->create(['farm_id' => $this->farm->id]);

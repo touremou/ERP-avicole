@@ -32,10 +32,9 @@
                 </a>
                 @endcan
 
-                {{-- COMPTE DE RÉSULTAT (P&L) — admin.L, aligné sur le contrôleur
-                     (donnée financière sensible : la tuile ne s'affiche qu'à ceux
-                     qui peuvent réellement ouvrir le rapport). --}}
-                @can('admin.L')
+                {{-- COMPTE DE RÉSULTAT (P&L) — règle « voir l'argent », alignée sur
+                     la route : la tuile ne s'affiche qu'à qui peut l'ouvrir. --}}
+                @can('finances.voir')
                 <a href="{{ route('reports.profit_loss') }}" class="group bg-slate-900 p-8 rounded-2xl shadow-lg hover:bg-slate-800 transition-all no-underline relative overflow-hidden border-b-4 border-amber-500">
                     <div class="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-scale-balanced text-lg"></i></div>
                     <h3 class="text-base font-black text-white uppercase tracking-tighter mb-2 italic">{{ __("Compte de Résultat") }}</h3>
@@ -99,9 +98,8 @@
                 </a>
                 @endcan
 
-                {{-- FLUX MENSUEL — même droit que sa route (admin.L) : la tuile
-                     menait les techniciens à un refus. --}}
-                @can('admin.L')
+                {{-- FLUX MENSUEL — même droit que sa route (finances.voir). --}}
+                @can('finances.voir')
                 <a href="{{ route('reports.monthly') }}" class="group bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
                     <div class="w-12 h-12 bg-orange-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-calendar-check text-lg"></i></div>
                     {{-- « Flux Mensuel » (charges) — ne pas confondre avec le vrai

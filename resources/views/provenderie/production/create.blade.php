@@ -32,7 +32,7 @@
                                         <option value="">{{ __("-- CHOISIR UNE RECETTE --") }}</option>
                                         @foreach($formulas as $f)
                                             <option value="{{ $f->id }}"
-                                                data-items="{{ json_encode($f->items->map(fn($item) => ['percentage' => (float) $item->percentage, 'raw_material' => ['name' => $item->rawMaterial?->name ?? __('MP supprimée'), 'stock_qty' => (float) ($item->rawMaterial?->stock_qty ?? 0), 'unit_cost' => (float) ($item->rawMaterial?->unit_cost ?? 0)]])) }}">
+                                                data-items="{{ json_encode($f->items->map(fn($item) => ['percentage' => (float) $item->percentage, 'raw_material' => ['name' => $item->rawMaterial?->name ?? __('MP supprimée'), 'stock_qty' => (float) ($item->rawMaterial?->stock_qty ?? 0), 'unit_cost' => Gate::allows('finances.voir') ? (float) ($item->rawMaterial?->unit_cost ?? 0) : null]])) }}">
                                                 {{ strtoupper($f->name) }} ({{ $f->code }})
                                             </option>
                                         @endforeach
@@ -214,7 +214,10 @@
                     const unitCost = item.raw_material ? parseFloat(item.raw_material.unit_cost || 0) : 0;
                     const matName = item.raw_material ? item.raw_material.name : @json(__('Inconnu'));
                     const enough = stock >= need;
-                    const priced = unitCost > 0;
+                    // unit_cost null = prix masqué à ce profil (finances.voir) :
+                    // ni montant, ni fausse alerte « prix non renseigné ».
+                    const masked = item.raw_material ? item.raw_material.unit_cost === null : false;
+                    const priced = masked || unitCost > 0;
                     if (!enough) isPossible = false;
                     if (!priced) hasUnpricedMp = true;
 
@@ -233,7 +236,7 @@
                             : '<i class="fa-solid fa-check"></i> ' + @json(__('Prêt'));
 
                     // Ligne de prix (visible uniquement si MP a un coût)
-                    const priceRow = priced
+                    const priceRow = priced && !masked
                         ? `<p class="text-[7px] text-slate-400 italic mt-1">${unitCost.toLocaleString(undefined, {minimumFractionDigits: 0})} {{ currency() }}/kg</p>`
                         : '';
 

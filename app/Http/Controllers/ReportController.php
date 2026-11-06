@@ -137,11 +137,11 @@ class ReportController extends Controller
      * espèce (hors frais généraux). Requêtes par plage de dates (compatibles
      * SQLite/MySQL — pas de fonctions YEAR()/MONTH()).
      *
-     * Gate : admin.L (donnée financière sensible).
+     * Gate : finances.voir (donnée financière : direction, gérant, comptable, auditeur).
      */
     public function profitLoss(Request $request): View
     {
-        if (Gate::denies('admin.L')) {
+        if (Gate::denies('finances.voir')) {
             abort(403, 'Accès réservé.');
         }
 
@@ -153,7 +153,7 @@ class ReportController extends Controller
      */
     public function profitLossPdf(Request $request)
     {
-        if (Gate::denies('admin.L')) {
+        if (Gate::denies('finances.voir')) {
             abort(403, 'Accès réservé.');
         }
 
@@ -674,7 +674,7 @@ class ReportController extends Controller
 
     /**
      * ANALYSE FINANCIÈRE GLOBALE (Coût de production)
-     * Gate : admin.L — données financières sensibles
+     * Gate : finances.voir — données financières (direction, gérant, comptable, auditeur)
      *
      * Filtres disponibles :
      *  - year       : année (défaut = année courante)
@@ -686,7 +686,7 @@ class ReportController extends Controller
      */
     public function monthlyExpenses(Request $request)
     {
-        if (Gate::denies('admin.L')) return back()->with('error', 'Accès réservé.');
+        if (Gate::denies('finances.voir')) return back()->with('error', 'Accès réservé.');
 
         return view('reports.monthly', $this->buildMonthlyExpensesStats($request));
     }
@@ -696,7 +696,7 @@ class ReportController extends Controller
      */
     public function monthlyExpensesPdf(Request $request)
     {
-        if (Gate::denies('admin.L')) return back()->with('error', 'Accès réservé.');
+        if (Gate::denies('finances.voir')) return back()->with('error', 'Accès réservé.');
 
         $stats = $this->buildMonthlyExpensesStats($request);
 

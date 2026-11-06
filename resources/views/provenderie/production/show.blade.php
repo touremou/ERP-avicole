@@ -54,12 +54,14 @@
                             <p class="text-xs font-black text-slate-800 uppercase mt-1 italic tracking-tighter">{{ __("Stocks et Maintenance mis à jour") }}</p>
                         </div>
                     </div>
+@can('finances.voir')
                     <div class="text-right">
                         <p class="text-[10px] text-slate-400 uppercase leading-none italic font-black">{{ __("Coût de revient réel") }}</p>
                         <p class="text-lg font-black text-emerald-600 italic leading-none mt-1">
                             {{ number_format($production->real_cost_per_kg ?? 0, 0, ',', ' ') }} <small class="text-[10px]">{{ currency() }}/KG</small>
                         </p>
                     </div>
+@endcan
                 </div>
             @endif
 

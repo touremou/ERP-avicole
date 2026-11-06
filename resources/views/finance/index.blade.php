@@ -74,6 +74,8 @@
                     ['title' => 'Trésorerie', 'color' => 'emerald', 'items' => [
                         ['label' => 'Comptes & mouvements', 'icon' => 'fa-wallet', 'route' => 'treasury.index', 'can' => 'tresorerie.L'],
                         ['label' => 'Flux de trésorerie', 'icon' => 'fa-chart-line', 'route' => 'treasury.report', 'can' => 'tresorerie.L'],
+                        ['label' => 'Compte de résultat', 'icon' => 'fa-scale-balanced', 'route' => 'reports.profit_loss', 'can' => 'finances.voir'],
+                        ['label' => 'Flux mensuel (charges)', 'icon' => 'fa-coins', 'route' => 'reports.monthly', 'can' => 'finances.voir'],
                     ]],
                     ['title' => 'Dépenses', 'color' => 'amber', 'items' => [
                         ['label' => 'Registre', 'icon' => 'fa-receipt', 'route' => 'expenses.index', 'can' => 'depenses.L'],

@@ -242,8 +242,10 @@ Route::middleware(['auth'])->group(function () {
 
         Route::prefix('materials')->name('raw-materials.')->controller(RawMaterialController::class)->group(function () {
             Route::get('/', 'index')->name('index')->middleware('can:L');
-            Route::post('/', 'store')->name('store')->middleware('can:C');
-            Route::put('/{id}', 'update')->name('update')->middleware('can:M');
+            // Créer une matière ou en fixer le prix (P.M.P.) : une donnée de coût,
+            // réservée à qui voit l'argent (finances.voir) — l'agent exécute.
+            Route::post('/', 'store')->name('store')->middleware(['can:C', 'can:finances.voir']);
+            Route::put('/{id}', 'update')->name('update')->middleware(['can:M', 'can:finances.voir']);
             Route::put('/{id}/add-stock', 'updateStock')->name('update-stock')->middleware(['can:M', 'can:C']);
             Route::put('/{id}/remove-stock', 'removeStock')->name('remove-stock')->middleware('can:M');
             Route::put('/{id}/nutrition', 'updateNutrition')->name('nutrition')->middleware('can:M');
@@ -257,9 +259,12 @@ Route::middleware(['auth'])->group(function () {
         // par « /formulas/{formula} » et l'app chercherait une formule nommée
         // « norms ».
         Route::get('/formulas/norms/template', [FormulaController::class, 'normsTemplate'])->name('norms.template')->middleware('can:L');
+        // Formuler = arbitrer le coût de l'aliment (moindre coût) : acte du
+        // responsable de production, qui voit l'argent (finances.voir).
+        // L'agent de provenderie exécute les ordres de fabrication.
         Route::middleware('can:L')->resource('formulas', FormulaController::class)
-            ->middlewareFor(['create', 'store'], 'can:C')
-            ->middlewareFor(['edit', 'update'], 'can:M')
+            ->middlewareFor(['create', 'store'], ['can:C', 'can:finances.voir'])
+            ->middlewareFor(['edit', 'update'], ['can:M', 'can:finances.voir'])
             ->middlewareFor('destroy', 'can:S');
         Route::post('/formulas/norms/import', [FormulaController::class, 'importNorms'])->name('norms.import')->middleware('can:S');
 
@@ -633,8 +638,13 @@ Route::middleware(['auth'])->group(function () {
         // gates portés par le contrôleur — pas par le can:L de groupe, qui
         // infère « elevage » du préfixe et fermerait la porte aux profils finance.
         Route::get('/', 'index')->name('index');
-        Route::get('/profit-loss', 'profitLoss')->name('profit_loss');
-        Route::get('/profit-loss/pdf', 'profitLossPdf')->name('profit_loss.pdf');
+        // Compte de résultat et flux mensuel des charges : règle « voir
+        // l'argent » (finances.voir) — le comptable y a accès, comme dans tout
+        // ERP ; ils étaient réservés à l'administration (admin.L).
+        Route::get('/profit-loss', 'profitLoss')->name('profit_loss')->middleware('can:finances.voir');
+        Route::get('/profit-loss/pdf', 'profitLossPdf')->name('profit_loss.pdf')->middleware('can:finances.voir');
+        Route::get('/monthly', 'monthlyExpenses')->name('monthly')->middleware('can:finances.voir');
+        Route::get('/monthly/pdf', 'monthlyExpensesPdf')->name('monthly.pdf')->middleware('can:finances.voir');
     });
     Route::prefix('reports')->name('reports.')->controller(ReportController::class)->middleware('can:L')->group(function () {
         Route::get('/technical', 'technicalPerformance')->name('technical');
@@ -645,8 +655,6 @@ Route::middleware(['auth'])->group(function () {
         // Bilan financier sanitaire : règle « voir l'argent » (finances.voir).
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance')->middleware('can:finances.voir');
         Route::get('/health-finance/pdf', 'healthFinancialReportPdf')->name('health_finance.pdf')->middleware('can:finances.voir');
-        Route::get('/monthly', 'monthlyExpenses')->name('monthly')->middleware('can:admin.L');
-        Route::get('/monthly/pdf', 'monthlyExpensesPdf')->name('monthly.pdf')->middleware('can:admin.L');
         Route::get('/gmq', 'gmqReport')->name('gmq');
         Route::get('/gmq/pdf', 'gmqReportPdf')->name('gmq.pdf');
         Route::get('/aquaculture', 'aquacultureReport')->name('aquaculture');

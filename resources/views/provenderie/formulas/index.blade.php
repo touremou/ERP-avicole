@@ -11,12 +11,12 @@
                 @endcan
 
                 {{-- Permission C : Création de nouvelle recette --}}
-                @can('provenderie.C')
+                @if(Gate::allows('provenderie.C') && Gate::allows('finances.voir'))
                 <a href="{{ route('formulas.create') }}" 
                     class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-blue-600 transition-all active:scale-95 no-underline flex items-center">
                     <i class="fa-solid fa-plus mr-2 text-blue-400"></i> {{ __("Nouvelle Recette") }}
                 </a>
-                @endcan
+                @endif
             </x-slot>
         </x-page-header>
     </x-slot>
@@ -34,7 +34,9 @@
                         </div>
                         <div class="text-left">
                             <p class="text-[8px] font-black text-blue-400 uppercase leading-none mb-1">{{ $norm->name }}</p>
+                            @can('finances.voir')
                             <p class="text-[10px] font-black text-slate-700 uppercase italic">{{ __("Cible") }} : {{ number_format($norm->target_price_kg, 0, ',', ' ') }} {{ currency() }}/kg</p>
+                            @endcan
                         </div>
                     </div>
                     @empty
@@ -94,11 +96,13 @@
                                     @endunless
                                 </div>
 
+@can('finances.voir')
                                 {{-- INDICATEUR FINANCIER --}}
                                 <div class="flex justify-between items-end px-2 text-left">
                                     <span class="text-[9px] font-black text-slate-400 uppercase italic">{{ __("Coût théorique") }}</span>
                                     @include('provenderie.formulas.partials.economic-verdict', ['verdict' => $verdict])
                                 </div>
+@endcan
                             </div>
 
                             <div class="flex gap-3 mt-auto">
@@ -155,6 +159,7 @@
                                 </span>
                             </div>
                         @endforeach
+@can('finances.voir')
                         <div class="flex flex-col text-left col-span-3 border-t border-slate-100 pt-3">
                             <span class="text-[8px] text-blue-500 uppercase font-black mb-1 italic leading-none">{{ __("Prix Cible") }}</span>
                             <span class="text-sm font-black text-slate-900 italic">
@@ -165,6 +170,7 @@
                                 @endif
                             </span>
                         </div>
+@endcan
                     </div>
                 </div>
                 @empty

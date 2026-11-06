@@ -179,3 +179,27 @@ test('la révision atteint les profils déjà installés, sans défaire le reste
         ->and($cellule('planning')->value('can_modify'))->toBeTrue()
         ->and($cellule('cultures')->value('can_read'))->toBeTrue();
 });
+
+test('le comptable ouvre le compte de résultat et le flux mensuel, comme dans tout ERP', function () {
+    $comptable = compteDuProfil($this, 'profil-comptable');
+    expect(ouvre($this, $comptable, 'reports.profit_loss'))->toBeTrue()
+        ->and(ouvre($this, $comptable, 'reports.monthly'))->toBeTrue();
+
+    $technicien = compteDuProfil($this, 'profil-technicien-elevage');
+    expect(ouvre($this, $technicien, 'reports.profit_loss'))->toBeFalse()
+        ->and(ouvre($this, $technicien, 'reports.monthly'))->toBeFalse();
+});
+
+test('l’agent provenderie fabrique sans voir les prix ; formuler et fixer un prix reviennent au responsable', function () {
+    \App\Models\RawMaterial::create(['name' => 'Maïs grain', 'unit_cost' => 4321, 'stock_qty' => 100, 'alert_threshold' => 0]);
+
+    $agent = compteDuProfil($this, 'profil-agent-provenderie');
+    $this->actingAs($agent)->get(route('raw-materials.index'))->assertOk()
+        ->assertSee('Maïs grain')->assertDontSee('4 321')->assertDontSee('4321');
+    expect(ouvre($this, $agent, 'production.create'))->toBeTrue()
+        ->and(ouvre($this, $agent, 'formulas.create'))->toBeFalse();
+
+    $gerant = compteDuProfil($this, 'profil-gerant');
+    $this->actingAs($gerant)->get(route('raw-materials.index'))->assertOk()->assertSee('4 321');
+    expect(ouvre($this, $gerant, 'formulas.create'))->toBeTrue();
+});
