@@ -4,7 +4,8 @@
 @php
     $licenseSvc = app(\App\Services\LicenseService::class);
 @endphp
-@if($licenseSvc->isEnabled() && $licenseSvc->status() === \App\Services\LicenseService::STATUS_GRACE)
+{{-- Aux administrateurs seulement : eux seuls peuvent renouveler. --}}
+@if($licenseSvc->isEnabled() && Gate::allows('admin.L') && $licenseSvc->status() === \App\Services\LicenseService::STATUS_GRACE)
     @php $lic = $licenseSvc->current(); @endphp
     <div class="bg-amber-500 text-white" x-data="{ show: true }" x-show="show">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">

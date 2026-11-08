@@ -38,6 +38,12 @@
                         <span>{{ __("Échéance") }} : <strong>{{ $license->expires_at->translatedFormat('d M Y') }}</strong></span>
                         <span>{{ __("Jours restants") }} : <strong>{{ $license->days_remaining }}</strong></span>
                         <span>{{ __("Plan") }} : <strong>{{ ucfirst($license->plan) }}</strong></span>
+                        <span>{{ __("SMS restant") }} : <strong>{{ number_format($license->sms_remaining, 0, ',', ' ') }}</strong></span>
+                        @php $pct = min(100, (int) round($license->elapsed_days / max(1, $license->total_days) * 100)); @endphp
+                        <span class="w-full mt-2">
+                            <span class="block text-xs text-emerald-700 mb-1">{{ __('Évolution contrat') }} : {{ $license->elapsed_days }}/{{ $license->total_days }} {{ __('Jours') }}</span>
+                            <span class="block h-2 w-full rounded-full bg-emerald-100 overflow-hidden"><span class="block h-full rounded-full {{ $pct >= 90 ? 'bg-amber-400' : 'bg-emerald-500' }}" style="width: {{ $pct }}%"></span></span>
+                        </span>
                     </div>
                 @endif
 

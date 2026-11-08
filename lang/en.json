@@ -5186,5 +5186,7 @@
     "Tâches de l’équipe": "Team tasks",
     "Fiche :nom": "Record :nom",
     "Aucune fiche employé — pas de « Mes tâches »": "No employee record — no “My tasks”",
-    "d'eau.": "of water."
+    "d'eau.": "of water.",
+    "Abonnement : échéance le :date (:n jours).": "Subscription: due on :date (:n days).",
+    "Licence": "License"
 }

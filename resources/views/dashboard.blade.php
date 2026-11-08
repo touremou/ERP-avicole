@@ -73,8 +73,10 @@
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            {{-- ABONNEMENT : carte « Durée de validité » (visible si licence armée) --}}
-            @include('dashboard._license-card')
+            {{-- ABONNEMENT : rien quand tout va bien ; un rappel discret, aux
+                 SEULS administrateurs, à l'approche de l'échéance. Le détail
+                 vit sur la page Licence (menu du compte). --}}
+            @include('dashboard._license-reminder')
 
             {{-- BANDEAU D'ALERTES PRIORISÉ (centre de contrôle unifié) --}}
             @if(!empty($priorityAlerts) && $priorityAlerts->isNotEmpty() && dashboard_block_visible('priority_alerts'))
