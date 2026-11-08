@@ -1,0 +1,149 @@
+name: Deploy client instance
+
+# Déploiement d'une INSTANCE CLIENT (mutualisé PlanetHoster), à la demande.
+#
+# Indépendant du site actuel : celui-ci reste servi par « Deploy pilot
+# (PlanetHoster) » (deploy.yml), qui n'est pas modifié. Ce workflow-ci ne se
+# déclenche JAMAIS tout seul — on choisit l'instance, la version et le mode.
+#
+# Chaque client = un ENVIRONNEMENT GitHub nommé « client-<nom> »
+# (Settings → Environments), qui porte SES secrets :
+#   CLIENT_SSH_HOST       hôte SSH N0C (ex. node42.n0c.com)
+#   CLIENT_SSH_PORT       port SSH (5022 chez PlanetHoster)
+#   CLIENT_SSH_USER       utilisateur SSH du compte
+#   CLIENT_SSH_KEY        clé PRIVÉE de déploiement propre à ce client
+#   CLIENT_WEB_PATH       dossier de l'application (ex. /home/USER/clients/kindia/erp)
+#   CLIENT_PWA_PATH       dossier de la PWA (ex. /home/USER/clients/kindia/app)
+#   CLIENT_PUBLIC_URL     URL de l'ERP (ex. https://erp.kindia-ferme.com)
+#   CLIENT_API_BASE_URL   URL de l'API pour la PWA (ex. https://erp.kindia-ferme.com/api/v1)
+# Le certificat et le token de licence du client ne sont PAS ici : ils vivent
+# sur son serveur (.env et base), que ce workflow ne touche jamais.
+#
+# Procédure complète : docs/ops/instance-client-planethoster.md
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Instance (environnement GitHub « client-… »)'
+        required: true
+        type: string
+      ref:
+        description: 'Version à déployer (tag de release conseillé, ex. v1.4.0)'
+        required: true
+        default: main
+        type: string
+      mode:
+        description: 'update = mise à jour · first-install = première installation'
+        required: true
+        default: update
+        type: choice
+        options: [update, first-install]
+      dry_run:
+        description: 'Essai à blanc (liste les transferts, n’écrit rien)'
+        type: boolean
+        default: false
+      skip_backup:
+        description: 'Sauter la sauvegarde de la base (déconseillé)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Instance client uniquement
+        run: |
+          case "${{ inputs.environment }}" in
+            client-*) echo "Instance : ${{ inputs.environment }}" ;;
+            *) echo "::error::L'environnement doit s'appeler « client-… » : ce workflow ne déploie que des instances clients."; exit 1 ;;
+          esac
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      # Règle absolue : on ne déploie qu'un commit VERT en CI.
+      - name: Commit vert en CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          verdict="$(gh run list --repo '${{ github.repository }}' --workflow ci.yml --commit "$sha" \
+                      --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')"
+          if [ "${verdict:-0}" -lt 1 ]; then
+            echo "::error::Le commit $sha n'a pas de CI verte : déploiement refusé."
+            exit 1
+          fi
+          echo "CI verte sur $sha."
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, gd, bcmath, intl, zip, sodium, pdo_mysql
+          coverage: none
+          tools: composer
+
+      - name: Composer install (--no-dev)
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build web assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build PWA (pointée sur l'API du client)
+        env:
+          VITE_API_BASE_URL: ${{ secrets.CLIENT_API_BASE_URL }}
+        run: |
+          cd mobile
+          npm ci
+          npm run build
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.CLIENT_SSH_KEY }}" > ~/.ssh/client_key
+          chmod 600 ~/.ssh/client_key
+          for attempt in 1 2 3 4 5; do
+            if ssh-keyscan -p "${{ secrets.CLIENT_SSH_PORT }}" "${{ secrets.CLIENT_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null && [ -s ~/.ssh/known_hosts ]; then
+              break
+            fi
+            sleep 5
+          done
+          test -s ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          INSTANCE: ${{ inputs.environment }}
+          MODE: ${{ inputs.mode }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          SKIP_BACKUP: ${{ inputs.skip_backup && '1' || '0' }}
+          SSH_HOST: ${{ secrets.CLIENT_SSH_HOST }}
+          SSH_PORT: ${{ secrets.CLIENT_SSH_PORT }}
+          SSH_USER: ${{ secrets.CLIENT_SSH_USER }}
+          SSH_KEY: ~/.ssh/client_key
+          WEB_PATH: ${{ secrets.CLIENT_WEB_PATH }}
+          PWA_PATH: ${{ secrets.CLIENT_PWA_PATH }}
+          PUBLIC_URL: ${{ secrets.CLIENT_PUBLIC_URL }}
+          # Les dossiers du site actuel : le script refuse de les viser.
+          PROTECTED_PATHS: ${{ secrets.PILOT_WEB_PATH }},${{ secrets.PILOT_PWA_PATH }}
+        run: |
+          export SSH_KEY="$HOME/.ssh/client_key"
+          scripts/deploy/deploy-instance.sh

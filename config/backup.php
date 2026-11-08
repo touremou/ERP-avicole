@@ -214,8 +214,14 @@ return [
         /*
          * The password to be used for archive encryption.
          * Set to `null` to disable encryption.
+         *
+         * Une ligne `BACKUP_ARCHIVE_PASSWORD=` laissée VIDE dans le .env donnait
+         * la chaîne vide, pas null : le chiffrement était tenté avec un mot de
+         * passe vide et toute sauvegarde échouait (« ZipArchive::close():
+         * Invalid argument ») — la nocturne comme celle d'avant déploiement.
+         * Vide vaut désormais « pas de chiffrement ».
          */
-        'password' => env('BACKUP_ARCHIVE_PASSWORD'),
+        'password' => env('BACKUP_ARCHIVE_PASSWORD') ?: null,
 
         /*
          * The encryption algorithm to be used for archive encryption.

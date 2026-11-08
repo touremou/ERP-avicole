@@ -272,3 +272,21 @@ test('un admin peut activer une licence via le formulaire', function () {
 
     expect(License::where('identifiant', 'BIOCREST')->exists())->toBeTrue();
 });
+
+test('license:status montre le certificat (empreinte) et le token, sans rien écrire', function () {
+    // Armé, aucune licence : la commande signale le blocage (code 1).
+    $this->artisan('license:status')->expectsOutputToContain('aucun')->assertExitCode(1);
+
+    app(LicenseService::class)->activate('BIOCREST', makeCode($this->keys['private']));
+    $empreinte = substr(hash('sha256', $this->keys['public']), 0, 16);
+
+    $this->artisan('license:status')
+        ->expectsOutputToContain($empreinte)
+        ->expectsOutputToContain('BIOCREST')
+        ->assertExitCode(0);
+    expect(License::count())->toBe(1);
+
+    // Sans certificat : mode ouvert, rien ne bloque.
+    config()->set('license.public_key', '');
+    $this->artisan('license:status')->expectsOutputToContain('ABSENT')->assertExitCode(0);
+});
