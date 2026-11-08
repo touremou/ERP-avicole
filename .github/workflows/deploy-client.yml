@@ -69,6 +69,31 @@ jobs:
             *) echo "::error::L'environnement doit s'appeler « client-… » : ce workflow ne déploie que des instances clients."; exit 1 ;;
           esac
 
+      # Un nom d'environnement mal saisi crée, chez GitHub, un environnement
+      # VIDE à la volée : tous les secrets arrivaient alors vides, et l'échec
+      # ne survenait qu'à l'étape SSH, une minute plus tard, sans explication.
+      - name: Secrets de l'instance présents
+        env:
+          CLIENT_SSH_HOST: ${{ secrets.CLIENT_SSH_HOST }}
+          CLIENT_SSH_PORT: ${{ secrets.CLIENT_SSH_PORT }}
+          CLIENT_SSH_USER: ${{ secrets.CLIENT_SSH_USER }}
+          CLIENT_SSH_KEY: ${{ secrets.CLIENT_SSH_KEY }}
+          CLIENT_WEB_PATH: ${{ secrets.CLIENT_WEB_PATH }}
+          CLIENT_PWA_PATH: ${{ secrets.CLIENT_PWA_PATH }}
+          CLIENT_PUBLIC_URL: ${{ secrets.CLIENT_PUBLIC_URL }}
+          CLIENT_API_BASE_URL: ${{ secrets.CLIENT_API_BASE_URL }}
+        run: |
+          manquants=""
+          for nom in CLIENT_SSH_HOST CLIENT_SSH_PORT CLIENT_SSH_USER CLIENT_SSH_KEY \
+                     CLIENT_WEB_PATH CLIENT_PWA_PATH CLIENT_PUBLIC_URL CLIENT_API_BASE_URL; do
+            [ -n "${!nom}" ] || manquants="$manquants $nom"
+          done
+          if [ -n "$manquants" ]; then
+            echo "::error::Secrets absents ou vides pour « ${{ inputs.environment }} » :$manquants. Vérifiez : (1) le nom saisi est EXACTEMENT celui de l'environnement (Settings › Environments) ; (2) les valeurs sont dans « Environment secrets », pas « Environment variables »."
+            exit 1
+          fi
+          echo "Les 8 secrets de ${{ inputs.environment }} sont présents."
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
