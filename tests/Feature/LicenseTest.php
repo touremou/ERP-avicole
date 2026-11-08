@@ -290,3 +290,24 @@ test('license:status montre le certificat (empreinte) et le token, sans rien éc
     config()->set('license.public_key', '');
     $this->artisan('license:status')->expectsOutputToContain('ABSENT')->assertExitCode(0);
 });
+
+test('le tableau de bord ne porte plus la carte de licence ; un rappel discret à l’échéance, aux administrateurs', function () {
+    $svc = app(LicenseService::class);
+    $svc->activate('BIOCREST', makeCode($this->keys['private']));   // 366 jours
+
+    // Licence en règle : rien sur le tableau de bord, pour personne.
+    $this->actingAs($this->adminUser)->get(route('dashboard'))->assertOk()
+        ->assertDontSee('Durée de validité')->assertDontSee('Abonnement : échéance');
+
+    // Le détail vit sur la page Licence, ouverte depuis le menu du compte.
+    $this->actingAs($this->adminUser)->get(route('license.edit'))->assertOk()
+        ->assertSee('SMS restant')->assertSee('Évolution contrat');
+
+    // Échéance dans 20 jours : une ligne, à l'administrateur seulement.
+    License::query()->update(['expires_at' => now()->addDays(20)]);
+    $this->actingAs($this->adminUser)->get(route('dashboard'))->assertSee('Abonnement : échéance');
+    \App\Support\ProfilsMetier::installer();
+    $gerant = \App\Models\User::factory()->create(['role_id' => \App\Models\Role::where('name', 'profil-gerant')->value('id')]);
+    \App\Support\SitesDuCompte::rattacher($gerant, [$this->farm->id]);
+    $this->actingAs($gerant)->get(route('dashboard'))->assertOk()->assertDontSee('Abonnement : échéance');
+});

@@ -164,6 +164,11 @@
                         @if(Auth::user()->employee || Gate::allows('planning.L'))
                         <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">📋</span> {{ __("Mes Tâches") }}</a>
                         @endif
+                        {{-- Abonnement : le détail (échéance, SMS restants) vit ici, plus
+                             sur le tableau de bord de tous. --}}
+                        @if(app(\App\Services\LicenseService::class)->isEnabled() && Gate::allows('admin.L'))
+                        <a href="{{ route('license.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">🔑</span> {{ __("Licence") }}</a>
+                        @endif
                         <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">👤</span> {{ __("Profil") }}</a>
                         {{-- Centre d'alertes PERSONNEL : distinct des « Réglages de
                              notification » et du journal des envois. Sans cette entrée,
