@@ -83,6 +83,15 @@
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("Salaire de base") }} ({{ setting('general.currency', 'GNF') }})</label>
                                 <input type="number" min="0" name="salary" value="{{ old('salary', $employee->salary) }}" class="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border-none focus:ring-4 focus:ring-emerald-500/10 shadow-inner text-emerald-700 text-xl tracking-tighter italic">
                             </div>
+                            {{-- COÛT HORAIRE — sert à imputer le temps de travail aux lots
+                                 (alimentation brute). Vide : déduit du salaire (Employee::coutHoraire). --}}
+                            <div class="space-y-3">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("Coût horaire") }} ({{ setting('general.currency', 'GNF') }})</label>
+                                <input type="number" min="0" step="1" name="hourly_cost_gnf" value="{{ old('hourly_cost_gnf', $employee->hourly_cost_gnf) }}"
+                                       placeholder="{{ number_format($employee->coutHoraire(), 0, ',', ' ') }}"
+                                       class="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border-none shadow-inner text-slate-700 italic">
+                                <p class="text-[8px] text-slate-400 ml-1">{{ __("Vide = déduit du salaire : ÷ 173,33 h au mois, ou (÷ 26 jours) ÷ 8 h pour un journalier.") }}</p>
+                            </div>
                             <div class="space-y-3">
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("N° Orange Money") }}</label>
                                 <input type="text" name="orange_money_number" value="{{ old('orange_money_number', $employee->orange_money_number) }}" placeholder="+224 6XX..."

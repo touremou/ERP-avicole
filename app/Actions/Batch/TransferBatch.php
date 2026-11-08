@@ -130,6 +130,8 @@ class TransferBatch
             $newModelName = trim((string) ($data['model_name'] ?? ''));
             if ($newModelName !== '' && $newModelName !== 'Non spécifié') {
                 $updates['model_name'] = $newModelName;
+                // Rattachée à la souche du référentiel de même nom, s'il en a une.
+                $updates['breed_id'] = \App\Models\AnimalBreed::pourLeLot(null, $newModelName, $batch->species_id)['breed_id'];
             }
 
             $batch->update($updates);

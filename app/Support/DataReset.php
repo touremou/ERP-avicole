@@ -46,7 +46,7 @@ class DataReset
         // Réglages et leur journal
         'settings', 'setting_audits', 'activity_log',
         // Référentiel zootechnique et agronomique
-        'species', 'production_types', 'production_norms', 'food_norms',
+        'species', 'animal_breeds', 'production_types', 'production_norms', 'food_norms',
         'crop_species', 'crop_varieties', 'crop_protocols', 'crop_protocol_items',
         'crop_recipes', 'crop_recipe_items',
         // Modèles de travail
@@ -70,6 +70,8 @@ class DataReset
     public const MOUVEMENTS = [
         // Élevage, santé, production
         'batches', 'daily_checks', 'daily_check_extensions', 'health_checks', 'health_incidents',
+        // Alimentation brute et main-d'œuvre imputée aux lots
+        'raw_feedings', 'batch_cost_allocations',
         'egg_productions', 'egg_movements', 'milk_productions', 'planned_batches', 'campaigns',
         'chick_dispatches', 'incubations', 'incubator_maintenances',
         // Provenderie, achats, stocks

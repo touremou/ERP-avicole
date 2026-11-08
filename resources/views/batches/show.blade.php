@@ -975,7 +975,7 @@
                                 </tr>
                             @endif
                         </tbody>
-                        @if(($stats['feed_cogs'] ?? 0) > 0)
+                        @if(($stats['feed_cogs'] ?? 0) > 0 && Gate::allows('finances.voir'))
                         <tfoot>
                             <tr class="bg-slate-900 text-white">
                                 <td colspan="4" class="px-8 py-4 text-[9px] font-black uppercase tracking-widest italic">
@@ -991,6 +991,87 @@
                     </table>
                 </div>
             </div>
+
+            {{-- ALIMENTATION BRUTE — herbe coupée, fanes… : preuves de travail (qui,
+                 quand, quoi, combien de temps). Le coût n'apparaît qu'à qui voit l'argent. --}}
+            @php $rawFeedings = $batch->rawFeedings()->with(['employee:id,first_name,last_name', 'user:id,name', 'plot:id,name'])->limit(30)->get(); @endphp
+            @if($rawFeedings->isNotEmpty())
+            <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden mb-8 not-italic">
+                <div class="px-8 py-5 border-b border-slate-50 flex items-center justify-between">
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">🌿 {{ __('Alimentation brute') }}</h3>
+                    <span class="text-[10px] font-black text-slate-400">{{ __(':n distribution(s) · :h h', ['n' => $batch->rawFeedings()->count(), 'h' => round($batch->rawFeedings()->sum('minutes_spent') / 60, 1)]) }}</span>
+                </div>
+                <table class="w-full text-left text-xs">
+                    <thead><tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                        <th class="px-8 py-3">{{ __('Date') }}</th><th class="px-3 py-3">{{ __('Ressource') }}</th>
+                        <th class="px-3 py-3 text-right">{{ __('Quantité') }}</th><th class="px-3 py-3 text-right">{{ __('Temps') }}</th>
+                        <th class="px-3 py-3">{{ __('Par') }}</th>
+                        @can('finances.voir')<th class="px-8 py-3 text-right">{{ __('Coût') }}</th>@endcan
+                    </tr></thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @foreach($rawFeedings as $rf)
+                        <tr>
+                            <td class="px-8 py-3 text-slate-500">{{ $rf->fed_at->format('d/m H:i') }}</td>
+                            <td class="px-3 py-3 font-bold text-slate-700">{{ $rf->resource }}@if($rf->plot)<span class="text-[9px] text-emerald-600 ml-1">· {{ $rf->plot->name }}</span>@endif</td>
+                            <td class="px-3 py-3 text-right">{{ $rf->quantity !== null ? rtrim(rtrim(number_format($rf->quantity, 2, ',', ' '), '0'), ',') . ' ' . __($rf->quantity_unit) : '—' }}</td>
+                            <td class="px-3 py-3 text-right">{{ $rf->minutes_spent }} min</td>
+                            <td class="px-3 py-3 text-slate-500">{{ $rf->employee ? $rf->employee->first_name . ' ' . $rf->employee->last_name : ($rf->user?->name ?? '—') }}</td>
+                            @can('finances.voir')
+                            <td class="px-8 py-3 text-right font-black {{ (float) $rf->labor_cost_gnf > 0 ? 'text-slate-700' : 'text-amber-500' }}"
+                                title="{{ (float) $rf->labor_cost_gnf > 0 ? '' : __('Coût horaire inconnu : renseigner le salaire ou le coût horaire de l’employé') }}">
+                                {{ (float) $rf->labor_cost_gnf > 0 ? number_format($rf->labor_cost_gnf, 0, ',', ' ') . ' ' . currency() : '—' }}
+                            </td>
+                            @endcan
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
+
+            {{-- RÉPARTITION DES COÛTS — le coût de revient du lot, poste par poste.
+                 La main-d'œuvre de l'alimentation locale y a sa propre catégorie,
+                 distincte des aliments achetés / transformés. Règle « voir l'argent ». --}}
+            @can('finances.voir')
+            @php
+                $acq = (float) ($batch->total_acquisition_cost ?: ((float) $batch->buy_price_per_unit * (int) $batch->initial_quantity));
+                $feed = (float) $batch->feed_cogs;
+                $labor = (float) $batch->labor_cost;
+                $health = (float) $batch->healthChecks()->sum('cost') + (float) $batch->healthIncidents()->sum('treatment_cost') + (float) $batch->health_purchases_cost;
+                $utility = (float) $batch->utility_cost;
+                $other = max(0.0, (float) $batch->operating_cost - $feed - $labor - $health - $utility);
+                $postes = collect([
+                    [__('Acquisition'), $acq, 'bg-slate-500'],
+                    [__('Aliments achetés / transformés'), $feed, 'bg-orange-400'],
+                    [__("Coût main-d'œuvre (alimentation locale)"), $labor, 'bg-emerald-500'],
+                    [__('Santé'), $health, 'bg-rose-400'],
+                    [__('Eau + énergie'), $utility, 'bg-sky-400'],
+                    [__('Autres'), $other, 'bg-violet-400'],
+                ])->filter(fn ($p) => $p[1] > 0);
+                $totalCouts = $postes->sum(fn ($p) => $p[1]);
+            @endphp
+            @if($totalCouts > 0)
+            <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8 mb-8 not-italic">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">📊 {{ __('Répartition des coûts') }}</h3>
+                    <span class="text-sm font-black text-slate-700">{{ number_format($totalCouts, 0, ',', ' ') }} {{ currency() }}</span>
+                </div>
+                <div class="flex h-4 w-full rounded-full overflow-hidden bg-slate-100 mb-4" role="img" aria-label="{{ __('Répartition des coûts') }}">
+                    @foreach($postes as [$libelle, $montant, $couleur])
+                        <span class="{{ $couleur }} h-full" style="width: {{ round($montant / $totalCouts * 100, 2) }}%" title="{{ $libelle }} : {{ number_format($montant, 0, ',', ' ') }} {{ currency() }}"></span>
+                    @endforeach
+                </div>
+                <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                    @foreach($postes as [$libelle, $montant, $couleur])
+                        <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full {{ $couleur }}"></span>
+                            <span class="font-bold text-slate-600">{{ $libelle }}</span>
+                            <span class="ml-auto font-black text-slate-800">{{ number_format($montant, 0, ',', ' ') }} {{ currency() }} · {{ round($montant / $totalCouts * 100) }} %</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+            @endif
+            @endcan
 
             {{-- COÛTS EAU & ÉNERGIE — deux lignes distinctes, jamais additionnées :
                  1. FACTURÉ (relevés compteur taggés bâtiment) → entre dans la marge ;

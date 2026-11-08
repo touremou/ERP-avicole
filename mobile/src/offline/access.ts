@@ -118,6 +118,8 @@ export const OP_ACCESS: Record<OperationType, AccessSpec> = {
   // exactement comme le formulaire du bureau — le planning, pas la RH. Le
   // déclarer ici évite qu'un agent voie un écran dont l'envoi sera refusé.
   'task.dispatch': 'planning.C',
+  // Alimentation brute / spontanée (herbe, fanes…) — SyncService::rawFeedingCreate.
+  'raw_feeding.create': 'elevage.C',
 }
 
 /**
@@ -153,6 +155,8 @@ export const ROUTE_ACCESS = {
   // émet (`batch.upsert` → elevage.C). Un écran plus permissif que son opération
   // ferait remplir un formulaire pour rien.
   '/elevage/mise-en-lot': 'elevage.C',
+  // Nourrir (brut) : même droit que l'op qu'il produit (raw_feeding.create).
+  '/elevage/nourrir-brut/:batchId?': 'elevage.C',
   '/lot/:batchId': 'elevage.L',
   '/scan': 'elevage.L|production.L',
 

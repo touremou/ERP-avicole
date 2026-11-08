@@ -414,6 +414,7 @@ async function pullDelta(): Promise<void> {
     crop_recipes,
     pending_harvests,
     stored_lots,
+    animal_breeds,
   } = response.entities
 
   const refTables = [
@@ -424,6 +425,7 @@ async function pullDelta(): Promise<void> {
     db.ref_mill_machines, db.ref_employees, db.ref_incubations, db.ref_energy_sources,
     db.ref_sale_price_lists, db.ref_sale_price_list_items, db.ref_employee_leaves,
     db.ref_crop_recipes, db.ref_pending_harvests, db.ref_stored_lots,
+    db.ref_animal_breeds,
   ]
 
   await db.transaction(
@@ -498,6 +500,12 @@ async function pullDelta(): Promise<void> {
       if (crop_recipes) {
         await db.ref_crop_recipes.bulkPut(crop_recipes.upserts)
         await db.ref_crop_recipes.bulkDelete(crop_recipes.deletes)
+      }
+      // Souches : liste COMPLÈTE à chaque synchro (une souche supprimée ou
+      // désactivée par l'administrateur disparaît ainsi du terrain).
+      if (animal_breeds) {
+        await db.ref_animal_breeds.clear()
+        await db.ref_animal_breeds.bulkPut(animal_breeds.upserts)
       }
       if (stored_lots) {
         // Remplacement COMPLET (entité `full` côté serveur) : un lot vendu ou

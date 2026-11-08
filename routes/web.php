@@ -1113,6 +1113,13 @@ Route::middleware(['auth'])->group(function () {
             // pas 28). Sans cette route, le référentiel restait en lecture seule.
             Route::patch('/species/{species}/incubation', [SpeciesController::class, 'updateIncubation'])->name('species.incubation')->middleware('can:M');
             Route::delete('/species/{species}', [SpeciesController::class, 'destroy'])->name('species.destroy');
+            // Taxonomie animale : espèces et souches paramétrées par l'administrateur.
+            Route::post('/species', [SpeciesController::class, 'storeSpecies'])->name('species.store');
+            Route::put('/species/{species}', [SpeciesController::class, 'updateSpecies'])->name('species.update');
+            Route::post('/species/{species}/breeds', [SpeciesController::class, 'storeBreed'])->name('species.breeds.store');
+            Route::put('/breeds/{breed}', [SpeciesController::class, 'updateBreed'])->name('breeds.update');
+            Route::patch('/breeds/{breed}/toggle', [SpeciesController::class, 'toggleBreed'])->name('breeds.toggle');
+            Route::delete('/breeds/{breed}', [SpeciesController::class, 'destroyBreed'])->name('breeds.destroy');
         });
 
     });

@@ -189,6 +189,15 @@ class SyncController extends Controller
         // Référentiel global (non borné ferme) : permet au client de savoir
         // quel lot est en ponte (tâche « collecte d'œufs ») sans dupliquer la
         // taxonomie. Table petite et stable.
+        // Taxonomie animale — souches / races paramétrées par l'administrateur.
+        // Le terrain crée un lot hors ligne : il lui faut la liste à jour. Petite
+        // table globale, sans corbeille : envoyée en entier à chaque synchro.
+        'animal_breeds' => [
+            'model'   => \App\Models\AnimalBreed::class,
+            'gate'    => ['elevage.L', 'elevage.C'],
+            'columns' => ['id', 'species_id', 'name', 'is_active', 'updated_at'],
+            'full'    => true,
+        ],
         'production_types' => [
             'model'   => \App\Models\ProductionType::class,
             'columns' => ['id', 'slug', 'name_fr', 'species_id', 'updated_at'],
@@ -200,7 +209,9 @@ class SyncController extends Controller
         // ── Phase 3 : cultures, abattoir, provenderie ──
         'plots' => [
             'model'   => \App\Models\Plot::class,
-            'gate'    => 'cultures.L',
+            // elevage.C : « herbe coupée sur la parcelle X » (alimentation brute).
+            // Colonnes d'identification seulement.
+            'gate'    => ['cultures.L', 'elevage.C'],
             'columns' => ['id', 'code', 'name', 'status', 'area_ha', 'updated_at'],
         ],
         'crop_cycles' => [

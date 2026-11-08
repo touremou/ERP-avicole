@@ -249,7 +249,10 @@ class BatchController extends Controller
         $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
             ->orderBy('sort_order')->get();
 
-        return view('batches.create', compact('buildings', 'normModels', 'protocols', 'employees', 'providers', 'activeSpecies'));
+        // Souches / races du référentiel (Administration › Taxonomie animale).
+        $breeds = \App\Models\AnimalBreed::active()->with('species:id,slug')->orderBy('name')->get();
+
+        return view('batches.create', compact('buildings', 'normModels', 'protocols', 'employees', 'providers', 'activeSpecies', 'breeds'));
     }
 
     /**
@@ -434,7 +437,12 @@ class BatchController extends Controller
         $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
             ->orderBy('sort_order')->get();
 
-        return view('batches.edit', compact('batch', 'buildings', 'providers', 'employees', 'protocols', 'normModels', 'activeSpecies'));
+        // Souches de l'espèce du lot (référentiel), + la sienne si elle a été désactivée.
+        $breeds = \App\Models\AnimalBreed::where('species_id', $batch->species_id)
+            ->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $batch->breed_id))
+            ->orderBy('name')->get();
+
+        return view('batches.edit', compact('batch', 'buildings', 'providers', 'employees', 'protocols', 'normModels', 'activeSpecies', 'breeds'));
     }
 
     /**
@@ -546,7 +554,10 @@ class BatchController extends Controller
          */
         $operatingCost   = (float) $batch->operating_cost - (float) ($batch->additional_costs ?? 0);
         $totalKnownCosts = $acquisitionCost + $operatingCost;
-        $otherCosts      = max(0.0, $operatingCost - $feedCost - $healthCost - $energyCost);
+        // Main-d'œuvre imputée (alimentation locale) : sa propre ligne, distincte
+        // de l'aliment acheté — comptée dans operating_cost, donc ôtée des « autres ».
+        $laborCost       = (float) $batch->labor_cost;
+        $otherCosts      = max(0.0, $operatingCost - $feedCost - $healthCost - $energyCost - $laborCost);
 
         /*
          * L'ALIMENT ACHETÉ MAIS JAMAIS POINTÉ.
@@ -583,6 +594,7 @@ class BatchController extends Controller
             'feed_price_kg'   => $totalFeed > 0 ? round($feedCost / $totalFeed) : 0,
             'health'          => round($healthCost),
             'energy'          => round($energyCost),
+            'labor'           => round($laborCost),
             // Dépenses directes, achats hors aliment et hors santé (hygiène,
             // litière, matériel) : comptés dans le total, donc nommés ici.
             'other'           => round($otherCosts),

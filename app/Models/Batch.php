@@ -181,6 +181,8 @@ class Batch extends Model
     protected $fillable = [
         // Sync offline
         'uuid', 'is_synced', 'last_sync_at',
+        // Souche du référentiel (AnimalBreed)
+        'breed_id',
 
         // Identité
         'farm_id','code', 'model_name',
@@ -430,6 +432,30 @@ class Batch extends Model
     public function species(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\App\Models\Species::class);
+    }
+
+    /** Alimentations brutes / spontanées (herbe, fanes…) — preuves de travail. */
+    public function rawFeedings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\RawFeeding::class)->latest('fed_at');
+    }
+
+    /** Imputations analytiques (main-d'œuvre…) — hors trésorerie. */
+    public function costAllocations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\BatchCostAllocation::class);
+    }
+
+    /** Main-d'œuvre imputée au lot (GNF) : une ligne du coût d'exploitation. */
+    public function getLaborCostAttribute(): float
+    {
+        return (float) $this->costAllocations()->sum('amount');
+    }
+
+    /** Souche / race du référentiel (AnimalBreed) ; model_name en garde le nom. */
+    public function breed(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\AnimalBreed::class, 'breed_id');
     }
 
     public function productionType(): \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -2321,8 +2347,11 @@ class Batch extends Model
         $directExpenses = (float) $this->expenses()->where('status', 'valide')->sum('amount');
         // Eau + énergie imputés au bâtiment sur la période du lot.
         $utilityCost = $this->utility_cost;
+        // Main-d'œuvre IMPUTÉE (alimentation locale…) : analytique, pas une
+        // sortie d'argent (BatchCostAllocation) — distincte de l'aliment acheté.
+        $laborCost = $this->labor_cost;
 
-        return $feedCost + $nonFeedPurchases + $healthCost + $additionalCosts + $directExpenses + $utilityCost;
+        return $feedCost + $nonFeedPurchases + $healthCost + $additionalCosts + $directExpenses + $utilityCost + $laborCost;
     }
 
     /**

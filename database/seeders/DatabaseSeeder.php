@@ -73,6 +73,8 @@ class DatabaseSeeder extends Seeder
 
         $this->call(SpeciesSeeder::class);
         $this->call(ProductionNormSeeder::class);
+        // Souches / races : celles des courbes + races locales (taxonomie animale).
+        $this->call(AnimalBreedSeeder::class);
         $this->call(ReferentialSeeder::class);
         $this->call(CropCatalogueSeeder::class);
         $this->call(CropProtocolSeeder::class);

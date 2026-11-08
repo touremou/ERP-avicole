@@ -31,9 +31,9 @@ test('chaque tuile de chaque poste mène à un écran qui existe', () => {
   }
 })
 
-test('l’agent de terrain voit pointage, scan, soin, traite, relevé et ses tâches', () => {
+test('l’agent de terrain voit pointage, nourrir (brut), scan, soin, traite, relevé et ses tâches', () => {
   const tuiles = tuilesDuPoste('terrain', ouvrable(profil(AGENT_TERRAIN))).map((t) => t.to)
-  assert.deepEqual(tuiles, ['/elevage/pointage', '/scan', '/elevage/soin', '/elevage/traite', '/ressources/releve', '/taches'])
+  assert.deepEqual(tuiles, ['/elevage/pointage', '/elevage/nourrir-brut', '/scan', '/elevage/soin', '/elevage/traite', '/ressources/releve', '/taches'])
 })
 
 test('une tuile que le profil ne peut pas ouvrir n’apparaît pas', () => {

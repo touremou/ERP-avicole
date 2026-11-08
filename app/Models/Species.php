@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Species extends Model
 {
+    /** Souches / races paramétrées par l'administrateur. */
+    public function breeds(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AnimalBreed::class)->orderBy('name');
+    }
+
     protected $fillable = [
         'slug','name_fr','local_name','family','unit_label','habitat_label',
         'icon','color','tracks_eggs','tracks_milk','tracks_water_quality',

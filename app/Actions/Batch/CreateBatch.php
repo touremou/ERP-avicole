@@ -78,6 +78,13 @@ class CreateBatch
                 ? (int) $data['production_type_id']
                 : ProductionType::resolveOrCreate($data['type'], $data['species_id'] ?? null)->id;
 
+            // Souche du référentiel (AnimalBreed::pourLeLot : breed_id fait foi).
+            $souche = \App\Models\AnimalBreed::pourLeLot(
+                ! empty($data['breed_id']) ? (int) $data['breed_id'] : null,
+                $data['model_name'] ?? null,
+                ! empty($data['species_id']) ? (int) $data['species_id'] : null,
+            );
+
             $batch = Batch::create(array_filter([
                 // Identifiant du terrain (synchronisation idempotente) : le
                 // rejouer retrouve CE lot au lieu d'en créer un second.
@@ -87,7 +94,8 @@ class CreateBatch
             ], fn ($v) => $v !== null) + [
                 // Identité
                 'code'        => $data['code'],
-                'model_name'  => ($data['model_name'] ?? null) ?: 'Non spécifié',
+                'model_name'  => $souche['model_name'] ?: 'Non spécifié',
+                'breed_id'    => $souche['breed_id'],
                 'species_id'         => $data['species_id'] ?? null,
                 'production_type_id' => $productionTypeId,
 

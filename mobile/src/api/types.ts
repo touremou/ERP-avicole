@@ -118,6 +118,7 @@ export type OperationType =
   // Tâche personnelle créée depuis le terrain (auto-assignée).
   | 'task.create'
   | 'task.dispatch'
+  | 'raw_feeding.create'
   // Ravitaillement d'une citerne d'eau (appoint) depuis le terrain.
   | 'water_refill.create'
 
@@ -164,6 +165,8 @@ export interface PullResponse {
     clients: PullEntity<RefClient>
     products: PullEntity<RefProduct>
     production_types: PullEntity<RefProductionType>
+    /** Souches / races (optionnel : un serveur antérieur ne l'envoie pas). */
+    animal_breeds?: PullEntity<RefAnimalBreed>
     // Phase 3 (optionnels : un serveur antérieur ne les renvoie pas).
     plots?: PullEntity<RefPlot>
     crop_cycles?: PullEntity<RefCropCycle>
@@ -685,6 +688,15 @@ export interface BatchHistoryResponse {
   }
   checks: BatchCheck[]
   server_time: string
+}
+
+/** Souche / race du référentiel (Administration › Taxonomie animale). */
+export interface RefAnimalBreed {
+  id: number
+  species_id: number
+  name: string
+  is_active: boolean
+  updated_at: string
 }
 
 export interface RefProductionType {

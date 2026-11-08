@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="__('🐾 Gestion des Espèces')" :subtitle="__('Activer / désactiver les espèces disponibles sur ce site')" icon="fa-paw" accent="slate">
+        <x-page-header :title="__('🐾 Taxonomie animale')" :subtitle="__('Espèces et souches / races proposées à la création d’un lot, au bureau comme sur le terrain')" icon="fa-paw" accent="slate">
             <x-slot name="actions">
                 <a href="{{ route('settings.index') }}" class="flex items-center justify-center w-11 h-11 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm no-underline">
                     <i class="fa-solid fa-xmark"></i>
@@ -13,6 +13,29 @@
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-10">
 
             <x-flash />
+
+            {{-- NOUVELLE ESPÈCE — l'administrateur complète le référentiel sans nous. --}}
+            @can('admin.S')
+            <details class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 not-italic">
+                <summary class="cursor-pointer text-sm font-black text-slate-700 uppercase tracking-widest">➕ {{ __('Nouvelle espèce') }}</summary>
+                <form method="POST" action="{{ route('admin.species.store') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-5">
+                    @csrf
+                    <input name="name_fr" required maxlength="100" placeholder="{{ __('Nom (ex. Lapin, Escargot)') }}" value="{{ old('name_fr') }}" class="md:col-span-2 bg-slate-50 border-none rounded-xl p-3 text-sm font-bold shadow-inner">
+                    <input name="local_name" maxlength="100" placeholder="{{ __('Nom local (optionnel)') }}" value="{{ old('local_name') }}" class="bg-slate-50 border-none rounded-xl p-3 text-sm shadow-inner">
+                    <select name="family" required class="bg-slate-50 border-none rounded-xl p-3 text-sm font-bold shadow-inner">
+                        @foreach($families as $key => $meta)
+                            <option value="{{ $key }}" @selected(old('family') === $key)>{{ $meta['icon'] }} {{ __($meta['label']) }}</option>
+                        @endforeach
+                    </select>
+                    <input name="icon" maxlength="10" placeholder="{{ __('Icône (emoji)') }}" value="{{ old('icon') }}" class="bg-slate-50 border-none rounded-xl p-3 text-sm shadow-inner">
+                    <input name="unit_label" maxlength="30" placeholder="{{ __('Unité (Tête)') }}" value="{{ old('unit_label') }}" class="bg-slate-50 border-none rounded-xl p-3 text-sm shadow-inner">
+                    <input name="habitat_label" maxlength="50" placeholder="{{ __('Logement (Clapier, Bergerie…)') }}" value="{{ old('habitat_label') }}" class="bg-slate-50 border-none rounded-xl p-3 text-sm shadow-inner">
+                    <input name="production_type" required maxlength="100" value="{{ old('production_type', __('Engraissement')) }}" class="bg-slate-50 border-none rounded-xl p-3 text-sm shadow-inner" title="{{ __('Type de production (un lot en exige un)') }}">
+                    <input name="cycle_days" type="number" min="1" max="3650" required value="{{ old('cycle_days', 180) }}" class="bg-slate-50 border-none rounded-xl p-3 text-sm shadow-inner" title="{{ __('Durée de cycle (jours)') }}">
+                    <button type="submit" class="md:col-span-3 bg-slate-900 text-white rounded-xl p-3 text-xs font-black uppercase tracking-widest border-none cursor-pointer">{{ __('Créer l’espèce') }}</button>
+                </form>
+            </details>
+            @endcan
 
             @foreach($families as $familyKey => $familyMeta)
                 @if(isset($species[$familyKey]))
@@ -87,6 +110,66 @@
                                         {{ $pt->name_fr }}
                                     </span>
                                     @endforeach
+                                </div>
+
+                                {{-- SOUCHES / RACES — proposées à la création d'un lot (bureau et
+                                     terrain, hors ligne compris). Une souche utilisée se désactive ;
+                                     une souche jamais utilisée se supprime. --}}
+                                <div class="mt-5 not-italic">
+                                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">{{ __('Souches / races') }}</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @forelse($sp->breeds as $breed)
+                                            <details class="inline-block">
+                                                <summary @class(['list-none cursor-pointer px-3 py-1 rounded-xl text-[9px] font-black border',
+                                                    'bg-emerald-50 text-emerald-700 border-emerald-100' => $breed->is_active,
+                                                    'bg-slate-50 text-slate-400 border-slate-100 line-through' => ! $breed->is_active])>
+                                                    {{ $breed->name }}@if($breed->batches_count) · {{ $breed->batches_count }}@endif
+                                                </summary>
+                                                @can('admin.S')
+                                                <div class="mt-2 p-3 bg-slate-50 rounded-xl space-y-2">
+                                                    <form method="POST" action="{{ route('admin.breeds.update', $breed) }}" class="flex gap-1">
+                                                        @csrf @method('PUT')
+                                                        <input name="name" value="{{ $breed->name }}" maxlength="100" class="flex-1 bg-white border-none rounded-lg p-2 text-[10px] font-bold">
+                                                        <button class="px-2 rounded-lg bg-slate-900 text-white text-[9px] font-black border-none cursor-pointer">{{ __('Renommer') }}</button>
+                                                    </form>
+                                                    <div class="flex gap-1">
+                                                        <form method="POST" action="{{ route('admin.breeds.toggle', $breed) }}">
+                                                            @csrf @method('PATCH')
+                                                            <button class="px-2 py-1 rounded-lg bg-white text-[9px] font-black border border-slate-200 cursor-pointer">{{ $breed->is_active ? __('Désactiver') : __('Réactiver') }}</button>
+                                                        </form>
+                                                        @if(! $breed->batches_count)
+                                                        <form method="POST" action="{{ route('admin.breeds.destroy', $breed) }}" onsubmit="return confirm(@js(__('Supprimer la souche « :name » ?', ['name' => $breed->name])))">
+                                                            @csrf @method('DELETE')
+                                                            <button class="px-2 py-1 rounded-lg bg-white text-rose-600 text-[9px] font-black border border-rose-100 cursor-pointer">{{ __('Supprimer') }}</button>
+                                                        </form>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                @endcan
+                                            </details>
+                                        @empty
+                                            <span class="text-[9px] text-slate-300">{{ __('Aucune souche : ajoutez-en une.') }}</span>
+                                        @endforelse
+                                    </div>
+                                    @can('admin.S')
+                                    <form method="POST" action="{{ route('admin.species.breeds.store', $sp) }}" class="flex gap-1 mt-2">
+                                        @csrf
+                                        <input name="name" required maxlength="100" placeholder="{{ __('Nouvelle souche (ex. Djallonké)') }}" class="flex-1 bg-slate-50 border-none rounded-lg p-2 text-[10px] font-bold shadow-inner">
+                                        <button class="px-3 rounded-lg bg-emerald-600 text-white text-[9px] font-black uppercase border-none cursor-pointer">{{ __('Ajouter') }}</button>
+                                    </form>
+                                    <details class="mt-2">
+                                        <summary class="cursor-pointer text-[8px] font-black text-slate-400 uppercase">✏️ {{ __('Modifier l’espèce') }}</summary>
+                                        <form method="POST" action="{{ route('admin.species.update', $sp) }}" class="grid grid-cols-2 gap-1 mt-2">
+                                            @csrf @method('PUT')
+                                            <input name="name_fr" required value="{{ $sp->name_fr }}" maxlength="100" class="col-span-2 bg-slate-50 border-none rounded-lg p-2 text-[10px] font-bold">
+                                            <input name="local_name" value="{{ $sp->local_name }}" maxlength="100" placeholder="{{ __('Nom local') }}" class="col-span-2 bg-slate-50 border-none rounded-lg p-2 text-[10px]">
+                                            <input name="icon" value="{{ $sp->icon }}" maxlength="10" class="bg-slate-50 border-none rounded-lg p-2 text-[10px]">
+                                            <input name="unit_label" value="{{ $sp->unit_label }}" maxlength="30" class="bg-slate-50 border-none rounded-lg p-2 text-[10px]">
+                                            <input name="habitat_label" value="{{ $sp->habitat_label }}" maxlength="50" class="col-span-2 bg-slate-50 border-none rounded-lg p-2 text-[10px]">
+                                            <button class="col-span-2 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase p-2 border-none cursor-pointer">{{ __('Enregistrer') }}</button>
+                                        </form>
+                                    </details>
+                                    @endcan
                                 </div>
 
                                 {{-- Indicateurs suivis --}}

@@ -32,10 +32,13 @@ test('toute souche du référentiel appartient à une espèce', function () {
 });
 
 test('la liste des souches d’un mouton ne propose plus « Poussin Standard »', function () {
+    // Les souches viennent du référentiel (taxonomie animale) ; celles des
+    // courbes y sont versées par le même semeur qu'à l'installation.
+    $this->seed(\Database\Seeders\AnimalBreedSeeder::class);
     $this->actingAs($this->adminUser);
     $page = $this->get(route('batches.create'))->assertOk()->getContent();
 
-    preg_match('/<option value="Poussin Standard"[^>]*data-species="([^"]*)"/', $page, $m);
+    preg_match('/<option value="\d+"[^>]*data-species="([^"]*)"[^>]*>\s*Poussin Standard\s*</', $page, $m);
     expect($m[1] ?? null)->toBe('poulet');
 });
 

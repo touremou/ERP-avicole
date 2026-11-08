@@ -124,6 +124,8 @@ class SyncService
             'task.create'                => 'taskCreate',
             // Tâche AFFECTÉE (à un collègue ou au pool) — droit planning.C exigé.
             'task.dispatch'              => 'taskDispatch',
+            // Alimentation brute / spontanée (herbe, fanes…) + main-d'œuvre imputée.
+            'raw_feeding.create'         => 'rawFeedingCreate',
         ];
     }
 
@@ -1369,6 +1371,9 @@ class SyncService
             // terrain arrivait sans type ni espèce, traité en poulet de chair.
             'production_type_id'     => 'nullable|integer|exists:production_types,id',
             'species_id'             => 'nullable|integer|exists:species,id',
+            // Souche du référentiel (taxonomie animale) ; son espèce est vérifiée
+            // par AnimalBreed::pourLeLot, dans CreateBatch / UpdateBatch.
+            'breed_id'               => 'nullable|integer|exists:animal_breeds,id',
             'building_id'            => ['required', 'integer', $this->farmScopedExists('buildings')],
             'initial_quantity'       => 'required|integer|min:1',
             'current_quantity'       => 'required|integer|min:0',
@@ -1447,6 +1452,7 @@ class SyncService
                 'type'               => $productionType->slug,
                 'species_id'         => $validated['species_id'],
                 'production_type_id' => $validated['production_type_id'],
+                'breed_id'           => $validated['breed_id'] ?? null,
                 'building_id'        => $validated['building_id'],
                 'employee_id'        => $validated['employee_id'] ?? null,
                 'provider_id'        => $validated['provider_id'] ?? null,
@@ -1487,7 +1493,9 @@ class SyncService
          * plus. Un refus métier (capacité) sort en « À corriger ».
          */
         DB::transaction(function () use ($validated, $price, $serverBatch) {
-            app(\App\Actions\Batch\UpdateBatch::class)->execute($serverBatch, [
+            app(\App\Actions\Batch\UpdateBatch::class)->execute($serverBatch, array_filter([
+                'breed_id' => $validated['breed_id'] ?? null,
+            ]) + [
                 'production_type_id' => $validated['production_type_id'],
                 'building_id'        => $validated['building_id'],
                 'status'             => $validated['status'] ?? $serverBatch->status,
@@ -3089,6 +3097,45 @@ class SyncService
             'cat'      => \App\Models\TaskTemplate::categoryMeta($category)['label'],
             'services' => $services,
         ]);
+    }
+
+    /**
+     * ALIMENTATION BRUTE / SPONTANÉE — herbe coupée, fanes, épluchures.
+     *
+     * Ni formule ni stock : une preuve de travail (qui, quand, quoi, quel lot,
+     * combien de temps). Le temps, valorisé au coût horaire de l'employé, est
+     * imputé au lot (RecordRawFeeding). Idempotent par uuid.
+     */
+    private function rawFeedingCreate(array $payload): array
+    {
+        if (Gate::denies('elevage.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'          => 'required|uuid',
+            'batch_id'      => ['required', 'integer', $this->farmScopedExists('batches')],
+            'fed_at'        => 'required|date|before_or_equal:now',
+            'resource'      => 'required|string|max:120',
+            'quantity'      => 'nullable|numeric|min:0|max:100000',
+            'quantity_unit' => 'nullable|string|max:20',
+            'minutes_spent' => 'required|integer|min:1|max:720',
+            'plot_id'       => ['nullable', 'integer', $this->farmScopedExists('plots')],
+            'notes'         => 'nullable|string|max:500',
+        ], [
+            'minutes_spent.required' => __('Indiquez le temps passé.'),
+        ]);
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        try {
+            app(\App\Actions\Batch\RecordRawFeeding::class)->execute($v->validated(), Auth::user());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->invalid($e->errors());
+        }
+
+        return ['status' => 'success'];
     }
 
     private function denied(): array
