@@ -150,6 +150,7 @@ nano ~/clients/kindia/erp/.env
 | `LICENSE_PUBLIC_KEY` | le **certificat** du §1 |
 | `BACKUP_ARCHIVE_PASSWORD` | un mot de passe propre au client (à garder hors du serveur) |
 | `MAIL_*` | la boîte du domaine du client (`MAIL_FROM_ADDRESS` = `MAIL_USERNAME`) |
+| `WHATSAPP_DRIVER` (+ clés) | `log` tant qu'aucun fournisseur n'est choisi ; `ultramsg` ou `twilio` ensuite |
 
 Les variables d'environnement du panneau N0C ne s'appliquent pas à une
 application PHP : le `.env`, hors racine web et en droits 600, **est** le
