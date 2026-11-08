@@ -53,3 +53,18 @@ test('un non-admin ne peut pas télécharger une sauvegarde', function () {
         ->get(route('backups.download', ['name' => 'dump.zip']))
         ->assertRedirect();
 });
+
+test('une ligne BACKUP_ARCHIVE_PASSWORD vide ne chiffre pas avec un mot de passe vide', function () {
+    // Vide dans le .env = chaîne vide : spatie chiffrait avec '' et TOUTE
+    // sauvegarde échouait (« ZipArchive::close(): Invalid argument »).
+    putenv('BACKUP_ARCHIVE_PASSWORD=');
+    $_ENV['BACKUP_ARCHIVE_PASSWORD'] = $_SERVER['BACKUP_ARCHIVE_PASSWORD'] = '';
+    expect((include config_path('backup.php'))['backup']['password'])->toBeNull();
+
+    putenv('BACKUP_ARCHIVE_PASSWORD=Secret#Client');
+    $_ENV['BACKUP_ARCHIVE_PASSWORD'] = $_SERVER['BACKUP_ARCHIVE_PASSWORD'] = 'Secret#Client';
+    expect((include config_path('backup.php'))['backup']['password'])->toBe('Secret#Client');
+
+    putenv('BACKUP_ARCHIVE_PASSWORD');
+    unset($_ENV['BACKUP_ARCHIVE_PASSWORD'], $_SERVER['BACKUP_ARCHIVE_PASSWORD']);
+});
