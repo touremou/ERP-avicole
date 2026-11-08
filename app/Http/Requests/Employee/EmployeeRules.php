@@ -38,6 +38,8 @@ trait EmployeeRules
             'department'  => 'required|string|max:255',
             'hire_date'   => 'required|date',
             'salary'      => 'nullable|numeric|min:0',
+            // Coût horaire FORCÉ (main-d'œuvre imputée aux lots) ; vide = déduit du salaire.
+            'hourly_cost_gnf' => 'nullable|numeric|min:0',
 
             'contract_type' => 'required|in:CDI,CDD,Journalier',
             // LE TERME. Obligatoire sur un contrat à durée déterminée — sans lui,

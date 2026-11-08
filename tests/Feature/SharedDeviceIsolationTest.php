@@ -57,10 +57,11 @@ test('l’historique des versions Dexie n’est pas RÉÉCRIT', function () {
     $versions = array_map('intval', $matches[1]);
 
     expect($versions)->not->toBeEmpty()
-        ->and(max($versions))->toBe(14)
-        // Aucune version ne se déclare deux fois, et 1 → 14 sans trou.
+        // v15 : souches / races (taxonomie animale), table NEUVE.
+        ->and(max($versions))->toBe(15)
+        // Aucune version ne se déclare deux fois, et 1 → 15 sans trou.
         ->and(array_unique($versions))->toHaveCount(count($versions))
-        ->and(range(1, 14))->toEqualCanonicalizing($versions);
+        ->and(range(1, 15))->toEqualCanonicalizing($versions);
 
     // La v14 rattache les lignes existantes, qui n'ont pas d'auteur connu.
     expect($db)->toMatch('/version\(14\).*?\.upgrade\(/s');

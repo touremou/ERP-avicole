@@ -18,7 +18,7 @@ class Employee extends Model
         'farm_id', 'user_id', 'employee_id', 'last_name', 'first_name', 'gender', 'birth_date',
         'phone', 'email', 'job_title', 'department', 'contract_type',
         'contract_end_date', 'notice_given_at', 'assigned_building_id',
-        'hire_date', 'salary', 'emergency_contact_name', 'emergency_contact_phone',
+        'hire_date', 'salary', 'hourly_cost_gnf', 'emergency_contact_name', 'emergency_contact_phone',
         'photo_path', 'cv_path', 'status', 'annual_leave_balance', 'orange_money_number'
     ];
 
@@ -554,6 +554,43 @@ class Employee extends Model
     public function isPresumedPresent(): bool
     {
         return $this->contract_type !== 'Journalier';
+    }
+
+    /** Heures légales d'un mois à 40 h par semaine (40 × 52 ÷ 12). */
+    public const HEURES_PAR_MOIS = 173.33;
+
+    /** Jours ouvrés d'un mois (base de la journée d'un journalier, comme la paie). */
+    public const JOURS_OUVRES_PAR_MOIS = 26;
+
+    /** Heures d'une journée de travail type. */
+    public const HEURES_PAR_JOUR = 8;
+
+    /**
+     * COÛT HORAIRE DE L'EMPLOYÉ (GNF) — déclaration UNIQUE, lue par
+     * l'imputation de la main-d'œuvre au lot (RecordRawFeeding).
+     *
+     *   • `hourly_cost_gnf` renseigné : il fait foi (taux négocié, prime…) ;
+     *   • salarié au mois (CDI, CDD) : salaire ÷ 173,33 h ;
+     *   • journalier : sa journée (salaire de référence ÷ 26 jours ouvrés, la
+     *     base de la paie) ÷ 8 h.
+     *
+     * 0 si rien n'est connu : l'action reste enregistrée (preuve de travail),
+     * seule sa valeur manque — et l'écran le dit.
+     */
+    public function coutHoraire(): float
+    {
+        if ($this->hourly_cost_gnf !== null && (float) $this->hourly_cost_gnf > 0) {
+            return round((float) $this->hourly_cost_gnf, 2);
+        }
+
+        $salaire = (float) ($this->salary ?? 0);
+        if ($salaire <= 0) {
+            return 0.0;
+        }
+
+        return $this->isPresumedPresent()
+            ? round($salaire / self::HEURES_PAR_MOIS, 2)
+            : round($salaire / self::JOURS_OUVRES_PAR_MOIS / self::HEURES_PAR_JOUR, 2);
     }
 
     /**

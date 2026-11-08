@@ -11,7 +11,7 @@
  *   les succès sont RETIRÉS de la file (l'historique vit dans my_records).
  */
 import Dexie, { type Table } from 'dexie'
-import type {
+import type { RefAnimalBreed,
   ApiNotification,
   MeResponse,
   OperationType,
@@ -140,6 +140,7 @@ class ErpMobileDb extends Dexie {
   ref_crop_recipes!: Table<RefCropRecipe, number>
   ref_pending_harvests!: Table<RefPendingHarvest, number>
   ref_stored_lots!: Table<RefStoredLot, number>
+  ref_animal_breeds!: Table<RefAnimalBreed, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -240,6 +241,11 @@ class ErpMobileDb extends Dexie {
 
       await tx.table('my_records').toCollection().modify({ user_id: userId })
       await tx.table('outbox').toCollection().modify({ user_id: userId })
+    })
+    // v15 : taxonomie animale — les souches / races paramétrées par
+    // l'administrateur, pour créer un lot hors ligne.
+    this.version(15).stores({
+      ref_animal_breeds: 'id, species_id',
     })
   }
 }

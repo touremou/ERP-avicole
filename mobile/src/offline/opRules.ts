@@ -451,6 +451,19 @@ const RULES: Partial<Record<OperationType, Validator>> = {
   // facultatif — sans lui, la tâche part au libre-service. Les trois refus
   // métier (employé affectable, congé, service) restent AUTORITAIRES serveur :
   // ils dépendent d'un état que le miroir local peut ne plus refléter.
+  // Alimentation brute : le lot, la ressource et le TEMPS sont obligatoires ;
+  // la quantité est une estimation facultative.
+  'raw_feeding.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'batch_id', 'Lot', e)
+    reqStr(p, 'resource', 'Ressource', e)
+    const minutes = num(p.minutes_spent)
+    if (minutes === null || !Number.isInteger(minutes) || minutes < 1 || minutes > 720) {
+      e.push('Temps passé : entre 1 minute et 12 heures.')
+    }
+    optNum(p, 'quantity', 'Quantité', e, 0)
+    return e
+  },
   'task.dispatch': (p) => {
     const e: string[] = []
     reqStr(p, 'title', 'Intitulé', e)

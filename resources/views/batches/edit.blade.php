@@ -70,18 +70,18 @@
 
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Souche / Race") }}</label>
-                                <select name="model_name" id="model_selector" required
+                                {{-- Souches de l'espèce du lot (Administration › Taxonomie animale). --}}
+                                <select name="breed_id" id="model_selector"
                                         class="w-full p-4 bg-slate-50 shadow-inner rounded-2xl font-black outline-none border-none text-blue-600 appearance-none italic">
-                                    @foreach($normModels as $norm)
-                                        <option value="{{ $norm->model_name }}"
-                                                data-type="{{ $norm->batch_type }}"
-                                                class="model-opt"
-                                                {{ old('model_name', $batch->model_name) == $norm->model_name ? 'selected' : '' }}>
-                                            {{ $norm->model_name }}
+                                    <option value="">{{ __("-- Non précisée --") }}</option>
+                                    @foreach($breeds as $breed)
+                                        <option value="{{ $breed->id }}" data-type="" class="model-opt"
+                                                @selected(old('breed_id', $batch->breed_id) == $breed->id)>
+                                            {{ $breed->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* Seules les souches adaptées au type d'élevage sélectionné s'affichent") }}</p>
+                                <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* Les souches de l'espèce du lot — à compléter dans Administration › Taxonomie animale") }}</p>
                             </div>
 
                             <div>
@@ -306,7 +306,7 @@
                 const modelSelector = document.getElementById('model_selector');
                 if (modelSelector) {
                     modelSelector.querySelectorAll('.model-opt').forEach(opt => {
-                        const isMatch = selectedType === "" || opt.dataset.type === selectedType;
+                        const isMatch = !opt.dataset.type || selectedType === "" || opt.dataset.type === selectedType;
                         const isCurrent = opt.selected;
                         opt.style.display = (isMatch || isCurrent) ? 'block' : 'none';
                         opt.disabled = !isMatch && !isCurrent;

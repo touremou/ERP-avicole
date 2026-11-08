@@ -101,6 +101,15 @@ export function BatchScreen() {
             </Link>
           )}
 
+          {/* Alimentation brute (herbe, fanes…) : ni formule ni stock, le temps
+              passé est imputé au lot (RawFeedingScreen). */}
+          {can('elevage', 'C') && (
+            <Link to={`/elevage/nourrir-brut/${batch.id}`} className="task-card">
+              <span className="task-title">🌿 {t('Nourrir (brut)')}</span>
+              <span className="task-meta">{t('herbe · fanes · temps passé')}</span>
+            </Link>
+          )}
+
           {canCollect && can('production', 'C') && (
             <Link to={`/elevage/collecte/${batch.id}`} className="task-card">
               <span className="task-title">🥚 {t("Collecte d'œufs")}</span>

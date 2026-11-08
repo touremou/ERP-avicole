@@ -233,6 +233,35 @@
                 </div>
             </div>
 
+            {{-- ENTRETIEN PAR LA COUPE — herbe coupée ici pour nourrir les animaux
+                 (alimentation brute, PWA). L'entretien des espaces verts de la
+                 ferme se lit ainsi depuis la parcelle. --}}
+            @php
+                $coupes = \App\Models\RawFeeding::where('plot_id', $plot->id)
+                    ->with(['batch:id,code', 'employee:id,first_name,last_name'])->latest('fed_at')->limit(20)->get();
+            @endphp
+            @if($coupes->isNotEmpty())
+            <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden mt-8 not-italic">
+                <div class="px-8 py-5 border-b border-slate-50">
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">🌿 {{ __("Coupes pour l'élevage") }}</h3>
+                    <p class="text-[10px] text-slate-400">{{ __('Herbe et feuillages coupés sur cette parcelle pour nourrir les animaux.') }}</p>
+                </div>
+                <table class="w-full text-left text-xs">
+                    <tbody class="divide-y divide-slate-50">
+                        @foreach($coupes as $coupe)
+                        <tr>
+                            <td class="px-8 py-3 text-slate-500">{{ $coupe->fed_at->format('d/m/Y') }}</td>
+                            <td class="px-3 py-3 font-bold text-slate-700">{{ $coupe->resource }}</td>
+                            <td class="px-3 py-3">{{ $coupe->quantity !== null ? rtrim(rtrim(number_format($coupe->quantity, 2, ',', ' '), '0'), ',') . ' ' . __($coupe->quantity_unit) : '—' }}</td>
+                            <td class="px-3 py-3">{{ __('Lot') }} {{ $coupe->batch?->code }}</td>
+                            <td class="px-8 py-3 text-slate-500">{{ $coupe->employee ? $coupe->employee->first_name . ' ' . $coupe->employee->last_name : '' }} · {{ $coupe->minutes_spent }} min</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
+
         </div>
     </div>
 </x-app-layout>

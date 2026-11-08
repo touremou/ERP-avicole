@@ -78,20 +78,23 @@
 
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Souche / Race (Référentiel)") }}</label>
-                                    <select name="model_name" id="model_selector" required
+                                    {{-- Souches du RÉFÉRENTIEL (Administration › Taxonomie animale) :
+                                         une race locale sans courbe de croissance se choisit aussi. --}}
+                                    <select name="breed_id" id="model_selector"
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-black text-blue-600 shadow-inner appearance-none italic">
-                                        <option value="">{{ __("-- Sélectionner la souche --") }}</option>
-                                        @foreach($normModels as $norm)
-                                            <option value="{{ $norm->model_name }}"
-                                                    data-type="{{ $norm->batch_type }}"
-                                                    data-species="{{ $norm->species?->slug ?? '' }}"
+                                        <option value="">{{ __("-- Non précisée --") }}</option>
+                                        @foreach($breeds as $breed)
+                                            <option value="{{ $breed->id }}"
+                                                    data-type=""
+                                                    data-species="{{ $breed->species?->slug ?? '' }}"
                                                     class="model-opt"
-                                                    style="display: none;">
-                                                {{ $norm->model_name }}
+                                                    style="display: none;"
+                                                    @selected(old('breed_id') == $breed->id)>
+                                                {{ $breed->name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* Seules les souches adaptées s'affichent") }}</p>
+                                    <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* Les souches de l'espèce choisie — à compléter dans Administration › Taxonomie animale") }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Protocole prophylaxie") }}</label>
@@ -348,7 +351,7 @@
         if (modelSelector) {
             const speciesSlug = getCurrentSpeciesSlug();
             modelSelector.querySelectorAll('.model-opt').forEach(opt => {
-                const typeMatch = selectedType === "" || opt.dataset.type === selectedType;
+                const typeMatch = !opt.dataset.type || selectedType === "" || opt.dataset.type === selectedType;
                 const optSpecies = opt.dataset.species || "";
                 const speciesMatch = speciesSlug === "" || optSpecies === "" || optSpecies === speciesSlug;
                 const isMatch = typeMatch && speciesMatch;

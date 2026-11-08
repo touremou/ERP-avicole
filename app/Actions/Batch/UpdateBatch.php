@@ -27,7 +27,7 @@ class UpdateBatch
      * présent dans $data. C'est la protection contre B-03/B-04.
      */
     private const ALLOWED_FIELDS = [
-        'type', 'model_name', 'production_type_id',
+        'type', 'model_name', 'breed_id', 'production_type_id',
         'building_id', 'employee_id', 'provider_id',
         'protocol_id', 'current_protocol_id',
         'buy_price_per_unit',
@@ -57,6 +57,17 @@ class UpdateBatch
                 throw ValidationException::withMessages([
                     'status' => $batch->motifStatutRefuse((string) $payload['status']),
                 ]);
+            }
+
+            // Souche du référentiel (AnimalBreed::pourLeLot : breed_id fait foi).
+            if (! empty($payload['breed_id']) || array_key_exists('model_name', $payload)) {
+                $souche = \App\Models\AnimalBreed::pourLeLot(
+                    ! empty($payload['breed_id']) ? (int) $payload['breed_id'] : null,
+                    $payload['model_name'] ?? $batch->model_name,
+                    $batch->species_id,
+                );
+                $payload['breed_id'] = $souche['breed_id'];
+                $payload['model_name'] = $souche['model_name'];
             }
 
             if (array_key_exists('model_name', $payload) && ! $payload['model_name']) {

@@ -26,7 +26,7 @@ import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t } from '../../i18n'
-import type { RefBuilding, RefEmployee, RefProductionType, RefProvider } from '../../api/types'
+import type { RefAnimalBreed, RefBuilding, RefEmployee, RefProductionType, RefProvider } from '../../api/types'
 import { joursDeVideSanitaire } from '../../offline/statutsDeLot'
 
 /** Bâtiments capables d'accueillir une bande : libres, jamais occupés. */
@@ -39,6 +39,10 @@ export function NewBatchScreen() {
   const [productionTypes, setProductionTypes] = useState<RefProductionType[]>([])
   const [employees, setEmployees] = useState<RefEmployee[]>([])
   const [providers, setProviders] = useState<RefProvider[]>([])
+  // Souches / races du référentiel (Administration › Taxonomie animale),
+  // reçues à la synchro : disponibles hors ligne.
+  const [breeds, setBreeds] = useState<RefAnimalBreed[]>([])
+  const [breedId, setBreedId] = useState('')
 
   const [buildingId, setBuildingId] = useState('')
   // IDENTIFIANT du type de production choisi — et non son slug : « chair »
@@ -46,6 +50,13 @@ export function NewBatchScreen() {
   // enregistrait le lot sans type ni espèce (traité en poulet de chair).
   const [type, setType] = useState('')
   const typeChoisi = productionTypes.find((pt) => String(pt.id) === type)
+  const souchesDuType = typeChoisi?.species_id
+    ? breeds.filter((breed) => breed.species_id === typeChoisi.species_id)
+    : []
+  // Une souche d'une autre espèce ne reste pas choisie après un changement de type.
+  useEffect(() => {
+    if (breedId && !souchesDuType.some((breed) => String(breed.id) === breedId)) setBreedId('')
+  }, [type, breeds]) // eslint-disable-line react-hooks/exhaustive-deps
   const [initialQuantity, setInitialQuantity] = useState(0)
   const [deadOnArrival, setDeadOnArrival] = useState(0)
   const [arrivalDate, setArrivalDate] = useState(new Date().toISOString().slice(0, 10))
@@ -78,12 +89,14 @@ export function NewBatchScreen() {
 
   useEffect(() => {
     void (async () => {
-      const [b, pt, emp, prov] = await Promise.all([
+      const [b, pt, emp, prov, br] = await Promise.all([
         db.ref_buildings.toArray(),
         db.ref_production_types.toArray(),
         db.ref_employees.toArray(),
         db.ref_providers.toArray(),
+        db.ref_animal_breeds.toArray(),
       ])
+      setBreeds(br.filter((item) => item.is_active).sort((a, b2) => a.name.localeCompare(b2.name)))
 
       setBuildings(b.filter((item) => AVAILABLE_STATUSES.includes(item.status)))
       setProductionTypes(pt)
@@ -136,6 +149,7 @@ export function NewBatchScreen() {
         // Le slug reste envoyé pour un serveur plus ancien ; l'identifiant fait foi.
         type: typeChoisi?.slug ?? '',
         production_type_id: typeChoisi ? typeChoisi.id : null,
+        breed_id: breedId ? Number(breedId) : null,
         building_id: Number(buildingId),
         initial_quantity: initialQuantity,
         // L'effectif VIVANT à l'arrivée : les sujets morts au transport sont
@@ -207,6 +221,20 @@ export function NewBatchScreen() {
           </option>
         ))}
       </select>
+
+      {/* Souche : celles de l'espèce du type choisi. Optionnelle — une
+          souche manquante s'ajoute dans Administration › Taxonomie animale. */}
+      {souchesDuType.length > 0 && (
+        <>
+          <label htmlFor="breed">{t('Souche / race')}</label>
+          <select id="breed" value={breedId} onChange={(e) => setBreedId(e.target.value)}>
+            <option value="">{t('— Non précisée —')}</option>
+            {souchesDuType.map((breed) => (
+              <option key={breed.id} value={breed.id}>{breed.name}</option>
+            ))}
+          </select>
+        </>
+      )}
 
       <label htmlFor="building">{t('Bâtiment')}</label>
       <select id="building" value={buildingId} onChange={(e) => setBuildingId(e.target.value)} required>
