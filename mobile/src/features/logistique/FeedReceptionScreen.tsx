@@ -58,7 +58,18 @@ export function FeedReceptionScreen() {
   // Quantité pivot en KG : c'est elle qui porte le coût unitaire du magasin.
   const pivotKg = unit === 'Sac' ? qty * weight : qty
   const costPerKg = pivotKg > 0 ? amount / pivotKg : 0
-  const canSubmit = Boolean(batchId) && feedType.trim() !== '' && qty > 0 && amount >= 0
+  // Les aliments du secteur du lot choisi — la liste du formulaire du bureau.
+  const aliments = batches.find((b) => String(b.id) === batchId)?.feed_phases ?? []
+  // Un aliment ou un fournisseur rappelé de la dernière réception ne reste
+  // choisi que s'il figure dans la liste du lot / de l'annuaire.
+  useEffect(() => {
+    if (feedType && batchId && !aliments.includes(feedType)) setFeedType('')
+  }, [batchId, aliments.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (supplier && providers.length > 0 && !providers.some((p) => p.name === supplier)) setSupplier('')
+  }, [providers]) // eslint-disable-line react-hooks/exhaustive-deps
+  const canSubmit = Boolean(batchId) && aliments.includes(feedType) && qty > 0 && amount >= 0
+    && (providers.length === 0 || supplier !== '')
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -109,8 +120,19 @@ export function FeedReceptionScreen() {
         <p className="muted">{t('Aucun lot actif en local — synchronisez d’abord.')}</p>
       )}
 
+      {/* LISTE FERMÉE, comme au bureau : les aliments du secteur du lot
+          (Batch::feedPhases, servis à la synchro). Un texte libre créait un
+          second article de stock à la moindre faute de frappe. */}
       <label htmlFor="feed">{t('Type d’aliment')}</label>
-      <input id="feed" required maxLength={255} value={feedType} onChange={(e) => setFeedType(e.target.value)} placeholder={t('ex. Démarrage chair')} />
+      <select id="feed" required value={feedType} onChange={(e) => setFeedType(e.target.value)} disabled={!batchId || aliments.length === 0}>
+        <option value="">{batchId ? t('Sélectionner…') : t('Choisir d’abord le lot')}</option>
+        {aliments.map((aliment) => (
+          <option key={aliment} value={aliment}>{t(aliment)}</option>
+        ))}
+      </select>
+      {batchId !== '' && aliments.length === 0 && (
+        <p className="muted">{t('Liste des aliments absente en local — synchronisez d’abord.')}</p>
+      )}
 
       <label>{t('Unité')}</label>
       <div className="chip-row">
@@ -160,13 +182,15 @@ export function FeedReceptionScreen() {
         <p className="muted">{t('Soit :cost /kg — coût porté au magasin.', { cost: money(costPerKg) })}</p>
       )}
 
-      <label htmlFor="supplier">{t('Fournisseur — optionnel')}</label>
-      <input id="supplier" maxLength={255} value={supplier} onChange={(e) => setSupplier(e.target.value)} list="providers" placeholder={t('ex. Provenderie Kindia')} />
-      <datalist id="providers">
+      {/* LISTE FERMÉE : les fournisseurs de l'annuaire. Un nouveau fournisseur
+          se crée au bureau (Annuaire), pas par une faute de frappe ici. */}
+      <label htmlFor="supplier">{t('Fournisseur')}</label>
+      <select id="supplier" required={providers.length > 0} value={supplier} onChange={(e) => setSupplier(e.target.value)}>
+        <option value="">{t('Sélectionner…')}</option>
         {providers.map((p) => (
-          <option key={p.id} value={p.name} />
+          <option key={p.id} value={p.name}>{p.name}</option>
         ))}
-      </datalist>
+      </select>
 
       <label>{t('Règlement')}</label>
       <div className="chip-row">

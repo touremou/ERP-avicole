@@ -67,6 +67,8 @@ export interface MeResponse {
      * catégorie au bureau suffit désormais.
      */
     task_categories?: { key: string; label: string; emoji: string; group: string }[]
+    /** Suivi adapté à l'espèce, par famille (App\Support\SuiviParEspece). */
+    species_forms?: Record<string, { symptomes: string[]; produits: Record<string, string[]>; modes: string[]; masquer: string[] }>
   }
   server_time: string
 }
@@ -295,6 +297,12 @@ export interface RefBatch {
   initial_quantity: number
   current_quantity: number
   qty_dead: number
+  /** Stade calculé serveur (âge × cycle de la souche) : Démarrage, Croissance… */
+  current_phase?: string | null
+  /** Famille de l'espèce (volaille, petit_ruminant…) : formulaires adaptés. */
+  species_family?: string | null
+  /** Aliments du secteur du lot : la LISTE de la réception d'aliment. */
+  feed_phases?: string[]
   arrival_date: string
   /** Naissance/éclosion : l'âge s'en déduit. Absente sur les lots antérieurs. */
   birth_date?: string | null

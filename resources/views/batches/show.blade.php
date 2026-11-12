@@ -209,7 +209,7 @@
                 </span>
                 @endif
                 <span class="text-slate-200 hidden sm:inline">|</span>
-                <span class="text-rose-500 whitespace-nowrap"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? __("Phase Initiale") }}</span>
+                <span class="text-rose-500 whitespace-nowrap"><i class="fa-solid fa-dna mr-1"></i> {{-- Stade CALCULÉ (âge × cycle de la souche), plus la valeur figée à la création. --}}{{ __($currentPhase) }}</span>
                 @if($infirmaryCount > 0)
                 <span class="text-slate-200 hidden sm:inline">|</span>
                 <span class="bg-orange-100 text-orange-600 px-2 py-0.5 rounded whitespace-nowrap"

@@ -15,12 +15,18 @@ import { VoiceDictation } from '../../ui/VoiceDictation'
 import { t, dateLocale } from '../../i18n'
 import type { RefBatch, RefStock } from '../../api/types'
 import { motifSansEvenement } from '../../offline/statutsDeLot'
+import { useAuth } from '../../app/AuthContext'
+import { rubriqueVisible, suiviPour } from '../../offline/suivi'
 
 export function DailyCheckScreen() {
   const { batchId } = useParams()
   const navigate = useNavigate()
 
+  const { me } = useAuth()
   const [batch, setBatch] = useState<RefBatch | null>(null)
+  // Rubriques adaptées à l'espèce (offline/suivi.ts) : ni picage ni litière
+  // pour un lot de moutons, pas d'ambiance de bâtiment pour un bassin.
+  const suivi = suiviPour(me?.settings?.species_forms, batch?.species_family)
   const [feedStocks, setFeedStocks] = useState<RefStock[]>([])
   const [healthStatus, setHealthStatus] = useState<'Normal' | 'Alerte' | 'Critique'>('Normal')
   const [mortality, setMortality] = useState(0)
@@ -219,6 +225,7 @@ export function DailyCheckScreen() {
 
       {showDetails && (
         <>
+          {rubriqueVisible(suivi, 'ambiance') && (<>
           <h3>{t('Ambiance')}</h3>
           <label htmlFor="water">{t('Eau consommée (L)')}</label>
           <input id="water" type="number" inputMode="decimal" min="0" value={waterConsumed} onChange={(e) => setWaterConsumed(e.target.value)} placeholder={t('ex. 120')} />
@@ -229,6 +236,8 @@ export function DailyCheckScreen() {
           <label htmlFor="hum">{t('Humidité (%)')}</label>
           <input id="hum" type="number" inputMode="decimal" min="0" max="100" value={humidity} onChange={(e) => setHumidity(e.target.value)} placeholder={t('ex. 60')} />
 
+          </>)}
+
           <h3>{t('Infirmerie & tri')}</h3>
           <label htmlFor="infin">{t('Mise en infirmerie (sujets)')}</label>
           <input id="infin" type="number" inputMode="numeric" min="0" value={quarantineIn} onChange={(e) => setQuarantineIn(e.target.value)} placeholder="0" />
@@ -236,11 +245,17 @@ export function DailyCheckScreen() {
           <input id="infout" type="number" inputMode="numeric" min="0" value={quarantineOut} onChange={(e) => setQuarantineOut(e.target.value)} placeholder="0" />
           <label htmlFor="morti">{t('Morts en infirmerie')}</label>
           <input id="morti" type="number" inputMode="numeric" min="0" value={mortInfirmary} onChange={(e) => setMortInfirmary(e.target.value)} placeholder="0" />
+          {rubriqueVisible(suivi, 'boiteux') && (<>
           <label htmlFor="lame">{t('Boiteux observés')}</label>
           <input id="lame" type="number" inputMode="numeric" min="0" value={lameCount} onChange={(e) => setLameCount(e.target.value)} placeholder="0" />
+          </>)}
+          {rubriqueVisible(suivi, 'picage') && (<>
           <label htmlFor="peck">{t('Picage / blessés')}</label>
           <input id="peck" type="number" inputMode="numeric" min="0" value={peckingCount} onChange={(e) => setPeckingCount(e.target.value)} placeholder="0" />
 
+          </>)}
+
+          {rubriqueVisible(suivi, 'litiere') && (<>
           <h3>{t('Litière')}</h3>
           <button
             type="button"
@@ -255,6 +270,7 @@ export function DailyCheckScreen() {
               <input id="manure" type="number" inputMode="decimal" min="0" value={manureKg} onChange={(e) => setManureKg(e.target.value)} placeholder={t('ex. 40')} />
             </>
           )}
+          </>)}
         </>
       )}
 

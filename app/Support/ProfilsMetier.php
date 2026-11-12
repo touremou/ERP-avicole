@@ -88,7 +88,10 @@ final class ProfilsMetier
         'profil-technicien-elevage' => [
             'display_name' => "Technicien d'élevage", 'icon' => '🐔', 'workspace' => 'elevage',
             'modules' => [
-                'elevage' => 'LCM', 'production' => 'LCM', 'logistique' => 'LC', 'ressources' => 'LC',
+                // Stock en CONSULTATION : l'aliment du pointage, le produit du soin.
+                // L'inventaire, la réception et le contrôle des lots stockés sont
+                // les saisies du magasinier (séparation des fonctions).
+                'elevage' => 'LCM', 'production' => 'LCM', 'logistique' => 'L', 'ressources' => 'LC',
                 'planning' => 'LCM',
             ],
         ],

@@ -1043,6 +1043,14 @@ class SyncService
 
         $data = $v->validated();
 
+        // Les listes du bureau font foi au terrain aussi : aliment du secteur du
+        // lot, fournisseur de l'annuaire (FeedPurchase::refusDeReception). Un
+        // rejeu déjà enregistré n'est pas rejugé.
+        if (! \App\Models\FeedPurchase::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()
+            && $refus = \App\Models\FeedPurchase::refusDeReception(Batch::find($data['batch_id']), $data)) {
+            return $this->invalid(array_map(fn ($m) => [$m], $refus));
+        }
+
         return DB::transaction(function () use ($data) {
             if (\App\Models\FeedPurchase::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
                 return ['status' => 'already_synced'];
@@ -1537,6 +1545,12 @@ class SyncService
             return $this->denied();
         }
 
+        // Une saisie déjà en file sur un téléphone porte l'ancien libellé du
+        // terrain (« Pulvérisation ») : ramenée à la valeur du bureau, pas refusée.
+        if (isset($payload['mode_administration'])) {
+            $payload['mode_administration'] = \App\Support\SuiviParEspece::modeNormalise($payload['mode_administration']);
+        }
+
         $v = Validator::make($payload, [
             'uuid'                => 'required|uuid',
             'batch_id'            => ['required', 'integer', $this->farmScopedExists('batches')],
@@ -1544,7 +1558,8 @@ class SyncService
             'type'                => 'required|in:Vaccin,Traitement,Vitamine,Désinfection',
             'product_name'        => 'required|string|max:255',
             'dosage'              => 'nullable|string|max:100',
-            'mode_administration' => 'required|string|max:100',
+            // Liste FERMÉE, la même qu'au bureau (SuiviParEspece::MODES).
+            'mode_administration' => ['required', Rule::in(\App\Support\SuiviParEspece::MODES)],
             // Délai d'attente de la notice (jours) — 0/absent = pas de délai.
             'withdrawal_days'     => 'nullable|integer|min:0|max:365',
             'batch_number'        => 'nullable|string|max:100',

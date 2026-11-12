@@ -14,22 +14,19 @@ import { platform, compressImage } from '../../platform'
 import { t } from '../../i18n'
 import type { RefBatch } from '../../api/types'
 import { motifSansEvenement } from '../../offline/statutsDeLot'
+import { useAuth } from '../../app/AuthContext'
+import { suiviPour } from '../../offline/suivi'
 
-const SYMPTOM_PRESETS = [
-  'Fientes vertes',
-  'Fientes sanguinolentes',
-  'Prostration',
-  'Toux / râles',
-  'Boiterie',
-  'Chute de ponte',
-  'Plumage ébouriffé',
-]
 
 export function IncidentScreen() {
   const { batchId } = useParams()
   const navigate = useNavigate()
 
+  const { me } = useAuth()
   const [batch, setBatch] = useState<RefBatch | null>(null)
+  // Symptômes PROPRES à l'espèce du lot (offline/suivi.ts) : un lot de moutons
+  // ne se voit plus proposer « Chute de ponte » ni « Plumage ébouriffé ».
+  const symptomesProposes = suiviPour(me?.settings?.species_forms, batch?.species_family).symptomes
   const [mortalityCount, setMortalityCount] = useState(0)
   const [symptoms, setSymptoms] = useState<string[]>([])
   const [details, setDetails] = useState('')
@@ -132,7 +129,7 @@ export function IncidentScreen() {
 
       <label>{t('Symptômes observés')}</label>
       <div className="chip-row">
-        {SYMPTOM_PRESETS.map((symptom) => (
+        {symptomesProposes.map((symptom) => (
           <button
             key={symptom}
             type="button"

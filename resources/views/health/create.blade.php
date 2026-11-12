@@ -97,11 +97,10 @@
                     <div class="space-y-3">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-2 italic tracking-widest">{{ __("Mode d'administration") }}</label>
                         <select name="mode_administration" class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-[10px] uppercase shadow-inner italic transition focus:ring-4 focus:ring-blue-500/10 appearance-none cursor-pointer" required>
-                            <option value="Eau de boisson" {{ old('mode_administration') == 'Eau de boisson' ? 'selected' : '' }}>{{ __("💧 Eau de boisson") }}</option>
-                            <option value="Injection" {{ old('mode_administration') == 'Injection' ? 'selected' : '' }}>{{ __("💉 Injection IM/SC") }}</option>
-                            <option value="Spray" {{ old('mode_administration', 'Eau de boisson') == 'Spray' ? 'selected' : '' }}>{{ __("💨 Spray / Nébulisation") }}</option>
-                            <option value="Aliment" {{ old('mode_administration') == 'Aliment' ? 'selected' : '' }}>{{ __("🌾 Mélange Aliment") }}</option>
-                            <option value="Oculaire" {{ old('mode_administration') == 'Oculaire' ? 'selected' : '' }}>{{ __("👁️ Goutte oculaire") }}</option>
+                            {{-- Liste fermée, la même qu'au terrain (SuiviParEspece::MODES). --}}
+                            @foreach(\App\Support\SuiviParEspece::MODES as $mode)
+                                <option value="{{ $mode }}" @selected(old('mode_administration', 'Eau de boisson') === $mode)>{{ __($mode) }}</option>
+                            @endforeach
                         </select>
                     </div>
                     {{-- DÉLAI D'ATTENTE : verrouille l'abattage du lot jusqu'à l'échéance

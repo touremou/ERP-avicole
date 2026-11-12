@@ -576,6 +576,12 @@ class Batch extends Model
         //    fin ne dépendait que du type : Ross 308 et poulet local Cou Nu
         //    (16 semaines) finissaient le même jour. Même règle que la
         //    planification (ProductionNorm::cycleDaysFor).
+        // 0 a. Durée réglée par l'ADMINISTRATEUR sur la souche (Administration ›
+        //    Taxonomie animale) : elle prime, c'est le paramétrage de la ferme.
+        if ($this->breed_id && ($reglee = (int) $this->breed?->cycle_days) > 0) {
+            return $reglee;
+        }
+
         if ($strainDays = \App\Models\ProductionNorm::cycleDaysFor($this->model_name)) {
             return $strainDays;
         }
@@ -1271,6 +1277,21 @@ class Batch extends Model
     public function feedPhases(): array
     {
         return self::FEED_PHASES[$this->feedSector()];
+    }
+
+    /**
+     * CET ALIMENT PEUT-IL ÊTRE REÇU POUR CETTE BANDE ? — la liste du formulaire
+     * du bureau (les phases du secteur du lot), tenue pour toutes les portes
+     * (CreateFeedPurchase). Le terrain l'affiche en liste (synchro
+     * `feed_phases`) ; un texte libre n'entre plus.
+     */
+    public function refusAlimentRecu(?string $feedType): ?string
+    {
+        return in_array(trim((string) $feedType), $this->feedPhases(), true)
+            ? null
+            : __('Aliment hors liste pour ce lot (:secteur) : choisissez parmi :liste.', [
+                'secteur' => $this->feedSector(), 'liste' => implode(', ', $this->feedPhases()),
+            ]);
     }
 
     /**
@@ -1997,8 +2018,38 @@ class Batch extends Model
             $type === 'chair' => $this->getBroilerPhase($ageDays),
             in_array($type, ['ponte', 'repro', 'reproducteur'], true) && $this->tracksEggs() => $this->getLayerPhase($ageDays),
             $type === 'poussiniere' => $ageDays <= 42 ? 'Démarrage' : 'Croissance',
+            // Les autres secteurs de CROISSANCE (embouche ovine, lapin, porc,
+            // grossissement piscicole…) suivent la même règle que le poulet de
+            // chair : des fractions de la durée du cycle. Ils affichaient tous
+            // « Production », du premier au dernier jour.
+            $this->stadeDeCroissance($ageDays) !== null => $this->stadeDeCroissance($ageDays),
             default => 'Production',
         };
+    }
+
+    /** Stade d'un secteur de croissance, d'après l'âge et la durée du cycle ; null hors secteur. */
+    private function stadeDeCroissance(int $ageDays): ?string
+    {
+        $fractions = self::FEED_GROWOUT_FRACTIONS[$this->feedSector()] ?? null;
+        $cycle = $this->cycleDays();
+        if ($fractions === null || $cycle <= 0) {
+            return null;
+        }
+
+        $stades = count($fractions) === 2 ? ['Démarrage', 'Croissance'] : ['Démarrage', 'Croissance', 'Finition'];
+        foreach ($fractions as $i => $fraction) {
+            if ($ageDays <= $fraction * $cycle) {
+                return $stades[$i];
+            }
+        }
+
+        return end($stades);
+    }
+
+    /** Famille de l'espèce du lot (volaille, petit_ruminant, lagomorphe…) — servie au terrain. */
+    public function speciesFamily(): ?string
+    {
+        return $this->species?->family;
     }
 
     // ═══════════════════════════════════════════════

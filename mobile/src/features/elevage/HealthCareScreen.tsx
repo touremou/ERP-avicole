@@ -15,6 +15,8 @@ import { lastPayloadOf } from '../../offline/prefill'
 import { VoiceDictation } from '../../ui/VoiceDictation'
 import { t } from '../../i18n'
 import type { RefBatch } from '../../api/types'
+import { useAuth } from '../../app/AuthContext'
+import { produitsProposes, suiviPour } from '../../offline/suivi'
 
 /** Miroir de App\Models\HealthCheck (types validés serveur). */
 const TYPES = [
@@ -24,18 +26,18 @@ const TYPES = [
   { value: 'Désinfection', label: '🧽 Désinfection' },
 ] as const
 
-const MODES = ['Eau de boisson', 'Injection', 'Pulvérisation', 'Aliment', 'Oculaire'] as const
 
 export function HealthCareScreen() {
   const { batchId } = useParams()
   const navigate = useNavigate()
 
+  const { me } = useAuth()
   const [batches, setBatches] = useState<RefBatch[]>([])
   const [selectedBatch, setSelectedBatch] = useState(batchId ?? '')
   const [type, setType] = useState<(typeof TYPES)[number]['value']>('Vaccin')
   const [productName, setProductName] = useState('')
   const [dosage, setDosage] = useState('')
-  const [mode, setMode] = useState<string>(MODES[0])
+  const [mode, setMode] = useState<string>('')
   const [withdrawalDays, setWithdrawalDays] = useState('')
   const [productBatch, setProductBatch] = useState('')
   const [expiry, setExpiry] = useState('')
@@ -65,7 +67,16 @@ export function HealthCareScreen() {
   const withdrawalUntil = days > 0
     ? new Date(Date.now() + days * 86400000).toISOString().slice(0, 10)
     : null
-  const canSubmit = Boolean(selectedBatch) && productName.trim() !== '' && !expired
+  // SUIVI ADAPTÉ À L'ESPÈCE du lot choisi (offline/suivi.ts) : modes
+  // d'administration offerts (liste fermée, validée serveur) et produits
+  // proposés. Un lot de moutons ne se voit plus offrir la goutte oculaire.
+  const suivi = suiviPour(me?.settings?.species_forms, batches.find((b) => b.id === Number(selectedBatch))?.species_family)
+  const propositions = produitsProposes(suivi, type)
+  useEffect(() => {
+    if (!suivi.modes.includes(mode)) setMode(suivi.modes[0] ?? '')
+  }, [suivi.modes.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const canSubmit = Boolean(selectedBatch) && productName.trim() !== '' && !expired && mode !== ''
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -146,15 +157,24 @@ export function HealthCareScreen() {
         maxLength={255}
         value={productName}
         onChange={(e) => setProductName(e.target.value)}
-        placeholder={t('ex. Gumboro NDV')}
+        placeholder={propositions[0] ?? t('Nom du produit')}
       />
+      {propositions.length > 0 && (
+        <div className="chip-row">
+          {propositions.map((produit) => (
+            <button type="button" key={produit} className={`chip ${productName === produit ? 'chip-on' : ''}`} onClick={() => setProductName(produit)}>
+              {produit}
+            </button>
+          ))}
+        </div>
+      )}
 
       <label htmlFor="dosage">{t('Dosage — optionnel')}</label>
       <input id="dosage" maxLength={100} value={dosage} onChange={(e) => setDosage(e.target.value)} placeholder={t('ex. 1 ml / sujet')} />
 
       <label>{t('Mode d’administration')}</label>
       <div className="chip-row">
-        {MODES.map((option) => (
+        {suivi.modes.map((option) => (
           <button
             key={option}
             type="button"

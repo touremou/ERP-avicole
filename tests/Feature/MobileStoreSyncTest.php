@@ -31,6 +31,8 @@ beforeEach(function () {
     $this->batch = Batch::factory()->create([
         'code' => 'CHAIR-M3', 'initial_quantity' => 200, 'current_quantity' => 200, 'qty_alive' => 200,
     ]);
+    // Réception d'aliment : fournisseur de l'annuaire, aliment de la liste du lot.
+    \App\Models\Provider::factory()->create(['name' => 'Provenderie Kindia', 'status' => 'Actif']);
     $this->actingAs($this->managerUser);
     \Laravel\Sanctum\Sanctum::actingAs($this->managerUser);
 });
@@ -99,7 +101,7 @@ test('réception d\'aliment : crédite le magasin au coût réel et trace l\'ach
             'uuid' => (string) Str::uuid(),
             'batch_id' => $this->batch->id,
             'purchase_date' => now()->toDateString(),
-            'feed_type' => 'Démarrage chair',
+            'feed_type' => 'Chair Démarrage',
             'quantity' => 10,
             'unit_price' => 2500000,
             'unit' => 'Sac',
@@ -112,11 +114,11 @@ test('réception d\'aliment : crédite le magasin au coût réel et trace l\'ach
     expect($res['status'])->toBe('success');
 
     $purchase = FeedPurchase::first();
-    expect($purchase->feed_type)->toBe('Démarrage chair')
+    expect($purchase->feed_type)->toBe('Chair Démarrage')
         ->and((float) $purchase->total_price)->toEqualWithDelta(2500000, 0.01);
 
     // L'article de stock est créé/crédité par l'action (source unique du web).
-    $created = Stock::where('item_name', 'Démarrage chair')->first();
+    $created = Stock::where('item_name', 'Chair Démarrage')->first();
     expect($created)->not->toBeNull()
         ->and((float) $created->current_quantity)->toBeGreaterThan(0);
 
@@ -130,7 +132,7 @@ test('réception d\'aliment : idempotence (le rejeu ne crédite pas deux fois)',
             'uuid' => (string) Str::uuid(),
             'batch_id' => $this->batch->id,
             'purchase_date' => now()->toDateString(),
-            'feed_type' => 'Croissance',
+            'feed_type' => 'Chair Croissance',
             'quantity' => 5,
             'unit_price' => 500000,
             'unit' => 'Sac',
@@ -155,7 +157,7 @@ test('réception à crédit : facture fournisseur non soldée (dette)', function
             'uuid' => (string) Str::uuid(),
             'batch_id' => $this->batch->id,
             'purchase_date' => now()->toDateString(),
-            'feed_type' => 'Finition',
+            'feed_type' => 'Chair Finition',
             'quantity' => 4,
             'unit_price' => 800000,
             'unit' => 'Sac',

@@ -28,6 +28,8 @@ beforeEach(function () {
     $this->setUpRbac();
     $this->setUpBaseData();
     $this->actingAs($this->adminUser);
+    // Le fournisseur se choisit dans l'annuaire (champ restreint, bureau comme terrain).
+    \App\Models\Provider::factory()->create(['name' => 'Vétopharma', 'status' => 'Actif']);
     $this->lot = Batch::factory()->create([
         'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'status' => 'Actif',
         'arrival_date' => now()->subMonth()->toDateString(), 'total_acquisition_cost' => 0, 'additional_costs' => 0,

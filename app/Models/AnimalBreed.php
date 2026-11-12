@@ -18,9 +18,9 @@ use Illuminate\Validation\ValidationException;
  */
 class AnimalBreed extends Model
 {
-    protected $fillable = ['species_id', 'name', 'description', 'is_active'];
+    protected $fillable = ['species_id', 'name', 'description', 'cycle_days', 'is_active'];
 
-    protected $casts = ['is_active' => 'boolean'];
+    protected $casts = ['is_active' => 'boolean', 'cycle_days' => 'integer'];
 
     public function species(): BelongsTo
     {

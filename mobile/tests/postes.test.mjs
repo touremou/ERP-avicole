@@ -80,7 +80,7 @@ test('le catalogue se filtre par droits et par recherche, sans accents', () => {
 })
 
 test('un profil large peut changer de vue de poste ; un agent n’a que la sienne utile', () => {
-  const direction = espacesAffichables(ouvrable(profil({ admin: 'LCMS', elevage: 'LCMS', commerce: 'LCMS', logistique: 'LCMS', rh: 'LCMS', tresorerie: 'LCMS', production: 'LCMS', ressources: 'LCMS' })))
+  const direction = espacesAffichables(ouvrable(profil({ admin: 'LCMS', elevage: 'LCMS', commerce: 'LCMS', logistique: 'LCMS', rh: 'LCMS', tresorerie: 'LCMS', production: 'LCMS', ressources: 'LCMS' })), 'direction')
   assert.ok(direction.includes('vente') && direction.includes('terrain') && direction.length > 3)
 
   const vendeur = espacesAffichables(ouvrable(profil(VENDEUR)), 'vente')
@@ -104,4 +104,10 @@ test('les libellés des postes, du menu et des espaces sont traduits (données :
 
   assert.deepEqual([...cles].filter((cle) => !(cle in en)), [])
   assert.deepEqual(Object.keys(LIBELLES_ESPACES).sort(), [...ESPACES].sort())
+})
+
+test('seul l’encadrement change de vue : le technicien d’élevage ne choisit pas le poste du magasinier', () => {
+  // Même avec des droits de saisie sur le stock, son poste reste le sien.
+  const technicien = espacesAffichables(ouvrable(profil({ elevage: 'LCM', production: 'LCM', logistique: 'LCM', ressources: 'LC' })), 'elevage')
+  assert.deepEqual(technicien, ['elevage'])
 })

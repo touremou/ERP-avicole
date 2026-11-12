@@ -130,7 +130,9 @@
                                                     <form method="POST" action="{{ route('admin.breeds.update', $breed) }}" class="flex gap-1">
                                                         @csrf @method('PUT')
                                                         <input name="name" value="{{ $breed->name }}" maxlength="100" class="flex-1 bg-white border-none rounded-lg p-2 text-[10px] font-bold">
-                                                        <button class="px-2 rounded-lg bg-slate-900 text-white text-[9px] font-black border-none cursor-pointer">{{ __('Renommer') }}</button>
+                                                        {{-- Durée du cycle : règle le stade des lots (Démarrage → Croissance → Finition). --}}
+                                                        <input name="cycle_days" type="number" min="1" max="3650" value="{{ $breed->cycle_days }}" placeholder="{{ __('Cycle (j)') }}" title="{{ __('Durée du cycle en jours — vide = celle du type de production') }}" class="w-20 bg-white border-none rounded-lg p-2 text-[10px] font-bold">
+                                                        <button class="px-2 rounded-lg bg-slate-900 text-white text-[9px] font-black border-none cursor-pointer">{{ __('Enregistrer') }}</button>
                                                     </form>
                                                     <div class="flex gap-1">
                                                         <form method="POST" action="{{ route('admin.breeds.toggle', $breed) }}">

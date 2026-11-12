@@ -73,6 +73,8 @@ export function BatchScreen() {
       <h2>{batch.code}</h2>
       <p className="muted">
         {productionType?.name_fr ?? t('Lot')} · {building?.name ?? t('Bâtiment #:id', { id: batch.building_id })}
+        {/* Stade calculé par le serveur : âge × durée de cycle de la souche. */}
+        {batch.current_phase ? ` · ${t('Stade')} : ${t(batch.current_phase)}` : ''}
       </p>
 
       <div className="kpi-row">
