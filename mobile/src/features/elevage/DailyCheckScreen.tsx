@@ -6,7 +6,7 @@
  * Payload aligné sur SyncService::dailyCheckCreate (validation serveur).
  */
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { lastPayloadOf } from '../../offline/prefill'
@@ -17,12 +17,14 @@ import type { RefBatch, RefStock } from '../../api/types'
 import { motifSansEvenement } from '../../offline/statutsDeLot'
 import { useAuth } from '../../app/AuthContext'
 import { rubriqueVisible, suiviPour } from '../../offline/suivi'
+import { useFieldTasks } from '../home/useFieldTasks'
 
 export function DailyCheckScreen() {
   const { batchId } = useParams()
   const navigate = useNavigate()
 
   const { me } = useAuth()
+  const { batches: lotsActifs, checksTodo } = useFieldTasks()
   const [batch, setBatch] = useState<RefBatch | null>(null)
   // Rubriques adaptées à l'espèce (offline/suivi.ts) : ni picage ni litière
   // pour un lot de moutons, pas d'ambiance de bâtiment pour un bassin.
@@ -114,6 +116,31 @@ export function DailyCheckScreen() {
     // Confirmation instantanée (règle UX n°8 : jamais de spinner bloquant).
     setSaved(true)
     setTimeout(() => navigate('/'), 900)
+  }
+
+  // Ouvert depuis la tuile « Pointage du jour » (sans lot dans l'adresse) :
+  // l'écran affichait « Lot introuvable — synchronisez d'abord » alors que
+  // les lots étaient bien là. On propose la liste des lots à pointer.
+  if (!batchId) {
+    const aFaire = new Set(checksTodo.map((b) => b.id))
+    return (
+      <div className="screen">
+        <h2>📋 {t('Pointage du jour')}</h2>
+        <p className="muted">{t('Choisissez le lot à pointer.')}</p>
+        {lotsActifs.length === 0 && (
+          <p className="muted">{t('Aucun lot actif en local — synchronisez d’abord.')}</p>
+        )}
+        {lotsActifs.map((b) => (
+          <Link key={b.id} to={`/elevage/pointage/${b.id}`} className="task-card">
+            <span className="task-title">{aFaire.has(b.id) ? '' : '✓ '}{b.code}</span>
+            <span className="task-meta">
+              {b.current_quantity} {t('sujets')}
+              {aFaire.has(b.id) ? '' : ` · ${t('déjà pointé aujourd’hui')}`}
+            </span>
+          </Link>
+        ))}
+      </div>
+    )
   }
 
   if (!batch) {
