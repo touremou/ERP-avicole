@@ -53,7 +53,12 @@ class SyncController extends Controller
             // définition — ni celle de la fiche, ni celle des rapports.
             // + l'EFFECTIF PONDEUR (Batch::effectifPondeur) : les poules d'un lot
             // de reproducteurs, sans ses coqs.
-            'append'  => ['can_collect_eggs', 'mortality_rate', 'effectif_pondeur'],
+            // + le STADE calculé (Batch::current_phase), la FAMILLE de l'espèce
+            // (formulaires adaptés) et les ALIMENTS du secteur du lot (liste de
+            // la réception d'aliment — le champ restreint du bureau).
+            'append'  => ['can_collect_eggs', 'mortality_rate', 'effectif_pondeur',
+                          'current_phase', 'species_family', 'feed_phases'],
+            'with'    => ['species', 'productionType', 'breed'],
         ],
         'buildings' => [
             'model'   => Building::class,

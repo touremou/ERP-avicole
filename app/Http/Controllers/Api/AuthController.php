@@ -113,6 +113,9 @@ class AuthController extends Controller
             // La liste descend maintenant du serveur et se met en cache avec la
             // session : ajouter une catégorie au bureau la rend disponible au
             // terrain sans republier l'application.
+            // Suivi adapté à l'espèce (App\Support\SuiviParEspece) : symptômes,
+            // produits, modes et rubriques du pointage selon la famille du lot.
+            'species_forms' => \App\Support\SuiviParEspece::referentiel(),
             'task_categories' => collect(\App\Models\TaskTemplate::CATEGORIES)
                 ->map(fn (array $meta, string $key) => [
                     'key'   => $key,

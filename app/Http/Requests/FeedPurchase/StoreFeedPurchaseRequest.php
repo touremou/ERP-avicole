@@ -35,4 +35,18 @@ class StoreFeedPurchaseRequest extends FormRequest
             'metadata.conso_type' => ['nullable', Rule::in(FeedPurchase::NATURES)],
         ];
     }
+
+    /** Les listes du formulaire font foi côté serveur aussi (FeedPurchase::refusDeReception). */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+            $lot = \App\Models\Batch::find($this->input('batch_id'));
+            foreach (FeedPurchase::refusDeReception($lot, $this->all()) as $champ => $motif) {
+                $validator->errors()->add($champ, $motif);
+            }
+        });
+    }
 }

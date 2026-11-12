@@ -127,6 +127,34 @@ class FeedPurchase extends Model
     }
 
     /** L'aliment se compte au CONSOMMÉ ; tout autre achat, à l'ACHAT. */
+    /**
+     * CHAMPS RESTREINTS D'UNE RÉCEPTION — la règle des listes du formulaire du
+     * bureau, tenue aux DEUX portes de saisie (StoreFeedPurchaseRequest,
+     * SyncService::feedPurchaseCreate).
+     *
+     * Le terrain offrait deux champs de texte libre là où le bureau impose une
+     * liste : « demarage chair » créait un second article de stock à côté de
+     * « Chair Démarrage », un fournisseur mal orthographié une dette envers un
+     * tiers inconnu.
+     *
+     * @return array<string, string>  champ → motif du refus (vide = accepté)
+     */
+    public static function refusDeReception(?Batch $batch, array $data): array
+    {
+        $erreurs = [];
+        $categorie = $data['category'] ?? Stock::CAT_CONSO;
+        $nature = $categorie === Stock::CAT_CONSO ? ($data['metadata']['conso_type'] ?? 'Aliment') : null;
+
+        if ($batch && $nature === 'Aliment' && $motif = $batch->refusAlimentRecu($data['feed_type'] ?? null)) {
+            $erreurs['feed_type'] = $motif;
+        }
+        if (filled($data['supplier'] ?? null) && ! Provider::where('name', trim($data['supplier']))->exists()) {
+            $erreurs['supplier'] = __('Fournisseur inconnu : choisissez-le dans la liste (Annuaire › Fournisseurs).');
+        }
+
+        return $erreurs;
+    }
+
     public function isFeed(): bool
     {
         return $this->category === 'Aliment';

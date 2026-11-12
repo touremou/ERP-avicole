@@ -5226,5 +5226,11 @@
     "Répartition des coûts": "Cost breakdown",
     "Cette souche n'appartient pas à l'espèce du lot.": "This breed does not belong to the batch species.",
     "Indiquez le temps passé.": "Enter the time spent.",
-    "Le lot :code est clôturé : on ne le nourrit plus.": "Batch :code is closed: it is no longer fed."
+    "Le lot :code est clôturé : on ne le nourrit plus.": "Batch :code is closed: it is no longer fed.",
+    "Durée du cycle en jours — vide = celle du type de production": "Cycle length in days — empty = the production type's",
+    "Aliment hors liste pour ce lot (:secteur) : choisissez parmi :liste.": "Feed not in this batch's list (:secteur): choose from :liste.",
+    "Fournisseur inconnu : choisissez-le dans la liste (Annuaire › Fournisseurs).": "Unknown supplier: choose it from the list (Directory › Suppliers).",
+    "Voie orale": "Oral",
+    "Application cutanée": "Topical",
+    "Bain": "Bath"
 }

@@ -33,7 +33,8 @@ class UpdateHealthCheckRequest extends FormRequest
             'batch_number'        => ['nullable', 'string', 'max:100'],
             // Garde-fou sanitaire : pas de produit périmé au jour d'intervention.
             'expiry_date'         => ['nullable', 'date', 'after_or_equal:intervention_date'],
-            'mode_administration' => ['required', 'string', 'max:100'],
+            // Liste FERMÉE, la même au bureau et au terrain (SuiviParEspece::MODES).
+            'mode_administration' => ['required', \Illuminate\Validation\Rule::in(\App\Support\SuiviParEspece::MODES)],
             'cost'                => ['nullable', 'numeric', 'min:0'],
             'veterinary_name'     => ['nullable', 'string', 'max:255'],
             'observations'        => ['nullable', 'string'],

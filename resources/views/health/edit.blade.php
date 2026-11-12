@@ -90,8 +90,10 @@
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic tracking-widest leading-none">{{ __("Mode d'administration") }}</label>
                                     <select name="mode_administration" required class="w-full p-5 bg-slate-50 rounded-2xl font-black border-none text-slate-700 shadow-inner italic focus:ring-4 focus:ring-emerald-500/10 transition appearance-none cursor-pointer">
-                                        @foreach(['Eau de boisson', 'Injection', 'Nébulisation', 'Aliment', 'Oculaire', 'Spray'] as $mode)
-                                            <option value="{{ $mode }}" {{ old('mode_administration', $health->mode_administration) == $mode ? 'selected' : '' }}>{{ __($mode) }}</option>
+                                        {{-- Liste fermée, la même qu'à la création et au terrain (SuiviParEspece::MODES) ;
+                                             un ancien libellé est ramené à sa valeur de référence. --}}
+                                        @foreach(\App\Support\SuiviParEspece::MODES as $mode)
+                                            <option value="{{ $mode }}" @selected(old('mode_administration', \App\Support\SuiviParEspece::modeNormalise($health->mode_administration)) === $mode)>{{ __($mode) }}</option>
                                         @endforeach
                                     </select>
                                 </div>

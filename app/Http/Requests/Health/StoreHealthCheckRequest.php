@@ -25,7 +25,8 @@ class StoreHealthCheckRequest extends FormRequest
             // Garde-fou sanitaire : un produit dont la date de péremption est
             // antérieure au jour d'intervention ne peut pas être administré.
             'expiry_date'         => ['nullable', 'date', 'after_or_equal:intervention_date'],
-            'mode_administration' => ['required', 'string', 'max:100'],
+            // Liste FERMÉE, la même au bureau et au terrain (SuiviParEspece::MODES).
+            'mode_administration' => ['required', \Illuminate\Validation\Rule::in(\App\Support\SuiviParEspece::MODES)],
             // Délai d'attente de la notice : verrouille l'abattage du lot
             // jusqu'à l'échéance (0/absent = produit sans délai).
             'withdrawal_days'     => ['nullable', 'integer', 'min:0', 'max:365'],

@@ -47,6 +47,9 @@ const TRESORERIE = T('/tresorerie/journal', '🏦', 'Trésorerie', 'mouvements �
 const AFFECTER = T('/taches/affecter', '🗂️', 'Affecter une tâche', 'à un agent ou au pool')
 const SEMAINE = T('/mon-espace/semaine', '📊', 'Ma semaine', 'indicateurs · réalisé')
 
+/** Les espaces qui encadrent plusieurs métiers : eux seuls peuvent regarder un autre poste. */
+export const ESPACES_D_ENCADREMENT: Espace[] = ['direction', 'gerant']
+
 /** Tuiles personnelles, ouvertes à tout compte : elles ne font pas un métier. */
 const PERSONNELLES = new Set([TACHES.to, SAISIES.to, SEMAINE.to])
 
@@ -277,6 +280,14 @@ export function espacesAffichables(peutOuvrir: (chemin: string) => boolean, espa
   // ouverts à tous et figurent déjà dans le menu.
   const duMetier = (espace: Espace) => tuilesDuPoste(espace, peutOuvrir).filter((tuile) => !PERSONNELLES.has(tuile.to))
   const siens = new Set(espaceDuProfil ? duMetier(espaceDuProfil).map((tuile) => tuile.to) : [])
+
+  // Seul l'ENCADREMENT change de vue. Un technicien d'élevage se voyait offrir
+  // le poste « Magasinier » dès qu'il pouvait ouvrir deux écrans du stock : il
+  // choisissait un métier qui n'est pas le sien. Les autres profils gardent
+  // leur poste ; tout ce que leurs droits ouvrent reste dans le Menu.
+  if (!espaceDuProfil || !ESPACES_D_ENCADREMENT.includes(espaceDuProfil)) {
+    return espaceDuProfil ? [espaceDuProfil] : []
+  }
 
   return ESPACES.filter((espace) => {
     if (espace === espaceDuProfil) return true

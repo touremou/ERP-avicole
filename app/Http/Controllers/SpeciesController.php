@@ -212,16 +212,18 @@ class SpeciesController extends Controller
             'name' => ['required', 'string', 'max:100',
                 \Illuminate\Validation\Rule::unique('animal_breeds', 'name')
                     ->where('species_id', $breed->species_id)->ignore($breed->id)],
+            // Durée du cycle de la souche : règle le stade des lots (Batch::current_phase).
+            'cycle_days' => 'nullable|integer|min:1|max:3650',
         ]);
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($breed, $data) {
             // Les lots gardent le NOM de leur souche (courbes de référence) :
             // un renommage les suit.
             $breed->batches()->update(['model_name' => $data['name']]);
-            $breed->update(['name' => $data['name']]);
+            $breed->update(['name' => $data['name'], 'cycle_days' => $data['cycle_days'] ?? null]);
         });
 
-        return back()->with('success', "Souche renommée « {$data['name']} ».");
+        return back()->with('success', "Souche « {$data['name']} » mise à jour.");
     }
 
     public function toggleBreed(\App\Models\AnimalBreed $breed)

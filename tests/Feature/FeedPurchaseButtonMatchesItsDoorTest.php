@@ -95,7 +95,7 @@ function achatDirectAliment(int $batchId, string $fournisseur): array
     return [
         'batch_id'      => $batchId,
         'supplier'      => $fournisseur,
-        'feed_type'     => 'Démarrage',
+        'feed_type'     => 'Chair Démarrage',   // phase de la liste du lot (champ restreint)
         'quantity'      => 20,
         'unit'          => 'Sac',
         'unit_price'    => 250_000,
@@ -161,7 +161,7 @@ test('le crayon et la corbeille gardent leurs verrous — non-régression', func
     $achat = FeedPurchase::create([
         'batch_id'      => $this->lot->id,
         'supplier'      => $this->provider->name,
-        'feed_type'     => 'Démarrage',
+        'feed_type'     => 'Chair Démarrage',   // phase de la liste du lot (champ restreint)
         'quantity'      => 10,
         'unit'          => 'Sac',
         'unit_price'    => 250_000,
