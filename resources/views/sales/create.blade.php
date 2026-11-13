@@ -134,7 +134,7 @@
                                         <select x-model="line.batch_id" @change="onBatchSelected(index)" class="w-full bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                                             <option value="">— {{ __("Sélectionner le lot") }} —</option>
                                             <template x-for="b in batches" :key="b.id">
-                                                <option :value="b.id" x-text="b.icon + ' ' + b.code + ' — ' + b.species + ' (' + b.qty + ')'"></option>
+                                                <option :value="b.id" :disabled="!!b.blocage" x-text="b.icon + ' ' + b.code + ' — ' + b.species + ' (' + b.qty + ')' + (b.blocage ? ' — ⛔ ' + b.blocage : '')"></option>
                                             </template>
                                         </select>
                                     </template>
@@ -276,7 +276,10 @@
             'building' => $b->building->name ?? '—',
             'species' => $b->species?->name_fr ?? 'Animaux',
             'icon' => $b->species?->icon ?? '🐾',
-            'qty' => (int) $b->current_quantity
+            'qty' => (int) $b->current_quantity,
+            // Quarantaine / délai d'attente : la validation refuserait la vente
+            // (ValidateSale) — le lot est grisé, avec la raison.
+            'blocage' => $b->blocageSanitaire(),
         ]);
 
     @endphp

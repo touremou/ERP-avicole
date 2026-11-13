@@ -385,7 +385,12 @@ async function pushOutbox(): Promise<void> {
 // (ex. water_sources) : un pull delta (`updated_at > since`) ne rapatrie jamais
 // les enregistrements PRÉEXISTANTS d'une entité nouvelle, donc on force un
 // bootstrap complet (since=null) une fois quand la version change.
-const PULL_SCHEMA = 6 // 6 : taux de mortalité et effectif pondeur (serveur) servis avec les lots
+// 7 : stade, famille d'espèce, aliments du secteur et lot laitier servis avec
+// les lots — un ATTRIBUT ajouté à une entité existante pose le même problème
+// qu'une entité nouvelle : les lots inchangés ne le recevaient jamais (la
+// traite listait alors encore des lots de volaille). Les lots virtuels, que le
+// serveur n'envoie plus, sont purgés par le même bootstrap.
+const PULL_SCHEMA = 7
 
 async function pullDelta(): Promise<void> {
   // Nouvelle entité côté serveur → on repart d'un bootstrap complet une fois.

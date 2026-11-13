@@ -16,6 +16,7 @@ import { enqueue } from '../../offline/sync'
 import { dateLocale, t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
 import type { RefCropCycle, RefCropSpecies } from '../../api/types'
+import { cycleArchive } from '../../offline/eligibilite'
 
 const UNITS = ['kg', 'sac', 'botte', 'régime', 'unité'] as const
 const QUALITIES = [
@@ -147,6 +148,16 @@ export function HarvestScreen() {
     return (
       <div className="screen">
         <p className="muted">{t("Cycle de culture introuvable en local — synchronisez d'abord.")}</p>
+      </div>
+    )
+  }
+
+  // Cycle terminé ou abandonné (ouvert par scan) : le serveur refuse toute
+  // saisie (CropCycle::isArchived) — on le dit avant le formulaire.
+  if (cycleArchive(cycle.status)) {
+    return (
+      <div className="screen">
+        <p className="muted">{t('Cycle clos (terminé ou abandonné) : consultation seule.')}</p>
       </div>
     )
   }

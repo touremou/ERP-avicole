@@ -23,6 +23,21 @@ class StoreMillProductionRequest extends FormRequest
         ];
     }
 
+    /** Formule active, machines opérationnelles (MillProduction::refusDeLancement). */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+            foreach (\App\Models\MillProduction::refusDeLancement(
+                (int) $this->input('formula_id'), (array) $this->input('machine_ids', []),
+            ) as $champ => $message) {
+                $validator->errors()->add($champ, $message);
+            }
+        });
+    }
+
     public function messages(): array
     {
         return [

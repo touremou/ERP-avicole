@@ -14,6 +14,9 @@ import { NumberStepper } from '../../ui/NumberStepper'
 import { VoiceDictation } from '../../ui/VoiceDictation'
 import type { RefBatch, RefSlaughterOrder } from '../../api/types'
 
+/** Statuts d'un ordre où le terrain n'a rien à faire (SlaughterOrder). */
+const LIBELLES_STATUT: Record<string, string> = { annule: 'annulé', bloque: 'bloqué', en_cours: 'en cours d’exécution' }
+
 // Gammes de sortie carcasse (miroir de config/butchery.php, volaille) : bande
 // de rendement attendue [alerte_min, cible_max] — l'effilé garde tête/pattes,
 // donc rendement plus haut. Le serveur reste l'autorité sur le nom d'article.
@@ -115,6 +118,35 @@ export function SlaughterScreen() {
   // Verrouillage du cycle : un ordre ne s'exécute qu'une fois. Déjà terminé
   // (statut serveur) ou déjà en file locale → on oriente vers la suite du
   // cycle (clôture) au lieu de laisser ressaisir un abattage en double.
+  // Ordre annulé, bloqué ou en cours (scan) : ni exécution, ni clôture — la
+  // clôture n'existe que pour un ordre TERMINÉ (CloseSlaughterCycle). L'écran
+  // annonçait « déjà exécuté » et proposait de clôturer.
+  if (!alreadyQueued && order.status !== 'planifie' && order.status !== 'termine') {
+    return (
+      <div className="screen-center">
+        <p className="big">🔒 {t('Ordre :order : :statut', { order: order.order_number, statut: t(LIBELLES_STATUT[order.status] ?? order.status) })}</p>
+        <p className="muted">{t('Aucune action possible au terrain sur cet ordre.')}</p>
+        <button type="button" className="btn-secondary" onClick={() => navigate('/')}>
+          {t('Retour à l’accueil')}
+        </button>
+      </div>
+    )
+  }
+
+  // Lot en quarantaine, sous délai d'attente ou plus actif : le serveur
+  // refuserait l'abattage (SlaughterService) — on le dit avant la saisie.
+  if (!alreadyQueued && order.status === 'planifie' && order.blocage) {
+    return (
+      <div className="screen-center">
+        <p className="big">⛔ {t('Abattage impossible aujourd’hui')}</p>
+        <p className="muted">{order.blocage}</p>
+        <button type="button" className="btn-secondary" onClick={() => navigate('/')}>
+          {t('Retour à l’accueil')}
+        </button>
+      </div>
+    )
+  }
+
   if (order.status !== 'planifie' || alreadyQueued) {
     const closed = Boolean(order.closed_at)
     return (

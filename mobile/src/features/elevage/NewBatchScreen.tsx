@@ -30,6 +30,7 @@ import type { RefAnimalBreed, RefBuilding, RefEmployee, RefProductionType, RefPr
 import { joursDeVideSanitaire } from '../../offline/statutsDeLot'
 import { estBatimentReel } from '../../offline/virtuels'
 import { typeLancable, typesParEspece } from '../../offline/miseEnLot'
+import { batimentAccueille, fournisseurActif } from '../../offline/eligibilite'
 
 /** Bâtiments capables d'accueillir une bande : libres, jamais occupés. */
 const AVAILABLE_STATUSES = ['Vide', 'Disponible']
@@ -55,6 +56,13 @@ export function NewBatchScreen() {
   const souchesDuType = typeChoisi?.species_id
     ? breeds.filter((breed) => breed.species_id === typeChoisi.species_id)
     : []
+  // Un bâtiment qui n'accueille pas ce type (Species::buildingIsCompatible) ne
+  // reste pas choisi : la liste ne propose que les bâtiments compatibles.
+  useEffect(() => {
+    const choisi = buildings.find((b) => String(b.id) === buildingId)
+    if (choisi && !batimentAccueille(choisi, typeChoisi)) setBuildingId('')
+  }, [type, buildings]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Une souche d'une autre espèce ne reste pas choisie après un changement de type.
   useEffect(() => {
     if (breedId && !souchesDuType.some((breed) => String(breed.id) === breedId)) setBreedId('')
@@ -104,7 +112,7 @@ export function NewBatchScreen() {
       // Espèces et types ACTIVÉS seulement (miroir de ProductionType::active()).
       setProductionTypes(pt.filter(typeLancable))
       setEmployees(emp)
-      setProviders(prov)
+      setProviders(prov.filter(fournisseurActif))
     })()
   }, [])
 
@@ -246,7 +254,7 @@ export function NewBatchScreen() {
       <label htmlFor="building">{t('Bâtiment')}</label>
       <select id="building" value={buildingId} onChange={(e) => setBuildingId(e.target.value)} required>
         <option value="">{t('— Choisir —')}</option>
-        {buildings.map((b) => (
+        {buildings.filter((b) => batimentAccueille(b, typeChoisi)).map((b) => (
           // Vide sanitaire en cours : le serveur refuserait la mise en place.
           <option key={b.id} value={b.id} disabled={joursDeVideSanitaire(b) > 0}>
             {b.name} ({t(':n places', { n: String(b.capacity) })})

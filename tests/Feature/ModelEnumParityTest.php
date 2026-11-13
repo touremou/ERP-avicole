@@ -80,6 +80,12 @@ test('aucune liste de valeurs d’un modèle ne diverge de l’ENUM de sa table'
         // (TaskAssignment::overdue()). « fait » et « annule » en sont exclus
         // à dessein : une tâche close n'est jamais en retard.
         'TaskAssignment::STATUTS_OUVERTS',
+
+        // Sous-ensemble VOLONTAIRE : les statuts d'une couveuse qu'on ne
+        // charge pas (maintenance, panne). « Disponible » et « Occupé » en
+        // sont exclus à dessein : une couveuse occupée accepte encore une mise
+        // à couver tant qu'il lui reste de la place (incubation multi-étages).
+        'Incubator::STATUTS_HORS_SERVICE',
     ];
 
     $divergences = [];

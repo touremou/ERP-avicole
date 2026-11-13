@@ -5234,5 +5234,15 @@
     "Application cutanée": "Topical",
     "Bain": "Bath",
     "Cette espèce est désactivée : on ne lance plus de lot (Paramètres › Espèces).": "This species is disabled: no new batch can be started (Settings › Species).",
-    "Ce type de production est désactivé : on ne lance plus de lot.": "This production type is disabled: no new batch can be started."
+    "Ce type de production est désactivé : on ne lance plus de lot.": "This production type is disabled: no new batch can be started.",
+    "vide sanitaire en cours": "sanitary break in progress",
+    "Récolte interdite jusqu'au :date (délai avant récolte)": "Harvest forbidden until :date (pre-harvest interval)",
+    "* La liste s'adapte à la phase ; le bâtiment actuel reste proposé s'il convient à la nouvelle phase (transformation sur place)": "* The list follows the phase; the current building stays available if it suits the new phase (on-site transformation)",
+    "Lot :code plus actif (:statut).": "Batch :code no longer active (:statut).",
+    "Cette source d’eau est désactivée : plus de relevé.": "This water source is disabled: no more readings.",
+    "Cette formule est désactivée : on ne la fabrique plus.": "This formula is disabled: it is no longer produced.",
+    "Machine non opérationnelle : :noms.": "Machine not operational: :noms.",
+    "Lot :code en quarantaine sanitaire.": "Batch :code is under sanitary quarantine.",
+    "Lot :code sous délai d’attente jusqu’au :date.": "Batch :code is under withdrawal period until :date.",
+    "Cette couveuse est en maintenance ou en panne.": "This incubator is under maintenance or out of order."
 }

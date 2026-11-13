@@ -36,7 +36,7 @@ export function MeterReadingScreen() {
 
   useEffect(() => {
     void db.ref_energy_sources.toArray().then(setEnergySources)
-    void db.ref_water_sources.toArray().then(setWaterSources)
+    void db.ref_water_sources.toArray().then((l) => setWaterSources(l.filter((w) => w.is_active !== false)))
   }, [])
 
   useEffect(() => { setSourceId(''); }, [kind])

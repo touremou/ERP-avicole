@@ -203,6 +203,8 @@
                                                 $libre = $b->capacity - $occupation;
                                                 $surfaceOccupee = $b->batches->where('status', 'Actif')->sum('allocated_surface');
                                                 $surfaceRestante = $b->surface - $surfaceOccupee;
+                                                // Vide sanitaire en cours : CreateBatch refuserait (Building::refusDeMiseEnPlace).
+                                                $enVide = $b->refusDeMiseEnPlace() !== null;
                                             @endphp
                                             <option value="{{ $b->id }}" 
                                                     data-name="{{ $b->name }}"
@@ -210,8 +212,9 @@
                                                     data-remaining="{{ $libre }}"
                                                     data-surface="{{ $b->surface }}"
                                                     data-surface-restante="{{ $surfaceRestante }}"
+                                                    data-vide="{{ $enVide ? 1 : 0 }}"
                                                     class="building-opt">
-                                                {{ $b->name }} | {{ __("Libre") }}: {{ $libre }} | {{ strtoupper($b->type) }}
+                                                {{ $b->name }} | {{ __("Libre") }}: {{ $libre }} | {{ strtoupper($b->type) }}{{ $enVide ? ' — '.__('vide sanitaire en cours') : '' }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -367,7 +370,7 @@
                 const bType = opt.dataset.type;
                 const remaining = parseFloat(opt.dataset.remaining) || 0;
                 const isMatch = isBuildingCompatible(bType, getCurrentSpeciesSlug(), selectedType);
-                opt.disabled = !isMatch || remaining <= 0;
+                opt.disabled = !isMatch || remaining <= 0 || opt.dataset.vide === '1';
                 opt.style.display = isMatch ? 'block' : 'none';
             });
         }

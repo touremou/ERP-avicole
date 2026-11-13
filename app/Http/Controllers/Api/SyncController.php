@@ -56,14 +56,21 @@ class SyncController extends Controller
             // + le STADE calculé (Batch::current_phase), la FAMILLE de l'espèce
             // (formulaires adaptés) et les ALIMENTS du secteur du lot (liste de
             // la réception d'aliment — le champ restreint du bureau).
+            // + TRACKS_MILK (Batch::tracksMilk) : la traite ne liste que les
+            // lots laitiers — elle proposait des lots de volaille.
             'append'  => ['can_collect_eggs', 'mortality_rate', 'effectif_pondeur',
-                          'current_phase', 'species_family', 'feed_phases'],
+                          'current_phase', 'species_family', 'feed_phases', 'tracks_milk'],
             'with'    => ['species', 'productionType', 'breed'],
             // Ni les lots VIRTUELS de traçabilité (effectif initial nul, cf.
             // Batch::isVirtual) : aucun animal à soigner, nourrir ni pointer.
             // (Pas scopeLive : un lot qui passe « Annulé » doit encore
             // descendre, pour que le téléphone apprenne son nouveau statut.)
             'scope'   => 'reelsForSync',
+            // Les lots ACTIFS redescendent à chaque fois : une poulette qui
+            // atteint l'âge de ponte, un lot qui passe en finition ne changent
+            // pas en base — le téléphone gardait l'état du jour de leur dernière
+            // modification (pas de collecte proposée, stade figé).
+            'toujours' => [Batch::STATUS_ACTIF],
         ],
         'buildings' => [
             'model'   => Building::class,
@@ -221,7 +228,9 @@ class SyncController extends Controller
             // d'un lot existant affiche le sien) ; `full`, car activer une
             // espèce ne touche pas la date de ses types.
             'with'    => ['species'],
-            'append'  => ['species_family', 'utilisable', 'species_name'],
+            // + BUILDING_TYPES : les bâtiments qui l'accueillent
+            // (Species::buildingIsCompatible).
+            'append'  => ['species_family', 'utilisable', 'species_name', 'building_types'],
             'full'    => true,
         ],
         // ── Phase 3 : cultures, abattoir, provenderie ──
@@ -250,8 +259,12 @@ class SyncController extends Controller
             // Morceaux de découpe de l'ESPÈCE abattue (recette active, sinon
             // nomenclature) : l'écran terrain proposait les morceaux de volaille
             // — ailes et cuisses — pour un ordre d'ovins.
-            'append'  => ['cuts'],
+            // + BLOCAGE (SlaughterOrder::blocage : lot inactif, quarantaine,
+            // délai d'attente) — renvoyé chaque jour pour un ordre planifié,
+            // le délai d'attente se lève à la date sans que l'ordre change.
+            'append'  => ['cuts', 'blocage'],
             'with'    => ['batch.species'],
+            'toujours' => ['planifie'],
         ],
         'formulas' => [
             'model'   => \App\Models\Formula::class,
@@ -337,7 +350,10 @@ class SyncController extends Controller
                 // des fruits. L'application peut alors proposer le poids net, que
                 // T1 exige pour valoriser une récolte conservée — sinon le champ
                 // reste vide et la matière n'a pas de valeur.
-                'avg_unit_weight_kg', 'harvest_unit_label', 'updated_at'],
+                'avg_unit_weight_kg', 'harvest_unit_label',
+                // Culture désactivée du catalogue : le semis du bureau ne la
+                // propose plus (CropSpecies::active()) — le terrain non plus.
+                'is_active', 'updated_at'],
         ],
     ];
 
@@ -429,8 +445,14 @@ class SyncController extends Controller
             // tout le périmètre courant, le client remplace intégralement.
             $useDelta = $since !== null && empty($config['full']);
 
+            // `toujours` : statut(s) dont les enregistrements sont renvoyés à
+            // CHAQUE synchronisation, même inchangés — leurs attributs dérivés
+            // dépendent de la date (l'âge d'un lot fait sa ponte et son stade)
+            // et `updated_at` ne bouge pas quand un jour passe.
+            $toujours = $config['toujours'] ?? null;
             $query = $model::query()
-                ->when($useDelta, fn ($q) => $q->where('updated_at', '>', $since))
+                ->when($useDelta, fn ($q) => $q->where(fn ($w) => $w->where('updated_at', '>', $since)
+                    ->when($toujours, fn ($t) => $t->orWhereIn('status', (array) $toujours))))
                 ->orderBy('id');
 
             // Périmètre optionnel : certains référentiels seraient trop lourds

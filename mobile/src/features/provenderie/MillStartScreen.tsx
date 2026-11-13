@@ -14,6 +14,7 @@ import { useAuth } from '../../app/AuthContext'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t } from '../../i18n'
 import type { RefEmployee, RefFormula, RefMillMachine } from '../../api/types'
+import { machineOperationnelle } from '../../offline/eligibilite'
 
 /**
  * Poids d'un sac : celui RÉGLÉ au serveur (UnitConverter::bagWeight, servi par
@@ -38,8 +39,8 @@ export function MillStartScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_formulas.toArray().then(setFormulas)
-    void db.ref_mill_machines.toArray().then(setMachines)
+    void db.ref_formulas.toArray().then((l) => setFormulas(l.filter((f) => f.is_active !== false)))
+    void db.ref_mill_machines.toArray().then((l) => setMachines(l.filter(machineOperationnelle)))
     void db.ref_employees.toArray().then(setEmployees)
   }, [])
 

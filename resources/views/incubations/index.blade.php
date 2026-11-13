@@ -501,7 +501,7 @@
                                          que d'en réécrire une variante. --}}
                                     @foreach($incubators as $incubator)
                                         @php $reste = $incubator->remainingCapacity(); @endphp
-                                        <option value="{{ $incubator->id }}" {{ ($incubator->status == 'Maintenance' || $reste <= 0) ? 'disabled' : '' }}>
+                                        <option value="{{ $incubator->id }}" {{ (in_array($incubator->status, \App\Models\Incubator::STATUTS_HORS_SERVICE, true) || $reste <= 0) ? 'disabled' : '' }}>
                                             {{ $incubator->name }} ({{ __("reste :n / cap. :c", [
                                                 'n' => number_format($reste, 0, ',', ' '),
                                                 'c' => number_format($incubator->capacity, 0, ',', ' '),

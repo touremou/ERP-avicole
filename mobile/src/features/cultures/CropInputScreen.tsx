@@ -12,6 +12,8 @@ import { enqueue } from '../../offline/sync'
 import { dateLocale, t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
 import type { RefCropCycle, RefProvider } from '../../api/types'
+import { fournisseurActif } from '../../offline/eligibilite'
+import { cycleArchive } from '../../offline/eligibilite'
 
 /** Miroir de CropInput::TYPES (référentiel serveur). */
 const TYPES = [
@@ -44,7 +46,7 @@ export function CropInputScreen() {
 
   useEffect(() => {
     if (cycleId) void db.ref_crop_cycles.get(Number(cycleId)).then((c) => setCycle(c ?? null))
-    void safeLoad('intrant:fournisseurs', async () => setProviders(await db.ref_providers.orderBy('name').toArray()))
+    void safeLoad('intrant:fournisseurs', async () => setProviders((await db.ref_providers.orderBy('name').toArray()).filter(fournisseurActif)))
   }, [cycleId])
 
   async function onSubmit(event: FormEvent) {
@@ -76,6 +78,16 @@ export function CropInputScreen() {
     return (
       <div className="screen">
         <p className="muted">{t("Cycle de culture introuvable en local — synchronisez d'abord.")}</p>
+      </div>
+    )
+  }
+
+  // Cycle terminé ou abandonné (ouvert par scan) : le serveur refuse toute
+  // saisie (CropCycle::isArchived) — on le dit avant le formulaire.
+  if (cycleArchive(cycle.status)) {
+    return (
+      <div className="screen">
+        <p className="muted">{t('Cycle clos (terminé ou abandonné) : consultation seule.')}</p>
       </div>
     )
   }

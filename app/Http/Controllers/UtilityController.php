@@ -124,6 +124,10 @@ class UtilityController extends Controller
             'notes'                  => 'nullable|string|max:500',
         ]);
 
+        if ($motif = \App\Models\WaterSource::refusDeReleve((int) $validated['water_source_id'])) {
+            return back()->withErrors(['water_source_id' => $motif])->withInput();
+        }
+
         // Règles métier (coût estimé, unicité par jour, niveau citerne) : dans
         // l'action — SOURCE UNIQUE avec la sync mobile (M5).
         app(\App\Actions\Utility\RecordWaterReading::class)->execute($validated, Auth::id());

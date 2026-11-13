@@ -164,6 +164,21 @@ class ProductionType extends Model
         return (bool) $this->is_active && (bool) $this->species?->is_active;
     }
 
+    /**
+     * Types de bâtiment qui accueillent un lot de ce type — la table de
+     * Species::buildingIsCompatible, servie au terrain (la mise en lot y
+     * proposait un poulailler pour des moutons). « mixte » accepte toujours.
+     *
+     * @return array<int, string>
+     */
+    public function buildingTypes(): array
+    {
+        return array_values(array_unique(array_merge(
+            ['mixte'],
+            $this->species?->compatibleBuildingTypes() ?? [$this->slug],
+        )));
+    }
+
     /** Nom de l'espèce, pour regrouper les types par espèce au terrain. */
     public function speciesName(): ?string
     {

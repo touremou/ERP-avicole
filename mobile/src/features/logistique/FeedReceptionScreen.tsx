@@ -13,6 +13,7 @@ import { t } from '../../i18n'
 import type { RefBatch, RefProvider } from '../../api/types'
 import { STATUTS_IMPUTABLES, STATUT_SOLDE } from '../../offline/statutsDeLot'
 import { estLotReel } from '../../offline/virtuels'
+import { fournisseurActif } from '../../offline/eligibilite'
 
 const UNITS = ['Sac', 'KG', 'Litre', 'Unité', 'Boite'] as const
 
@@ -37,7 +38,7 @@ export function FeedReceptionScreen() {
 
   useEffect(() => {
     void db.ref_batches.where('status').anyOf(STATUTS_IMPUTABLES).toArray().then((l) => setBatches(l.filter(estLotReel)))
-    void db.ref_providers.toArray().then(setProviders)
+    void db.ref_providers.toArray().then((l) => setProviders(l.filter(fournisseurActif)))
   }, [])
 
   // Anti-corvée : la ferme rachète le même aliment au même fournisseur —

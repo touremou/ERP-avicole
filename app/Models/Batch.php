@@ -2484,6 +2484,27 @@ class Batch extends Model
     }
 
     /**
+     * Pourquoi la viande de ce lot ne peut pas sortir aujourd'hui (quarantaine
+     * sanitaire, délai d'attente médicamenteux) — ou null. Libellé court des
+     * gardes de SlaughterService et ValidateSale, pour que les LISTES (vente,
+     * abattage, terrain) grisent le lot au lieu de laisser le refus tomber
+     * à la validation.
+     */
+    public function blocageSanitaire(): ?string
+    {
+        if ($this->activeQuarantine()) {
+            return __('Lot :code en quarantaine sanitaire.', ['code' => $this->code]);
+        }
+        if ($attente = $this->activeWithdrawal()) {
+            return __('Lot :code sous délai d’attente jusqu’au :date.', [
+                'code' => $this->code, 'date' => $attente->withdrawal_until->format('d/m/Y'),
+            ]);
+        }
+
+        return null;
+    }
+
+    /**
      * Périmètre terrain (SyncController) : tout lot d'animaux réels, quel que
      * soit son statut — un lot annulé doit encore descendre pour que le
      * téléphone l'apprenne ; les lots virtuels de traçabilité, jamais.

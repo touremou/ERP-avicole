@@ -116,6 +116,10 @@ class AuthController extends Controller
             // Suivi adapté à l'espèce (App\Support\SuiviParEspece) : symptômes,
             // produits, modes et rubriques du pointage selon la famille du lot.
             'species_forms' => \App\Support\SuiviParEspece::referentiel(),
+            // Toutes les phases d'aliment STANDARD (Batch::FEED_PHASES) : avec
+            // les `feed_phases` du lot, le terrain applique Batch::accepteAliment
+            // — le pointage proposait « Ponte 1 » à un lot de chair.
+            'feed_phases_standard' => collect(\App\Models\Batch::FEED_PHASES)->flatten()->unique()->values()->all(),
             'task_categories' => collect(\App\Models\TaskTemplate::CATEGORIES)
                 ->map(fn (array $meta, string $key) => [
                     'key'   => $key,

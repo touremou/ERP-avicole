@@ -18,6 +18,7 @@ import { motifSansEvenement } from '../../offline/statutsDeLot'
 import { useAuth } from '../../app/AuthContext'
 import { rubriqueVisible, suiviPour } from '../../offline/suivi'
 import { useFieldTasks } from '../home/useFieldTasks'
+import { alimentAccepte } from '../../offline/eligibilite'
 
 export function DailyCheckScreen() {
   const { batchId } = useParams()
@@ -221,7 +222,7 @@ export function DailyCheckScreen() {
             <option value="" disabled>
               {t('— Choisir dans le stock —')}
             </option>
-            {feedStocks.map((stock) => (
+            {feedStocks.filter((stock) => alimentAccepte(stock.item_name, batch, me?.settings?.feed_phases_standard)).map((stock) => (
               <option key={stock.id} value={stock.item_name}>
                 {stock.item_name} ({stock.current_quantity} {stock.unit})
               </option>
