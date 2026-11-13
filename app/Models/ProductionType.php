@@ -154,4 +154,50 @@ class ProductionType extends Model
             default    => $this->kpi_primary,
         };
     }
+
+    /**
+     * Pendant de scopeActive() pour un type déjà chargé : utilisable si le
+     * type ET son espèce sont actifs.
+     */
+    public function estUtilisable(): bool
+    {
+        return (bool) $this->is_active && (bool) $this->species?->is_active;
+    }
+
+    /** Nom de l'espèce, pour regrouper les types par espèce au terrain. */
+    public function speciesName(): ?string
+    {
+        return $this->species?->name_fr;
+    }
+
+    /** Envoyé au terrain (SyncController) : la liste de mise en lot s'y règle. */
+    public function getUtilisableAttribute(): bool
+    {
+        return $this->estUtilisable();
+    }
+
+    /**
+     * Pourquoi une NOUVELLE bande ne peut pas être lancée sur ce type — ou null.
+     *
+     * Le bureau ne proposait que les espèces activées (Species::active()), mais
+     * seul l'écran filtrait : le téléphone recevait tous les types et lançait
+     * un lot de porc dans une ferme qui avait désactivé le porc. La règle est
+     * tenue aux deux portes (StoreBatchRequest, SyncService::batchCreate). Un
+     * lot EXISTANT d'un type désactivé reste modifiable : on arrête d'en
+     * lancer, on ne bloque pas ceux qui tournent.
+     */
+    public static function refusDeMiseEnLot(?self $type): ?string
+    {
+        if (! $type) {
+            return null;
+        }
+        if (! $type->species?->is_active) {
+            return __("Cette espèce est désactivée : on ne lance plus de lot (Paramètres › Espèces).");
+        }
+        if (! $type->is_active) {
+            return __("Ce type de production est désactivé : on ne lance plus de lot.");
+        }
+
+        return null;
+    }
 }

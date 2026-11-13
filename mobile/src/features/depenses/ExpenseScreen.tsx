@@ -12,6 +12,7 @@ import { platform, compressImage } from '../../platform'
 import { t } from '../../i18n'
 import type { RefBatch } from '../../api/types'
 import { STATUTS_IMPUTABLES, STATUT_SOLDE } from '../../offline/statutsDeLot'
+import { estLotReel } from '../../offline/virtuels'
 
 /** Miroir de App\Models\Expense::CATEGORIES (référentiel stable). */
 const CATEGORIES: Record<string, string> = {
@@ -45,7 +46,7 @@ export function ExpenseScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_batches.where('status').anyOf(STATUTS_IMPUTABLES).toArray().then(setBatches)
+    void db.ref_batches.where('status').anyOf(STATUTS_IMPUTABLES).toArray().then((l) => setBatches(l.filter(estLotReel)))
   }, [])
 
   async function attachPhoto() {

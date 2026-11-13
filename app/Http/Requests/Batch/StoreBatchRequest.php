@@ -89,6 +89,16 @@ class StoreBatchRequest extends FormRequest
                 );
             }
 
+            // Seules les espèces et types ACTIVÉS se lancent (ProductionType::refusDeMiseEnLot).
+            if ($species && ! $species->is_active) {
+                $validator->errors()->add('species_id', __("Cette espèce est désactivée : on ne lance plus de lot (Paramètres › Espèces)."));
+            }
+            $typeChoisi = $this->filled('production_type_id')
+                ? \App\Models\ProductionType::with('species')->find($this->input('production_type_id')) : null;
+            if ($motif = \App\Models\ProductionType::refusDeMiseEnLot($typeChoisi)) {
+                $validator->errors()->add('production_type_id', $motif);
+            }
+
             // Espèce, type de production et souche se tiennent (BatchIdentity).
             foreach (\App\Support\BatchIdentity::erreurs(
                 $species?->id,

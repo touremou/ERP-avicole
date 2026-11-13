@@ -461,8 +461,9 @@ async function pullDelta(): Promise<void> {
       await db.ref_products.bulkPut(products.upserts)
       await db.ref_products.bulkDelete(products.deletes)
       if (production_types) {
+        // Envoi INTÉGRAL (`full`) : on remplace, un type retiré disparaît.
+        await db.ref_production_types.clear()
         await db.ref_production_types.bulkPut(production_types.upserts)
-        await db.ref_production_types.bulkDelete(production_types.deletes)
       }
       // Phase 3 — gardés optionnels (serveur antérieur = entités absentes).
       if (plots) {

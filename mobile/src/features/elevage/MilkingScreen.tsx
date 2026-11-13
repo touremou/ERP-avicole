@@ -12,6 +12,7 @@ import { lastPayloadOf } from '../../offline/prefill'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t } from '../../i18n'
 import type { RefBatch } from '../../api/types'
+import { estLotReel } from '../../offline/virtuels'
 
 export function MilkingScreen() {
   const { batchId } = useParams()
@@ -27,7 +28,7 @@ export function MilkingScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_batches.where('status').equals('Actif').toArray().then(setBatches)
+    void db.ref_batches.where('status').equals('Actif').toArray().then((l) => setBatches(l.filter(estLotReel)))
   }, [])
 
   // Anti-corvée : le cours du lait et l'effectif en lactation bougent peu d'un

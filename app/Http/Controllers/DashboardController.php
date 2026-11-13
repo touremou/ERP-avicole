@@ -265,7 +265,7 @@ class DashboardController extends Controller
         // Un bâtiment simplement vide/disponible, ou en désinfection depuis
         // moins de 14 jours, n'est PAS une alerte.
         $sanitaryAlertsCount = $canElevage
-            ? Building::where('name', '!=', 'Zone Fournisseurs Externes')
+            ? Building::physical()
                 ->videSanitaireEchu()   // à la date, comme la mise en place et la libération
                 ->count()
             : 0;
@@ -371,7 +371,7 @@ class DashboardController extends Controller
         // 6. DONNÉES D'AFFICHAGE (Bâtiments & Pagination)
         // ---------------------------------------------------------
         $buildings = $canElevage
-            ? Building::where('name', '!=', 'Zone Fournisseurs Externes')
+            ? Building::physical()
                 ->withCount(['batches' => function($q) {
                     $q->active()->live();
                 }])

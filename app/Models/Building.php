@@ -11,6 +11,13 @@ use App\Traits\BelongsToFarm;
 
 class Building extends Model
 {
+    /**
+     * Bâtiment VIRTUEL de traçabilité (œufs externes en transit, cf.
+     * StartIncubation) : un nom, pas un lieu. Écarté de toute liste
+     * (scopePhysical) — au bureau comme au terrain (mobile/src/offline/virtuels.ts).
+     */
+    public const ZONE_VIRTUELLE = 'Zone Fournisseurs Externes';
+
     use HasFactory, SoftDeletes, BelongsToFarm;
 
     /**
@@ -236,7 +243,7 @@ class Building extends Model
 
     public function scopePhysical($query)
     {
-        return $query->where('name', '!=', 'Zone Fournisseurs Externes');
+        return $query->where('name', '!=', self::ZONE_VIRTUELLE);
     }
 
     /**
