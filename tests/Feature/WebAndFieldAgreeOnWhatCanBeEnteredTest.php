@@ -216,3 +216,22 @@ test('une espèce désactivée ne se lance ni au terrain ni au bureau, et le té
     $porc->update(['is_active' => true]);
     expect(ProductionType::refusDeMiseEnLot($engraissement->fresh('species')))->toBeNull();
 });
+
+// ── 7. CHAQUE OPÉRATION NE LISTE QUE LES LOTS QUI LA PERMETTENT ─────────
+
+test('le téléphone sait quels lots se traient, et reçoit chaque jour les lots actifs', function () {
+    $termine = Batch::factory()->create(['farm_id' => $this->farm->id, 'building_id' => $this->building->id,
+        'status' => 'Terminé']);
+
+    $lot = collect($this->getJson('/api/v1/sync/pull')->assertOk()->json('entities.batches.upserts'))
+        ->firstWhere('id', $this->lot->id);
+    expect($lot['tracks_milk'])->toBeFalse(); // un lot de poulets de chair ne se trait pas
+
+    // Synchronisation suivante, rien n'a changé en base : le lot ACTIF
+    // redescend quand même (sa ponte et son stade dépendent de la date) ;
+    // le lot terminé, non.
+    $this->travel(1)->days();
+    $ids = collect($this->getJson('/api/v1/sync/pull?since='.urlencode(now()->subHour()->toIso8601String()))
+        ->assertOk()->json('entities.batches.upserts'))->pluck('id');
+    expect($ids)->toContain($this->lot->id)->not->toContain($termine->id);
+});

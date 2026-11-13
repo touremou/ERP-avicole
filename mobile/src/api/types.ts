@@ -309,6 +309,8 @@ export interface RefBatch {
   updated_at: string
   /** Calculé serveur : le lot est en âge/phase de collecte d'œufs (règle de souche). */
   can_collect_eggs?: boolean
+  /** Calculé serveur : lot laitier (Batch::tracksMilk) — seul proposé à la traite. */
+  tracks_milk?: boolean
   /** Taux de mortalité du serveur (Batch::mortality_rate), en %. */
   mortality_rate?: number | null
   /** Poules du lot (sans les coqs d'un lot de reproducteurs) — Batch::effectifPondeur. */

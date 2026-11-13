@@ -56,14 +56,21 @@ class SyncController extends Controller
             // + le STADE calculé (Batch::current_phase), la FAMILLE de l'espèce
             // (formulaires adaptés) et les ALIMENTS du secteur du lot (liste de
             // la réception d'aliment — le champ restreint du bureau).
+            // + TRACKS_MILK (Batch::tracksMilk) : la traite ne liste que les
+            // lots laitiers — elle proposait des lots de volaille.
             'append'  => ['can_collect_eggs', 'mortality_rate', 'effectif_pondeur',
-                          'current_phase', 'species_family', 'feed_phases'],
+                          'current_phase', 'species_family', 'feed_phases', 'tracks_milk'],
             'with'    => ['species', 'productionType', 'breed'],
             // Ni les lots VIRTUELS de traçabilité (effectif initial nul, cf.
             // Batch::isVirtual) : aucun animal à soigner, nourrir ni pointer.
             // (Pas scopeLive : un lot qui passe « Annulé » doit encore
             // descendre, pour que le téléphone apprenne son nouveau statut.)
             'scope'   => 'reelsForSync',
+            // Les lots ACTIFS redescendent à chaque fois : une poulette qui
+            // atteint l'âge de ponte, un lot qui passe en finition ne changent
+            // pas en base — le téléphone gardait l'état du jour de leur dernière
+            // modification (pas de collecte proposée, stade figé).
+            'toujours' => [Batch::STATUS_ACTIF],
         ],
         'buildings' => [
             'model'   => Building::class,
@@ -429,8 +436,14 @@ class SyncController extends Controller
             // tout le périmètre courant, le client remplace intégralement.
             $useDelta = $since !== null && empty($config['full']);
 
+            // `toujours` : statut(s) dont les enregistrements sont renvoyés à
+            // CHAQUE synchronisation, même inchangés — leurs attributs dérivés
+            // dépendent de la date (l'âge d'un lot fait sa ponte et son stade)
+            // et `updated_at` ne bouge pas quand un jour passe.
+            $toujours = $config['toujours'] ?? null;
             $query = $model::query()
-                ->when($useDelta, fn ($q) => $q->where('updated_at', '>', $since))
+                ->when($useDelta, fn ($q) => $q->where(fn ($w) => $w->where('updated_at', '>', $since)
+                    ->when($toujours, fn ($t) => $t->orWhereIn('status', (array) $toujours))))
                 ->orderBy('id');
 
             // Périmètre optionnel : certains référentiels seraient trop lourds

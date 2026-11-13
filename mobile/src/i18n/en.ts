@@ -546,6 +546,7 @@ export const en: Record<string, string> = {
   'Pointage du jour': 'Today\'s daily check',
   'Choisissez le lot à pointer.': 'Choose the batch to check.',
   'Autres': 'Others',
+  'Aucun lot laitier actif en local — synchronisez d’abord.': 'No active dairy batch locally — sync first.',
   'déjà pointé aujourd’hui': 'already checked today',
   'Pointage enregistré': 'Daily check saved',
   'Pointages du jour': 'Today\'s daily checks',

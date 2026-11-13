@@ -424,10 +424,13 @@ test('pull renvoie les données de référence de la ferme, les tombstones, et r
     expect($batchRow)->toHaveKeys(['employee_id', 'can_collect_eggs'])
         ->and($batchRow['can_collect_eggs'])->toBeBool();
 
-    // Delta : rien de plus récent que « maintenant + 1 min ».
+    // Delta : rien de plus récent que « maintenant + 1 min » — sauf les lots
+    // ACTIFS, renvoyés à chaque synchronisation (ponte et stade dépendent de
+    // la date, cf. SyncController `toujours`).
     $empty = $this->getJson('/api/v1/sync/pull?since=' . urlencode(now()->addMinute()->toIso8601String()))
         ->assertOk();
-    expect($empty->json('entities.batches.upserts'))->toBe([]);
+    expect(collect($empty->json('entities.batches.upserts'))->pluck('status')->unique()->values()->all())
+        ->toBeIn([[], ['Actif']]);
     expect($empty->json('entities.batches.deletes'))->toBe([]);
 });
 

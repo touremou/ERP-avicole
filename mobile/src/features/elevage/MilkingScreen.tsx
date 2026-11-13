@@ -28,7 +28,10 @@ export function MilkingScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_batches.where('status').equals('Actif').toArray().then((l) => setBatches(l.filter(estLotReel)))
+    // Lots LAITIERS seulement (Batch::tracksMilk, calculé serveur) — l'écran
+    // proposait tous les lots actifs, volaille comprise, que le serveur refuse.
+    void db.ref_batches.where('status').equals('Actif').toArray()
+      .then((l) => setBatches(l.filter((b) => estLotReel(b) && b.tracks_milk === true)))
   }, [])
 
   // Anti-corvée : le cours du lait et l'effectif en lactation bougent peu d'un
@@ -90,7 +93,7 @@ export function MilkingScreen() {
         ))}
       </select>
       {batches.length === 0 && (
-        <p className="muted">{t('Aucun lot actif en local — synchronisez d’abord.')}</p>
+        <p className="muted">{t('Aucun lot laitier actif en local — synchronisez d’abord.')}</p>
       )}
 
       <label htmlFor="morning">{t('Traite du matin (litres)')}</label>
