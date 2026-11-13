@@ -5232,5 +5232,7 @@
     "Fournisseur inconnu : choisissez-le dans la liste (Annuaire › Fournisseurs).": "Unknown supplier: choose it from the list (Directory › Suppliers).",
     "Voie orale": "Oral",
     "Application cutanée": "Topical",
-    "Bain": "Bath"
+    "Bain": "Bath",
+    "Cette espèce est désactivée : on ne lance plus de lot (Paramètres › Espèces).": "This species is disabled: no new batch can be started (Settings › Species).",
+    "Ce type de production est désactivé : on ne lance plus de lot.": "This production type is disabled: no new batch can be started."
 }

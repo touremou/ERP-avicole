@@ -191,3 +191,28 @@ test('le téléphone ne reçoit ni le lot ni le bâtiment virtuels de traçabili
     expect($lots)->toContain($this->lot->id)->toContain($annule->id)->not->toContain($virtuel->id)
         ->and($batiments)->toContain($this->building->id)->not->toContain($zone->id);
 });
+
+// ── 6. LA MISE EN LOT NE LANCE QUE LES ESPÈCES ACTIVÉES ─────────────────
+
+test('une espèce désactivée ne se lance ni au terrain ni au bureau, et le téléphone le sait', function () {
+    $porc = Species::create(['slug' => 'porc-test', 'name_fr' => 'Porc', 'family' => 'porcin', 'is_active' => false]);
+    $engraissement = ProductionType::create(['species_id' => $porc->id, 'slug' => 'engraissement-test',
+        'name_fr' => 'Engraissement', 'is_active' => true]);
+
+    $types = collect($this->getJson('/api/v1/sync/pull')->assertOk()->json('entities.production_types.upserts'));
+    expect($types->firstWhere('id', $engraissement->id))->toMatchArray(['utilisable' => false, 'species_name' => 'Porc']);
+
+    $terrain = $this->postJson('/api/v1/sync/push', ['operations' => [[
+        'op_uuid' => (string) Str::uuid(), 'type' => 'batch.upsert',
+        'payload' => ['uuid' => (string) Str::uuid(), 'code' => 'PORC-01', 'type' => 'engraissement-test',
+            'production_type_id' => $engraissement->id, 'building_id' => $this->building->id,
+            'initial_quantity' => 20, 'current_quantity' => 20, 'arrival_date' => today()->toDateString(), 'updated_at' => now()->toIso8601String()],
+    ]]])->assertOk()->json('results.0');
+    expect($terrain['status'])->not->toBe('success')
+        ->and(json_encode($terrain, JSON_UNESCAPED_UNICODE))->toContain('espèce est désactivée')
+        ->and(Batch::where('code', 'PORC-01')->exists())->toBeFalse();
+
+    expect(ProductionType::refusDeMiseEnLot($engraissement->fresh('species')))->not->toBeNull();
+    $porc->update(['is_active' => true]);
+    expect(ProductionType::refusDeMiseEnLot($engraissement->fresh('species')))->toBeNull();
+});

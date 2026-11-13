@@ -29,6 +29,7 @@ import { t } from '../../i18n'
 import type { RefAnimalBreed, RefBuilding, RefEmployee, RefProductionType, RefProvider } from '../../api/types'
 import { joursDeVideSanitaire } from '../../offline/statutsDeLot'
 import { estBatimentReel } from '../../offline/virtuels'
+import { typeLancable, typesParEspece } from '../../offline/miseEnLot'
 
 /** Bâtiments capables d'accueillir une bande : libres, jamais occupés. */
 const AVAILABLE_STATUSES = ['Vide', 'Disponible']
@@ -100,7 +101,8 @@ export function NewBatchScreen() {
       setBreeds(br.filter((item) => item.is_active).sort((a, b2) => a.name.localeCompare(b2.name)))
 
       setBuildings(b.filter((item) => estBatimentReel(item) && AVAILABLE_STATUSES.includes(item.status)))
-      setProductionTypes(pt)
+      // Espèces et types ACTIVÉS seulement (miroir de ProductionType::active()).
+      setProductionTypes(pt.filter(typeLancable))
       setEmployees(emp)
       setProviders(prov)
     })()
@@ -216,10 +218,14 @@ export function NewBatchScreen() {
       <label htmlFor="type">{t('Type de production')}</label>
       <select id="type" value={type} onChange={(e) => setType(e.target.value)} required>
         <option value="">{t('— Choisir —')}</option>
-        {productionTypes.map((pt) => (
-          <option key={pt.id} value={String(pt.id)}>
-            {pt.name_fr}
-          </option>
+        {typesParEspece(productionTypes, t('Autres')).map((groupe) => (
+          <optgroup key={groupe.espece} label={groupe.espece}>
+            {groupe.types.map((pt) => (
+              <option key={pt.id} value={String(pt.id)}>
+                {pt.name_fr}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
 

@@ -1416,6 +1416,13 @@ class SyncService
             return $this->invalid(array_map(fn ($m) => [$m], $erreurs));
         }
 
+        // Le terrain ne LANCE que les espèces et types activés — la règle du
+        // bureau. Un lot déjà en place (même uuid) reste modifiable.
+        if (! Batch::withoutGlobalScopes()->where('uuid', $validated['uuid'])->exists()
+            && $motif = \App\Models\ProductionType::refusDeMiseEnLot($productionType)) {
+            return $this->invalid(['production_type_id' => [$motif]]);
+        }
+
         $validated['production_type_id'] = $productionType->id;
         $validated['species_id'] = $productionType->species_id;
 

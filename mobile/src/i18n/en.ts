@@ -545,6 +545,7 @@ export const en: Record<string, string> = {
   'Pointage :code': 'Daily check :code',
   'Pointage du jour': 'Today\'s daily check',
   'Choisissez le lot à pointer.': 'Choose the batch to check.',
+  'Autres': 'Others',
   'déjà pointé aujourd’hui': 'already checked today',
   'Pointage enregistré': 'Daily check saved',
   'Pointages du jour': 'Today\'s daily checks',

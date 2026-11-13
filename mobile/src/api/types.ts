@@ -714,6 +714,10 @@ export interface RefProductionType {
   species_id?: number | null
   /** volaille, petit_ruminant, porcin… (cf. ProductionType::speciesFamily) */
   species_family?: string | null
+  /** Type ET espèce actifs (ProductionType::estUtilisable) — absent d'un serveur antérieur. */
+  utilisable?: boolean
+  /** Nom de l'espèce, pour regrouper la liste de mise en lot. */
+  species_name?: string | null
   updated_at: string
 }
 

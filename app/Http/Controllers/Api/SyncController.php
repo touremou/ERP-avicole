@@ -215,8 +215,14 @@ class SyncController extends Controller
             'columns' => ['id', 'slug', 'name_fr', 'species_id', 'updated_at'],
             // La famille de l'espèce : le terrain en déduit, comme le web, si
             // les sujets arrivent à un jour (naissance = arrivée) ou non.
+            // + UTILISABLE (type ET espèce actifs) et le NOM de l'espèce : la
+            // mise en lot ne propose que les espèces activées, regroupées par
+            // espèce — comme au bureau. Tous les types descendent (la fiche
+            // d'un lot existant affiche le sien) ; `full`, car activer une
+            // espèce ne touche pas la date de ses types.
             'with'    => ['species'],
-            'append'  => ['species_family'],
+            'append'  => ['species_family', 'utilisable', 'species_name'],
+            'full'    => true,
         ],
         // ── Phase 3 : cultures, abattoir, provenderie ──
         'plots' => [
