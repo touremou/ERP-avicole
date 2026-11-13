@@ -18,6 +18,7 @@ import { declaredNow, enqueue } from '../../offline/sync'
 import { lastPayloadOf } from '../../offline/prefill'
 import { t } from '../../i18n'
 import type { RefBatch, RefPlot } from '../../api/types'
+import { estLotReel } from '../../offline/virtuels'
 
 /** Ressources proposées — la saisie reste libre (miroir de RawFeeding::RESSOURCES_COURANTES). */
 const RESSOURCES = ['Herbe locale', 'Fanes de maïs', 'Fanes d’arachide', 'Feuillages', 'Épluchures', 'Restes de cuisine', 'Son de riz', 'Paille']
@@ -45,7 +46,7 @@ export function RawFeedingScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_batches.where('status').equals('Actif').toArray().then(setBatches)
+    void db.ref_batches.where('status').equals('Actif').toArray().then((l) => setBatches(l.filter(estLotReel)))
     void db.ref_plots.toArray().then(setPlots)
   }, [])
 

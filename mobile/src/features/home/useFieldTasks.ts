@@ -11,6 +11,7 @@ import { db } from '../../offline/db'
 import { onSyncChange } from '../../offline/sync'
 import { safeLoad } from '../../offline/safeLoad'
 import type { RefBatch, RefCropCycle, RefMillProduction, RefSlaughterOrder } from '../../api/types'
+import { estLotReel } from '../../offline/virtuels'
 
 export interface FieldTasks {
   batches: RefBatch[]
@@ -42,8 +43,7 @@ export function useFieldTasks(): FieldTasks {
       // traçabilité créés pour l'incubation (source d'œufs externe) — quantités
       // initiale ET courante à 0. Ils fausseraient le compte « Lots actifs » et
       // apparaîtraient à tort en pointage/collecte.
-      const active = (await db.ref_batches.where('status').equals('Actif').toArray())
-        .filter((b) => (b.initial_quantity ?? 0) > 0 || (b.current_quantity ?? 0) > 0)
+      const active = (await db.ref_batches.where('status').equals('Actif').toArray()).filter(estLotReel)
       setBatches(active)
 
       const ponteTypes = await db.ref_production_types.where('slug').equals('ponte').toArray()

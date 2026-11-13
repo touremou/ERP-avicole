@@ -59,11 +59,18 @@ class SyncController extends Controller
             'append'  => ['can_collect_eggs', 'mortality_rate', 'effectif_pondeur',
                           'current_phase', 'species_family', 'feed_phases'],
             'with'    => ['species', 'productionType', 'breed'],
+            // Ni les lots VIRTUELS de traçabilité (effectif initial nul, cf.
+            // Batch::isVirtual) : aucun animal à soigner, nourrir ni pointer.
+            // (Pas scopeLive : un lot qui passe « Annulé » doit encore
+            // descendre, pour que le téléphone apprenne son nouveau statut.)
+            'scope'   => 'reelsForSync',
         ],
         'buildings' => [
             'model'   => Building::class,
             'gate'    => 'elevage.L',
             'columns' => ['id', 'name', 'type', 'capacity', 'status', 'updated_at'],
+            // Pas la zone virtuelle de traçabilité (Building::ZONE_VIRTUELLE).
+            'scope'   => 'physical',
             // Jours de vide sanitaire restants (Building::refusDeMiseEnPlace) : le
             // terrain ne propose pas un bâtiment que le serveur refuserait.
             'append'  => ['sanitary_break_remaining_days'],

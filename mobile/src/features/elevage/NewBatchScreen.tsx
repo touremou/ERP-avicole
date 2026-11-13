@@ -28,6 +28,7 @@ import { NumberStepper } from '../../ui/NumberStepper'
 import { t } from '../../i18n'
 import type { RefAnimalBreed, RefBuilding, RefEmployee, RefProductionType, RefProvider } from '../../api/types'
 import { joursDeVideSanitaire } from '../../offline/statutsDeLot'
+import { estBatimentReel } from '../../offline/virtuels'
 
 /** Bâtiments capables d'accueillir une bande : libres, jamais occupés. */
 const AVAILABLE_STATUSES = ['Vide', 'Disponible']
@@ -98,7 +99,7 @@ export function NewBatchScreen() {
       ])
       setBreeds(br.filter((item) => item.is_active).sort((a, b2) => a.name.localeCompare(b2.name)))
 
-      setBuildings(b.filter((item) => AVAILABLE_STATUSES.includes(item.status)))
+      setBuildings(b.filter((item) => estBatimentReel(item) && AVAILABLE_STATUSES.includes(item.status)))
       setProductionTypes(pt)
       setEmployees(emp)
       setProviders(prov)

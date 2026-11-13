@@ -172,3 +172,22 @@ test('chaque famille a son suivi, servi au téléphone dans la session', functio
     $me = $this->getJson('/api/v1/auth/me')->assertOk()->json();
     expect($me['settings']['species_forms'])->toHaveKeys(['defaut', 'volaille', 'petit_ruminant', 'lagomorphe']);
 });
+
+// ── 5. NI LOT NI BÂTIMENT VIRTUEL AU TERRAIN ────────────────────────────
+
+test('le téléphone ne reçoit ni le lot ni le bâtiment virtuels de traçabilité', function () {
+    // Œufs achetés à l'extérieur : lot à effectif nul dans la zone virtuelle (StartIncubation).
+    $zone = Building::factory()->create(['farm_id' => $this->farm->id, 'name' => Building::ZONE_VIRTUELLE]);
+    $virtuel = Batch::factory()->create(['farm_id' => $this->farm->id, 'building_id' => $zone->id,
+        'status' => 'Actif', 'initial_quantity' => 0, 'current_quantity' => 0]);
+    // Un lot annulé descend encore : le téléphone doit apprendre son statut.
+    $annule = Batch::factory()->create(['farm_id' => $this->farm->id, 'building_id' => $this->building->id,
+        'status' => 'Annulé']);
+
+    $entites = $this->getJson('/api/v1/sync/pull')->assertOk()->json('entities');
+    $lots = collect($entites['batches']['upserts'])->pluck('id');
+    $batiments = collect($entites['buildings']['upserts'])->pluck('id');
+
+    expect($lots)->toContain($this->lot->id)->toContain($annule->id)->not->toContain($virtuel->id)
+        ->and($batiments)->toContain($this->building->id)->not->toContain($zone->id);
+});

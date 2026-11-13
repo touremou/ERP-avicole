@@ -17,6 +17,7 @@ import { t } from '../../i18n'
 import type { RefBatch } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
 import { produitsProposes, suiviPour } from '../../offline/suivi'
+import { estLotReel } from '../../offline/virtuels'
 
 /** Miroir de App\Models\HealthCheck (types validés serveur). */
 const TYPES = [
@@ -45,7 +46,7 @@ export function HealthCareScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_batches.where('status').equals('Actif').toArray().then(setBatches)
+    void db.ref_batches.where('status').equals('Actif').toArray().then((l) => setBatches(l.filter(estLotReel)))
   }, [])
 
   // Anti-corvée : un même vaccin se refait sur d'autres bâtiments dans la

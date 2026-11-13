@@ -165,7 +165,7 @@ class StartIncubation
 
         // 1. Le bâtiment virtuel de transit
         $externalBuilding = \App\Models\Building::firstOrCreate(
-            ['name' => 'Zone Fournisseurs Externes'],
+            ['name' => \App\Models\Building::ZONE_VIRTUELLE],
             [
                 'type'        => 'reproducteur',
                 'surface'     => 1,

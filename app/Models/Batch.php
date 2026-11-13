@@ -2484,6 +2484,16 @@ class Batch extends Model
     }
 
     /**
+     * Périmètre terrain (SyncController) : tout lot d'animaux réels, quel que
+     * soit son statut — un lot annulé doit encore descendre pour que le
+     * téléphone l'apprenne ; les lots virtuels de traçabilité, jamais.
+     */
+    public function scopeReelsForSync($query)
+    {
+        return $query->where('initial_quantity', '>', 0);
+    }
+
+    /**
      * Lot virtuel de traçabilité (aucun animal réel : effectif initial nul).
      * Pendant logique de scopeLive() pour les collections déjà chargées.
      */

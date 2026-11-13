@@ -12,6 +12,7 @@ import { lastPayloadOf } from '../../offline/prefill'
 import { t } from '../../i18n'
 import type { RefBatch, RefProvider } from '../../api/types'
 import { STATUTS_IMPUTABLES, STATUT_SOLDE } from '../../offline/statutsDeLot'
+import { estLotReel } from '../../offline/virtuels'
 
 const UNITS = ['Sac', 'KG', 'Litre', 'Unité', 'Boite'] as const
 
@@ -35,7 +36,7 @@ export function FeedReceptionScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_batches.where('status').anyOf(STATUTS_IMPUTABLES).toArray().then(setBatches)
+    void db.ref_batches.where('status').anyOf(STATUTS_IMPUTABLES).toArray().then((l) => setBatches(l.filter(estLotReel)))
     void db.ref_providers.toArray().then(setProviders)
   }, [])
 
