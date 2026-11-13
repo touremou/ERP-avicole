@@ -68,6 +68,25 @@ class SlaughterOrder extends Model
      *
      * @return array<int, array{code: string, label: string, destination: string, default: bool}>
      */
+    /**
+     * Pourquoi cet ordre ne peut pas s'exécuter AUJOURD'HUI — ou null. Mêmes
+     * gardes que SlaughterService::execute (lot actif, quarantaine, délai
+     * d'attente), servies au terrain : la liste « Abattages à exécuter »
+     * proposait un ordre que le serveur refusait, et l'exécution partait au
+     * bac « À corriger ».
+     */
+    public function blocage(): ?string
+    {
+        $lot = $this->batch;
+        if (! $lot) {
+            return null;
+        }
+        if ($lot->status !== 'Actif') {
+            return __('Lot :code plus actif (:statut).', ['code' => $lot->code, 'statut' => __($lot->status)]);
+        }
+        return $lot->blocageSanitaire();
+    }
+
     public function getCutsAttribute(): array
     {
         return collect(\App\Services\ButcheryNomenclature::effectiveCutsForSpecies($this->batch?->species))

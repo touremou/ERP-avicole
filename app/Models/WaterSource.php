@@ -53,6 +53,20 @@ class WaterSource extends Model
         return $this->hasMany(WaterReading::class);
     }
 
+    /**
+     * Pourquoi on ne relève pas cette source — ou null. Le bureau ne liste que
+     * les sources actives (UtilityController) ; le terrain les recevait toutes
+     * et le serveur acceptait un relevé sur une source désactivée.
+     */
+    public static function refusDeReleve(?int $sourceId): ?string
+    {
+        $source = $sourceId ? static::find($sourceId) : null;
+
+        return $source && ! $source->is_active
+            ? __('Cette source d’eau est désactivée : plus de relevé.')
+            : null;
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

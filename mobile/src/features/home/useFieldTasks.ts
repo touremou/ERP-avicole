@@ -82,7 +82,9 @@ export function useFieldTasks(): FieldTasks {
 
       setCropCycles(await db.ref_crop_cycles.where('status').anyOf('en_cours', 'recolte').toArray())
       const orders = await db.ref_slaughter_orders.where('status').equals('planifie').toArray()
-      setSlaughterOrders(orders.filter((o) => !executedOrders.has(o.id)))
+      // Un ordre BLOQUÉ (lot en quarantaine, sous délai d'attente, plus
+      // actif) n'est pas « à exécuter » : le serveur le refuserait.
+      setSlaughterOrders(orders.filter((o) => !executedOrders.has(o.id) && !o.blocage))
       const ops = await db.ref_mill_productions.where('status').anyOf('Planifié', 'En cours').toArray()
       setMillProductions(ops.filter((op) => !completedOps.has(op.id)))
     }

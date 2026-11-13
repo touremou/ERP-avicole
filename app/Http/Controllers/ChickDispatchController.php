@@ -91,6 +91,12 @@ class ChickDispatchController extends Controller
                 ])->withInput();
             }
 
+            // Vide sanitaire en cours : la règle de la mise en lot (CreateBatch,
+            // Building::refusDeMiseEnPlace), que ce chemin ne posait pas.
+            if ($motif = $building->refusDeMiseEnPlace()) {
+                return back()->withErrors(['building_id' => $motif])->withInput();
+            }
+
             $occupied  = (int) Batch::where('building_id', $building->id)->active()->sum('current_quantity');
             $available = (int) $building->capacity - $occupied;
             if ((int) $validated['quantity'] > $available) {

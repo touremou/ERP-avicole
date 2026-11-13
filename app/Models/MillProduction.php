@@ -177,4 +177,31 @@ class MillProduction extends Model
             ]);
         });
     }
+
+    /**
+     * Pourquoi on ne LANCE pas cet OP — par champ, vide si rien ne s'y oppose.
+     *
+     * Le bureau ne propose que les formules actives et les machines
+     * « Opérationnel » (MillProductionController::create) ; le terrain les
+     * proposait toutes et le serveur acceptait le lancement sur une machine
+     * en panne — la clôture était refusée plus tard (CompleteMillProduction).
+     *
+     * @param  array<int, int|string>  $machineIds
+     * @return array<string, string>
+     */
+    public static function refusDeLancement(int $formulaId, array $machineIds): array
+    {
+        $refus = [];
+
+        if (Formula::whereKey($formulaId)->where('is_active', false)->exists()) {
+            $refus['formula_id'] = __('Cette formule est désactivée : on ne la fabrique plus.');
+        }
+
+        $horsService = MillMachine::whereIn('id', $machineIds)->where('status', '!=', 'Opérationnel')->pluck('name');
+        if ($horsService->isNotEmpty()) {
+            $refus['machine_ids'] = __('Machine non opérationnelle : :noms.', ['noms' => $horsService->implode(', ')]);
+        }
+
+        return $refus;
+    }
 }

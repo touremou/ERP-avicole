@@ -33,7 +33,13 @@ class StartIncubationRequest extends FormRequest
         $maxCapacity = $incubator ? $incubator->remainingCapacity() : 0;
 
         $rules = [
-            'incubator_id' => ['required', 'exists:incubators,id'],
+            // Couveuse en maintenance ou en panne : la liste la grise, le
+            // serveur la refuse aussi (il acceptait).
+            'incubator_id' => ['required', 'exists:incubators,id', function ($attribute, $value, $fail) {
+                if (in_array(Incubator::whereKey($value)->value('status'), Incubator::STATUTS_HORS_SERVICE, true)) {
+                    $fail(__('Cette couveuse est en maintenance ou en panne.'));
+                }
+            }],
             'start_date'   => ['required', 'date', 'before_or_equal:today'],
             'eggs_count'   => ['required', 'integer', 'min:1', "max:{$maxCapacity}"],
             'egg_unit_cost' => ['nullable', 'numeric', 'min:0'],

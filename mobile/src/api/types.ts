@@ -69,6 +69,8 @@ export interface MeResponse {
     task_categories?: { key: string; label: string; emoji: string; group: string }[]
     /** Suivi adapté à l'espèce, par famille (App\Support\SuiviParEspece). */
     species_forms?: Record<string, { symptomes: string[]; produits: Record<string, string[]>; modes: string[]; masquer: string[] }>
+    /** Phases d'aliment standard (Batch::FEED_PHASES) — cf. offline/eligibilite.ts. */
+    feed_phases_standard?: string[]
   }
   server_time: string
 }
@@ -720,6 +722,8 @@ export interface RefProductionType {
   utilisable?: boolean
   /** Nom de l'espèce, pour regrouper la liste de mise en lot. */
   species_name?: string | null
+  /** Types de bâtiment qui accueillent ce type (Species::buildingIsCompatible). */
+  building_types?: string[]
   updated_at: string
 }
 
@@ -772,6 +776,8 @@ export interface RefSlaughterOrder {
   requested_by: number | null
   executed_by: number | null
   updated_at: string
+  /** Pourquoi l'ordre ne s'exécute pas aujourd'hui (SlaughterOrder::blocage) — null s'il le peut. */
+  blocage?: string | null
   /**
    * Morceaux de découpe de l'ESPÈCE abattue (SlaughterOrder::getCutsAttribute).
    * Absent d'un serveur plus ancien : repli sur les morceaux de volaille.
@@ -815,6 +821,8 @@ export interface RefCropSpecies {
   local_name: string | null
   type: string | null
   updated_at: string
+  /** Culture active du catalogue (CropSpecies::scopeActive). */
+  is_active?: boolean
   /** Ce qu'on met en terre : semence, rejet, bouture… (null = semence). */
   planting_material?: string | null
   /** Comment on le compte : kg, unité… (null = kg). */

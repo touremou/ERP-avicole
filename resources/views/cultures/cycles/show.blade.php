@@ -7,9 +7,17 @@
         <div class="flex flex-wrap gap-2 mt-4">
             @can('cultures.C')
             @unless($cycle->isArchived())
+            {{-- Délai avant récolte (DAR) d'un traitement : RecordHarvest refuse
+                 la récolte jusqu'à la date — le bouton la proposait sans un mot. --}}
+            @if($cycle->harvest_blocked_until)
+            <span class="bg-rose-50 text-rose-700 border border-rose-100 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic flex items-center gap-2">
+                <i class="fa-solid fa-ban"></i> {{ __("Récolte interdite jusqu'au :date (délai avant récolte)", ['date' => \Carbon\Carbon::parse($cycle->harvest_blocked_until)->format('d/m/Y')]) }}
+            </span>
+            @else
             <a href="{{ route('crop-cycles.harvests.create', $cycle) }}" class="bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-500 transition-all shadow-lg italic flex items-center gap-2 no-underline">
                 <i class="fa-solid fa-wheat-awn text-amber-400"></i> {{ __("Saisir une récolte") }}
             </a>
+            @endif
             <a href="{{ route('crop-cycles.inputs.create', $cycle) }}" class="bg-white border border-slate-100 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-lime-50 hover:text-lime-700 transition-all italic flex items-center gap-2 no-underline">
                 <i class="fa-solid fa-flask text-lime-500"></i> {{ __("Ajouter un intrant") }}
             </a>
@@ -417,9 +425,9 @@
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic">{{ __("Journal des récoltes") }}</h3>
                     @can('cultures.C')
-                    @unless($cycle->isArchived())
+                    @if(! $cycle->isArchived() && ! $cycle->harvest_blocked_until)
                     <a href="{{ route('crop-cycles.harvests.create', $cycle) }}" class="text-[9px] font-black uppercase text-amber-600 hover:text-amber-700 italic no-underline"><i class="fa-solid fa-plus mr-1"></i>{{ __("Récolte") }}</a>
-                    @endunless
+                    @endif
                     @endcan
                 </div>
                 @forelse($cycle->harvests->sortByDesc('harvest_date') as $h)

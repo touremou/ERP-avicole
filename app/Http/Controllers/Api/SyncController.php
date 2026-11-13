@@ -228,7 +228,9 @@ class SyncController extends Controller
             // d'un lot existant affiche le sien) ; `full`, car activer une
             // espèce ne touche pas la date de ses types.
             'with'    => ['species'],
-            'append'  => ['species_family', 'utilisable', 'species_name'],
+            // + BUILDING_TYPES : les bâtiments qui l'accueillent
+            // (Species::buildingIsCompatible).
+            'append'  => ['species_family', 'utilisable', 'species_name', 'building_types'],
             'full'    => true,
         ],
         // ── Phase 3 : cultures, abattoir, provenderie ──
@@ -257,8 +259,12 @@ class SyncController extends Controller
             // Morceaux de découpe de l'ESPÈCE abattue (recette active, sinon
             // nomenclature) : l'écran terrain proposait les morceaux de volaille
             // — ailes et cuisses — pour un ordre d'ovins.
-            'append'  => ['cuts'],
+            // + BLOCAGE (SlaughterOrder::blocage : lot inactif, quarantaine,
+            // délai d'attente) — renvoyé chaque jour pour un ordre planifié,
+            // le délai d'attente se lève à la date sans que l'ordre change.
+            'append'  => ['cuts', 'blocage'],
             'with'    => ['batch.species'],
+            'toujours' => ['planifie'],
         ],
         'formulas' => [
             'model'   => \App\Models\Formula::class,
@@ -344,7 +350,10 @@ class SyncController extends Controller
                 // des fruits. L'application peut alors proposer le poids net, que
                 // T1 exige pour valoriser une récolte conservée — sinon le champ
                 // reste vide et la matière n'a pas de valeur.
-                'avg_unit_weight_kg', 'harvest_unit_label', 'updated_at'],
+                'avg_unit_weight_kg', 'harvest_unit_label',
+                // Culture désactivée du catalogue : le semis du bureau ne la
+                // propose plus (CropSpecies::active()) — le terrain non plus.
+                'is_active', 'updated_at'],
         ],
     ];
 

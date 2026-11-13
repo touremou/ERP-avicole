@@ -767,6 +767,10 @@ class SyncService
         }
 
         $data = $v->validated();
+        // Source désactivée : refusée, comme au bureau.
+        if ($motif = \App\Models\WaterSource::refusDeReleve((int) $data['water_source_id'])) {
+            return $this->invalid(['water_source_id' => [$motif]]);
+        }
         $uuid = $data['uuid'];
         unset($data['uuid']);
 
@@ -868,6 +872,11 @@ class SyncService
         return DB::transaction(function () use ($data) {
             if (\App\Models\MillProduction::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
                 return ['status' => 'already_synced'];
+            }
+
+            // Formule active, machines opérationnelles — la liste du bureau.
+            if ($refus = \App\Models\MillProduction::refusDeLancement((int) $data['formula_id'], $data['machine_ids'])) {
+                return $this->invalid(array_map(fn ($m) => [$m], $refus));
             }
 
             // Occupation machine (miroir du web) : un OP est « ouvert » tant

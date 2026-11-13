@@ -14,6 +14,7 @@ import { platform, compressImage } from '../../platform'
 import { t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
 import type { RefProvider } from '../../api/types'
+import { fournisseurActif } from '../../offline/eligibilite'
 
 /** Miroir de App\Models\SlaughterReception (référentiels stables). */
 const SANITARY_STATES = [
@@ -65,7 +66,7 @@ export function ReceptionScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void safeLoad('reception:fournisseurs', async () => setProviders(await db.ref_providers.orderBy('name').toArray()))
+    void safeLoad('reception:fournisseurs', async () => setProviders((await db.ref_providers.orderBy('name').toArray()).filter(fournisseurActif)))
   }, [])
 
   async function attachPhoto() {

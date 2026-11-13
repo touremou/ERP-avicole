@@ -11,6 +11,9 @@ use App\Traits\BelongsToFarm;
 
 class Incubator extends Model
 {
+    /** Couveuse qu'on ne charge pas : ni en maintenance, ni en panne. */
+    public const STATUTS_HORS_SERVICE = ['Maintenance', 'Panne'];
+
     use HasFactory, SoftDeletes, BelongsToFarm;
 
     protected $fillable = [

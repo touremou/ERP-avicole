@@ -87,7 +87,8 @@
                                     <select name="building_id" class="w-full p-3 bg-white rounded-xl border-none font-black text-xs shadow-inner italic outline-none">
                                         <option value="">Sélectionner...</option>
                                         @foreach($buildings as $b)
-                                            <option value="{{ $b->id }}" @disabled($b->remaining_places <= 0)>{{ $b->name }} ({{ $b->type }}, {{ $b->remaining_places }} place{{ $b->remaining_places > 1 ? 's' : '' }} restante{{ $b->remaining_places > 1 ? 's' : '' }}){{ $b->remaining_places <= 0 ? ' — complet' : '' }}</option>
+                                            @php $enVide = $b->refusDeMiseEnPlace() !== null; @endphp
+                                            <option value="{{ $b->id }}" @disabled($b->remaining_places <= 0 || $enVide)>{{ $b->name }} ({{ $b->type }}, {{ $b->remaining_places }} place{{ $b->remaining_places > 1 ? 's' : '' }} restante{{ $b->remaining_places > 1 ? 's' : '' }}){{ $b->remaining_places <= 0 ? ' — complet' : '' }}{{ $enVide ? ' — '.__('vide sanitaire en cours') : '' }}</option>
                                         @endforeach
                                     </select>
                                 </div>

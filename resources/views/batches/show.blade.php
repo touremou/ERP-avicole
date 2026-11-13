@@ -1246,15 +1246,21 @@
                             <select name="target_building_id" id="target_building_id" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
                                 <option value="">{{ __("-- Sélectionner --") }}</option>
                                 @foreach($buildings as $building)
+                                    @php
+                                        // Vide sanitaire en cours : refusé à l'arrivée (TransferBatch,
+                                        // Building::refusDeMiseEnPlace) — sauf sur place.
+                                        $enVide = $building->id != $batch->building_id && $building->refusDeMiseEnPlace() !== null;
+                                    @endphp
                                     <option value="{{ $building->id }}"
                                             data-type="{{ $building->type }}"
+                                            data-vide="{{ $enVide ? 1 : 0 }}"
                                             class="building-opt"
                                             {{ $building->id == $batch->building_id ? 'selected' : '' }}>
-                                        {{ $building->name }} ({{ __("Cap") }}: {{ $building->capacity }} | {{ __("Type") }}: {{ $building->type }}){{ $building->id == $batch->building_id ? ' — '.__('actuel') : '' }}
+                                        {{ $building->name }} ({{ __("Cap") }}: {{ $building->capacity }} | {{ __("Type") }}: {{ $building->type }}){{ $building->id == $batch->building_id ? ' — '.__('actuel') : '' }}{{ $enVide ? ' — '.__('vide sanitaire en cours') : '' }}
                                     </option>
                                 @endforeach
                             </select>
-                            <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* La liste s'adapte à la phase ; gardez le bâtiment actuel pour une transformation sur place") }}</p>
+                            <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* La liste s'adapte à la phase ; le bâtiment actuel reste proposé s'il convient à la nouvelle phase (transformation sur place)") }}</p>
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Date du Mouvement") }}</label>
@@ -1417,11 +1423,15 @@
 
             function filterMutationBuildings(targetType) {
                 if (! targetBuildingSelect) return;
+                // Le bâtiment actuel n'est plus forcé : le serveur refuse une
+                // transformation sur place dans un bâtiment incompatible avec
+                // la nouvelle phase (TransferBatchRequest) — la liste disait
+                // l'inverse. Un bâtiment en vide sanitaire est grisé.
                 targetBuildingSelect.querySelectorAll('.building-opt').forEach(opt => {
-                    const isCurrent = parseInt(opt.value, 10) === currentBuildingId;
                     const isMatch = isBuildingCompatible(opt.dataset.type, batchSpeciesSlug, targetType);
-                    opt.style.display = (isMatch || isCurrent) ? 'block' : 'none';
-                    opt.disabled = false;
+                    opt.style.display = isMatch ? 'block' : 'none';
+                    opt.disabled = ! isMatch || opt.dataset.vide === '1';
+                    if (opt.selected && opt.disabled) targetBuildingSelect.value = '';
                 });
             }
 

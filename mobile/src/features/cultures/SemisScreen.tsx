@@ -12,6 +12,7 @@ import { safeLoad } from '../../offline/safeLoad'
 import { enqueue } from '../../offline/sync'
 import { t } from '../../i18n'
 import type { RefPlot, RefCropCycle, RefCropSpecies } from '../../api/types'
+import { surfaceLibre } from '../../offline/eligibilite'
 
 const SEED_UNITS = ['kg', 'g', 'sac', 'plant', 'unité'] as const
 
@@ -31,9 +32,14 @@ export function SemisScreen() {
 
   useEffect(() => {
     void safeLoad('semis', async () => {
-      setPlots(await db.ref_plots.where('status').notEqual('inactive').toArray())
-      setCycles(await db.ref_crop_cycles.toArray())
-      setSpecies(await db.ref_crop_species.orderBy('name').toArray())
+      const toutesParcelles = await db.ref_plots.where('status').notEqual('inactive').toArray()
+      const tousCycles = await db.ref_crop_cycles.toArray()
+      // Parcelles qui ont encore de la surface libre — le bureau retire les
+      // autres (CropCycleController::create) ; le terrain les listait toutes.
+      setPlots(toutesParcelles.filter((p) => surfaceLibre(p, tousCycles) > 0))
+      setCycles(tousCycles)
+      // Cultures ACTIVES du catalogue, comme au bureau (CropSpecies::active()).
+      setSpecies((await db.ref_crop_species.orderBy('name').toArray()).filter((c) => c.is_active !== false))
     })
   }, [])
 
@@ -42,11 +48,7 @@ export function SemisScreen() {
   const remaining = useMemo(() => {
     const plot = plots.find((p) => p.id === Number(plotId))
     if (!plot) return null
-    const total = Number(plot.area_ha ?? 0)
-    const used = cycles
-      .filter((c) => c.plot_id === plot.id && (c.status === 'en_cours' || c.status === 'recolte'))
-      .reduce((sum, c) => sum + Number(c.area_used_ha ?? 0), 0)
-    return Math.max(0, total - used)
+    return surfaceLibre(plot, cycles)
   }, [plots, cycles, plotId])
 
   // Espèce du catalogue correspondant à la culture saisie. C'est elle qui porte
