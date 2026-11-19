@@ -2064,7 +2064,7 @@ class Batch extends Model
 
     /**
      * Ce lot reçoit-il de l'alimentation brute (herbe coupée, fanes…) ?
-     * Herbivores seulement (RawFeeding::FAMILLES) : l'écran « Nourrir (brut) »
+     * Herbivores et porcs (RawFeeding::FAMILLES) : l'écran « Nourrir (brut) »
      * était proposé pour un bassin de tilapias ou une bande de poulets.
      */
     public function accepteAlimentationBrute(): bool

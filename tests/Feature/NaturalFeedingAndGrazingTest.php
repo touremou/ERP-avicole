@@ -98,6 +98,19 @@ test('on ne nourrit pas des poulets au brut — ni au terrain ni au bureau', fun
         ->and(RawFeeding::where('batch_id', $this->poulets->id)->count())->toBe(0);
 });
 
+test('les porcs reçoivent l’alimentation brute (restes de cuisine), mais ne sortent pas au pâturage', function () {
+    $porc = Species::where('slug', 'porc')->firstOrFail();
+    $porcs = Batch::factory()->create(['farm_id' => $this->moutons->farm_id, 'building_id' => $this->moutons->building_id,
+        'status' => 'Actif', 'species_id' => $porc->id, 'initial_quantity' => 10, 'current_quantity' => 10,
+        // Le type de production porte l'espèce (sinon la fabrique retombe sur le poulet).
+        'production_type_id' => ProductionType::where('species_id', $porc->id)->value('id')]);
+    $porcs = $porcs->fresh();
+
+    expect($porcs->accepteAlimentationBrute())->toBeTrue()->and($porcs->acceptePaturage())->toBeFalse();
+    expect(operationDuBerger($this, 'raw_feeding.create', ['batch_id' => $porcs->id, 'resource' => 'Restes de cuisine',
+        'fed_at' => now()->subHour()->toIso8601String(), 'minutes_spent' => 15])['status'])->toBe('success');
+});
+
 // ── 2. PÂTURAGE ─────────────────────────────────────────────────────────
 
 test('une sortie en autonomie impute le temps de sortir et ramener ; gardée, toute la sortie', function () {

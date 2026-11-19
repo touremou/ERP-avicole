@@ -5265,7 +5265,6 @@
     "La présentation « :p » ne s’applique pas à cette espèce.": "The presentation “:p” does not apply to this species.",
     "Le lot :code n’est plus actif.": "Batch :code is no longer active.",
     "Le pâturage est réservé aux ruminants.": "Grazing is for ruminants only.",
-    "L’alimentation brute est réservée aux herbivores (ruminants, lapins).": "Raw feeding is for herbivores only (ruminants, rabbits).",
     "L’heure de retour doit suivre l’heure de départ.": "Return time must be after departure time.",
     "Main-d'œuvre imputée": "Labour charged",
     "Minutes passées à sortir puis ramener les bêtes (imputées au lot).": "Minutes spent taking the animals out and bringing them back (charged to the batch).",
@@ -5295,5 +5294,6 @@
     "— Hors parcelle de la ferme —": "— Outside farm plots —",
     "Gardé (berger)": "Herded (shepherd)",
     "En autonomie": "Unattended",
-    "Peaux / cuirs": "Skins / hides"
+    "Peaux / cuirs": "Skins / hides",
+    "L’alimentation brute est réservée aux herbivores (ruminants, lapins) et aux porcs.": "Raw feeding is for herbivores (ruminants, rabbits) and pigs only."
 }

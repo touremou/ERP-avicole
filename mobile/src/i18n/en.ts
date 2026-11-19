@@ -577,7 +577,7 @@ export const en: Record<string, string> = {
   'À noter au retour : où, combien de temps, et combien de têtes sont rentrées.': 'Record on return: where, how long, and how many heads came back.',
   '— Hors parcelle de la ferme —': '— Outside farm plots —',
   '✓ Sortie enregistrée': '✓ Outing saved',
-  'Aucun lot d’herbivores actif en local — synchronisez d’abord.': 'No active herbivore batch locally — sync first.',
+  'Aucun lot d’herbivores ni de porcs actif en local — synchronisez d’abord.': 'No active herbivore or pig batch locally — sync first.',
   'Ordre :order : :statut': 'Order :order: :statut',
   'Aucune action possible au terrain sur cet ordre.': 'No field action possible on this order.',
   'Abattage impossible aujourd’hui': 'Slaughter not possible today',

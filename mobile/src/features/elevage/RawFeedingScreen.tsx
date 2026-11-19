@@ -47,7 +47,7 @@ export function RawFeedingScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    // Herbivores seulement (Batch::accepteAlimentationBrute) : l'écran était
+    // Herbivores et porcs (Batch::accepteAlimentationBrute) : l'écran était
     // proposé pour un bassin de poissons ou une bande de poulets.
     void db.ref_batches.where('status').equals('Actif').toArray().then((l) => setBatches(l.filter((b) => estLotReel(b) && nourritAuBrut(b))))
     void db.ref_plots.toArray().then(setPlots)
@@ -114,7 +114,7 @@ export function RawFeedingScreen() {
         ))}
       </select>
       {batches.length === 0 && (
-        <p className="muted">{t('Aucun lot d’herbivores actif en local — synchronisez d’abord.')}</p>
+        <p className="muted">{t('Aucun lot d’herbivores ni de porcs actif en local — synchronisez d’abord.')}</p>
       )}
 
       <label htmlFor="resource">{t('Ressource donnée')}</label>

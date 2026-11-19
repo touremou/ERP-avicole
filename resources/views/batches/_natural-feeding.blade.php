@@ -2,7 +2,7 @@
     ALIMENTATION NATURELLE DU LOT — ce que le concentré ne dit pas.
 
     • Alimentation brute : l'ouvrier APPORTE herbe coupée, fanes, épluchures
-      (herbivores : RawFeeding::FAMILLES).
+      (herbivores et porcs : RawFeeding::FAMILLES).
     • Pâturage : les animaux vont la CHERCHER, gardés ou en autonomie
       (ruminants : GrazingSession::FAMILLES).
 
