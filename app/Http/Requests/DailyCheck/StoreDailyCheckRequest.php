@@ -27,7 +27,9 @@ class StoreDailyCheckRequest extends FormRequest
             'check_date'        => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'mortality'         => 'required|integer|min:0',
             'feed_consumed'     => 'required|numeric|min:0',
-            'feed_type'         => 'required|string|max:255',
+            // Exigé seulement s'il y a eu de l'aliment (DailyCheck::erreursDeSaisie) :
+            // un lot nourri au pâturage pointe 0 kg sans article.
+            'feed_type'         => 'nullable|string|max:255',
             'water_consumed'    => 'nullable|numeric|min:0',
             // Bornes physiques strictes (anti « fat-finger » : 220 au lieu de
             // 22.0 sur tablette gantée) — un bâtiment d'élevage vit entre
@@ -119,6 +121,17 @@ class StoreDailyCheckRequest extends FormRequest
         $validator->after(function ($validator) {
             $batch = Batch::find($this->input('batch_id'));
 
+            // UNE fiche par lot et par jour — et une seconde saisie n'écrase pas
+            // la première en silence : on corrige la fiche existante (édition).
+            // Le terrain refusait déjà (conflit) ; le bureau écrasait.
+            if ($this->filled('check_date') && \App\Models\DailyCheck::where('batch_id', $this->input('batch_id'))
+                    ->whereDate('check_date', $this->input('check_date'))->exists()) {
+                $validator->errors()->add('check_date', __('Un pointage existe déjà pour ce lot à cette date : corrigez-le depuis le journal (modifier).'));
+            }
+
+            foreach (\App\Models\DailyCheck::erreursDeSaisie($this->all()) as $champ => $message) {
+                $validator->errors()->add($champ, $message);
+            }
             if ($batch && ! $batch->accepteAliment($this->input('feed_type'))) {
                 $validator->errors()->add('feed_type', __("Cet aliment est destiné à un autre type d'élevage que ce lot."));
             }

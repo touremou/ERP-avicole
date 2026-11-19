@@ -439,6 +439,17 @@ class AppServiceProvider extends ServiceProvider
         // (direction, gérant, comptable, auditeur). Aucun module de plus :
         // l'administrateur règle ce droit dans la matrice qu'il connaît déjà.
         // Les prix de VENTE restent au Commerce (le vendeur en a besoin).
+        // RÉCEPTIONNER DE L'ALIMENT — la provenderie qui l'achète, ou le
+        // magasin qui le reçoit au portail (logistique). Le terrain acceptait
+        // les deux, le bureau la seule provenderie : un magasinier recevait le
+        // camion au téléphone mais pas sur la fiche du lot. Une règle, deux portes.
+        Gate::define('aliment.receptionner', function (?User $user) {
+            if (! $user) return false;
+
+            return Gate::forUser($user)->allows('provenderie.C')
+                || Gate::forUser($user)->allows('logistique.C');
+        });
+
         Gate::define('finances.voir', function (?User $user) {
             if (! $user) return false;
 

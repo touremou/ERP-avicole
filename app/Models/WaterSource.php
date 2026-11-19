@@ -63,7 +63,7 @@ class WaterSource extends Model
         $source = $sourceId ? static::find($sourceId) : null;
 
         return $source && ! $source->is_active
-            ? __('Cette source d’eau est désactivée : plus de relevé.')
+            ? __('Cette source d’eau est désactivée : plus de relevé ni de ravitaillement.')
             : null;
     }
 

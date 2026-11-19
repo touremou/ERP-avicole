@@ -375,4 +375,62 @@ class Sale extends Model
             'payment_status' => $status,
         ]);
     }
+
+    /** Unités admises par type de produit, pour une ligne en SAISIE LIBRE. */
+    public const UNITES_PAR_TYPE = [
+        'oeufs'             => ['alveole', 'unite'],
+        'animal_vif'        => ['tete', 'piece', 'kg'],
+        'volaille_vivante'  => ['tete', 'piece', 'kg'],
+        'carcasse'          => ['kg'],
+        'volaille_abattue'  => ['kg'],
+        'lait'              => ['litre'],
+        'aliment'           => ['kg', 'sac'],
+        'fumier'            => ['sac', 'voyage'],
+        'litieres'          => ['sac', 'unite', 'kg'],
+        'produits_finis'    => ['kg', 'tete', 'piece', 'unite'],
+        'materiel'          => ['unite', 'piece'],
+        // 'autre' : libre, pas de contrainte
+    ];
+
+    /**
+     * Ce qui empêche d'ENREGISTRER cette vente — par champ, vide si rien.
+     *
+     *   • au moins une ligne avec quantité ET prix > 0 ;
+     *   • unité cohérente avec le type de produit, pour une ligne en saisie
+     *     libre (une ligne du CATALOGUE — product_ref_id au bureau, product_id
+     *     au terrain, qui ne vend que du catalogue — porte l'unité de l'article) ;
+     *   • une facture porte la TVA.
+     *
+     * Ces règles vivaient dans StoreSaleRequest seulement : une vente à prix 0
+     * ou une facture sans TVA passait par la synchronisation du terrain.
+     *
+     * @return array<string, string>
+     */
+    public static function erreursDeSaisie(array $donnees, bool $lignesDuCatalogue = false): array
+    {
+        $erreurs = [];
+        $lignes = (array) ($donnees['items'] ?? []);
+
+        $ligneValable = collect($lignes)->contains(fn ($l) => (float) ($l['quantity'] ?? 0) > 0 && (float) ($l['unit_price'] ?? 0) > 0);
+        if (! $ligneValable) {
+            $erreurs['items'] = __('Au moins une ligne doit avoir une quantité et un prix supérieurs à 0.');
+        }
+
+        foreach ($lignes as $idx => $ligne) {
+            if (! empty($ligne['product_ref_id']) || ($lignesDuCatalogue && ! empty($ligne['product_id']))) {
+                continue;
+            }
+            $type = $ligne['product_type'] ?? null;
+            $unite = $ligne['unit'] ?? null;
+            if ($type && isset(self::UNITES_PAR_TYPE[$type]) && $unite && ! in_array($unite, self::UNITES_PAR_TYPE[$type], true)) {
+                $erreurs["items.{$idx}.unit"] = __('Unité « :unit » incohérente avec le type « :type ».', ['unit' => $unite, 'type' => $type]);
+            }
+        }
+
+        if (($donnees['type'] ?? null) === 'facture' && (float) ($donnees['tax_rate'] ?? 0) <= 0) {
+            $erreurs['tax_rate'] = __('La TVA est obligatoire pour une facture (:taux%).', ['taux' => setting('general.tva_rate', 18)]);
+        }
+
+        return $erreurs;
+    }
 }

@@ -630,7 +630,8 @@ Route::middleware(['auth'])->group(function () {
         // appelle : un ravitaillement se saisit depuis la fiche de bande, où il a
         // son contexte (lot, phase, secteur). Deux routes qui n'auraient su que
         // renvoyer une erreur.
-        Route::post('/', 'store')->name('store')->middleware('can:C');
+        // Provenderie OU magasin (Gate aliment.receptionner), comme au terrain.
+        Route::post('/', 'store')->name('store')->middleware('can:aliment.receptionner');
         Route::get('/{feed_purchase}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{feed_purchase}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{feed_purchase}', 'destroy')->name('destroy')->middleware('can:S');

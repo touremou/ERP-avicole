@@ -11,7 +11,7 @@ class StoreFeedPurchaseRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('C');
+        return Gate::allows('aliment.receptionner');
     }
 
     public function rules(): array

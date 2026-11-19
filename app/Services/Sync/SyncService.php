@@ -255,13 +255,17 @@ class SyncService
             'uuid'                 => 'required|uuid',
             'batch_id'             => ['required', 'integer', $this->farmScopedExists('batches')],
             'check_date'           => 'required|date',
+            // Mortalité et aliment ABSENTS = 0 : des pointages d'anciennes
+            // versions attendent encore dans les files d'envoi, l'écran actuel
+            // envoie toujours les deux. L'article n'est exigé que s'il y a eu
+            // de l'aliment (DailyCheck::erreursDeSaisie), comme au bureau.
             'mortality'            => 'nullable|integer|min:0',
             'avg_weight'           => 'nullable|numeric|min:0',
             'water_consumed'       => 'nullable|numeric|min:0',
             'feed_consumed'        => 'nullable|numeric|min:0',
-            'feed_type'            => 'nullable|string|max:100',
+            'feed_type'            => 'nullable|string|max:255',
             'humidity'             => 'nullable|numeric|min:0|max:100',
-            'observations'         => 'nullable|string|max:1000',
+            'observations'         => 'nullable|string|max:2000',
             'qty_quarantine_in'    => 'nullable|integer|min:0',
             'qty_quarantine_out'   => 'nullable|integer|min:0',
             'qty_sorted_out'       => 'nullable|integer|min:0',
@@ -281,6 +285,9 @@ class SyncService
         }
 
         $data = $v->validated();
+        if ($erreurs = DailyCheck::erreursDeSaisie($data)) {
+            return $this->invalid(array_map(fn ($m) => [$m], $erreurs));
+        }
         $data['feed_type'] = $data['feed_type'] ?? '';
 
         // Aliment : celui du secteur du lot (Batch::accepteAliment), comme au bureau.
@@ -1025,6 +1032,8 @@ class SyncService
     // ─────────────────────────────────────────────────────────────
     private function feedPurchaseCreate(array $payload): array
     {
+        // = Gate « aliment.receptionner » du bureau, écrite en clair : le miroir
+        // mobile (offline/access.ts) se vérifie module par module.
         if (Gate::denies('provenderie.C') && Gate::denies('logistique.C')) {
             return $this->denied();
         }
@@ -1275,6 +1284,12 @@ class SyncService
                 return ['status' => 'already_synced'];
             }
 
+            // Montant, unités, TVA d'une facture : les règles du bureau
+            // (Sale::erreursDeSaisie). Le terrain ne vend que du catalogue.
+            if ($erreurs = Sale::erreursDeSaisie($validated, lignesDuCatalogue: true)) {
+                return $this->invalid(array_map(fn ($m) => [$m], $erreurs));
+            }
+
             // Crédit client : même règle que le formulaire du bureau, qui était
             // jusqu'ici le seul à l'appliquer — alors que ce chemin-ci est celui
             // des techniciens. Refus DÉFINITIF (validation_failed) et non
@@ -1323,6 +1338,9 @@ class SyncService
             'label'          => 'required|string|max:255',
             'amount'         => 'required|numeric|min:1',
             'expense_date'   => 'required|date|before_or_equal:today',
+            // Facultatif ici seulement pour les saisies d'anciennes versions
+            // encore en file : l'écran actuel le présélectionne (« espèces »)
+            // et l'envoie toujours, choix visible de l'agent.
             'payment_method' => ['nullable', Rule::in(array_keys(\App\Models\Expense::PAYMENT_METHODS))],
             'batch_id'       => ['nullable', 'integer', $this->farmScopedExists('batches')],
             'supplier_name'  => 'nullable|string|max:255',
@@ -1382,7 +1400,8 @@ class SyncService
             // et le terrain retentait indéfiniment.
             'code'                   => ['required', 'string', 'max:50',
                 \Illuminate\Validation\Rule::unique('batches', 'code')->ignore($payload['uuid'] ?? null, 'uuid')],
-            'type'                   => 'required|string',
+            // Liste FERMÉE, comme au bureau (ProductionType::slugsAdmis).
+            'type'                   => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Models\ProductionType::slugsAdmis())],
             // Le TYPE DE PRODUCTION exact (et donc l'espèce). Le slug « type »
             // seul était ambigu (« chair » : poulet, dinde, caille…) et
             // n'était même pas enregistré : un lot de PONDEUSES mis en lot au
@@ -1428,9 +1447,16 @@ class SyncService
 
         // Le terrain ne LANCE que les espèces et types activés — la règle du
         // bureau. Un lot déjà en place (même uuid) reste modifiable.
-        if (! Batch::withoutGlobalScopes()->where('uuid', $validated['uuid'])->exists()
-            && $motif = \App\Models\ProductionType::refusDeMiseEnLot($productionType)) {
+        $nouveauLot = ! Batch::withoutGlobalScopes()->where('uuid', $validated['uuid'])->exists();
+        if ($nouveauLot && $motif = \App\Models\ProductionType::refusDeMiseEnLot($productionType)) {
             return $this->invalid(['production_type_id' => [$motif]]);
+        }
+
+        // Un lot se LANCE avec au moins un sujet vivant (StoreBatchRequest :
+        // qty_alive min:1). Le terrain créait un lot « Actif » à 0 sujet. Un
+        // lot existant peut, lui, tomber à 0 (soldé).
+        if ($nouveauLot && (int) $validated['current_quantity'] < 1) {
+            return $this->invalid(['current_quantity' => [__('Un lot se lance avec au moins un sujet vivant.')]]);
         }
 
         $validated['production_type_id'] = $productionType->id;
@@ -2401,6 +2427,12 @@ class SyncService
 
             $action = app(\App\Actions\Slaughter\RecordCcp::class);
 
+            // Mesures exigées par le CCP, comme au bureau (RecordCcp::erreursDeMesures) :
+            // sans elles, evaluate() retombait sur « conforme ».
+            if ($erreurs = \App\Actions\Slaughter\RecordCcp::erreursDeMesures($data['ccp'], $data['mesures'], $data['conforme'] ?? null)) {
+                return $this->invalid(array_map(fn ($m) => [$m], $erreurs));
+            }
+
             // Non conforme (évaluation SERVEUR) sans action corrective :
             // refus définitif AVANT toute écriture — le plan HACCP exige
             // l'action en face du constat.
@@ -2856,6 +2888,11 @@ class SyncService
             }
 
             $source = \App\Models\WaterSource::lockForUpdate()->find($data['water_source_id']);
+
+            // Source désactivée : ni relevé ni ravitaillement (WaterSource::refusDeReleve).
+            if ($motif = \App\Models\WaterSource::refusDeReleve($source->id)) {
+                return $this->invalid(['water_source_id' => [$motif]]);
+            }
 
             // Anti-débordement : une citerne ne se remplit pas au-delà de sa
             // capacité → conflict (bac « À corriger »), message explicite.

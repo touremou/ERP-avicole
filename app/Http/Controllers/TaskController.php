@@ -203,6 +203,13 @@ class TaskController extends Controller
             return back()->with('error', 'Non autorisé.');
         }
 
+        // Déjà faite : rien à refaire. Re-cocher écrasait QUI l'avait faite et
+        // QUAND, relançait la validation d'étape du protocole et la journalisait
+        // à nouveau. Le terrain répond déjà « déjà synchronisé ».
+        if ($task->status === 'fait') {
+            return back()->with('info', __('Cette tâche est déjà faite.'));
+        }
+
         /*
          * VERROU DE PRISE — la deuxième règle que seule la synchro tenait.
          *
