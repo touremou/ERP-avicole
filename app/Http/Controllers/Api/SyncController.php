@@ -268,8 +268,10 @@ class SyncController extends Controller
             // le délai d'attente se lève à la date sans que l'ordre change.
             // + PRESENTATIONS et BYPRODUCT_TYPES de l'espèce : le terrain
             // proposait PAC/effilé et les plumes pour un ordre d'ovins.
-            'append'  => ['cuts', 'blocage', 'presentations', 'byproduct_types'],
-            'with'    => ['batch.species'],
+            // + CARCASSE_A_DECOUPER : la découpe ne liste plus un ordre déjà
+            // entièrement découpé (SlaughterOrder::carcasseADecouper).
+            'append'  => ['cuts', 'blocage', 'presentations', 'byproduct_types', 'carcasse_a_decouper'],
+            'with'    => ['batch.species', 'result'],
             'toujours' => ['planifie'],
         ],
         'formulas' => [
@@ -293,6 +295,12 @@ class SyncController extends Controller
             'gate'    => 'provenderie.L',
             'columns' => ['id', 'batch_number', 'formula_id', 'quantity_produced', 'status',
                           'operator_id', 'supervisor_id', 'started_at', 'updated_at'],
+            // + BLOCAGE DE CLÔTURE (machine en panne, MillProduction::blocageDeCloture),
+            // renvoyé à chaque synchro pour un OP ouvert : la panne ou la
+            // réparation d'une machine ne change pas la date de l'OP.
+            'append'  => ['blocage_de_cloture'],
+            'with'    => ['machines'],
+            'toujours' => ['Planifié', 'En cours'],
         ],
         // T2 — Lots en conservation OUVERTS : le contrôle périodique se fait au
         // magasin, balance en main. On descend aussi l'objectif de prix et

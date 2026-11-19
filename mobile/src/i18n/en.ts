@@ -546,6 +546,8 @@ export const en: Record<string, string> = {
   'Pointage du jour': 'Today\'s daily check',
   'Choisissez le lot à pointer.': 'Choose the batch to check.',
   'Autres': 'Others',
+  'Reste à découper sur cet ordre : :kg kg': 'Left to cut on this order: :kg kg',
+  'Clôture impossible': 'Closing not possible',
   'Aujourd\'hui, hors stock': 'Today, outside stock',
   ':n tête(s) manquante(s) au retour du pâturage, cumulées.': ':n head(s) missing on return from grazing, cumulated.',
   'Sortie au pâturage': 'Grazing outing',

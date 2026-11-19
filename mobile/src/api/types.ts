@@ -794,6 +794,8 @@ export interface RefSlaughterOrder {
   presentations?: { code: string; label: string; min: number; max: number }[]
   /** Sous-produits collectés pour l'espèce (SlaughterOrder::byproductTypes). */
   byproduct_types?: string[]
+  /** Carcasse restant à découper, kg (SlaughterOrder::carcasseADecouper). */
+  carcasse_a_decouper?: number
   /**
    * Morceaux de découpe de l'ESPÈCE abattue (SlaughterOrder::getCutsAttribute).
    * Absent d'un serveur plus ancien : repli sur les morceaux de volaille.
@@ -862,6 +864,8 @@ export interface RefMillProduction {
   supervisor_id: number | null
   started_at: string | null
   updated_at: string
+  /** Pourquoi l'OP ne se clôture pas (machine en panne — MillProduction::blocageDeCloture). */
+  blocage_de_cloture?: string | null
 }
 
 export interface PhotoUploadResponse {

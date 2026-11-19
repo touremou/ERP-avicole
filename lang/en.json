@@ -5295,5 +5295,8 @@
     "Gardé (berger)": "Herded (shepherd)",
     "En autonomie": "Unattended",
     "Peaux / cuirs": "Skins / hides",
-    "L’alimentation brute est réservée aux herbivores (ruminants, lapins) et aux porcs.": "Raw feeding is for herbivores (ruminants, rabbits) and pigs only."
+    "L’alimentation brute est réservée aux herbivores (ruminants, lapins) et aux porcs.": "Raw feeding is for herbivores (ruminants, rabbits) and pigs only.",
+    "Clôture bloquée": "Closing blocked",
+    "Clôture impossible.": "Closing not possible.",
+    "Machine en panne : :noms — à réparer (statut « Opérationnel ») avant de clôturer.": "Machine out of order: :noms — repair it (status “Operational”) before closing."
 }

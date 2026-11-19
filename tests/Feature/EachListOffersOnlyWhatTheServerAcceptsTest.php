@@ -109,3 +109,24 @@ test('les cultures du catalogue descendent avec leur état d’activation', func
         expect($espece)->toHaveKey('is_active');
     }
 });
+
+test('un OP dont une machine est en panne est marqué « clôture bloquée », et le reste après réparation', function () {
+    $formule = Formula::factory()->create(['is_active' => true]);
+    $machine = MillMachine::factory()->create(['name' => 'Broyeur B', 'status' => 'Opérationnel']);
+    $chef = Employee::factory()->create(['status' => 'Actif']);
+    pousserUneOperation($this, 'mill_production.create',
+        ['formula_id' => $formule->id, 'machine_ids' => [$machine->id], 'nb_bags' => 5, 'supervisor_id' => $chef->id]);
+    $op = MillProduction::firstOrFail();
+
+    $machine->update(['status' => 'En Panne']);
+    expect($op->fresh()->blocageDeCloture())->toContain('Broyeur B');
+
+    // La panne ne change pas la date de l'OP : il redescend quand même.
+    $this->travel(1)->days();
+    $ligne = collect($this->getJson('/api/v1/sync/pull?since='.urlencode(now()->subHour()->toIso8601String()))
+        ->assertOk()->json('entities.mill_productions.upserts'))->firstWhere('id', $op->id);
+    expect($ligne['blocage_de_cloture'])->toContain('Broyeur B');
+
+    $machine->update(['status' => 'Opérationnel']);
+    expect($op->fresh()->blocageDeCloture())->toBeNull();
+});

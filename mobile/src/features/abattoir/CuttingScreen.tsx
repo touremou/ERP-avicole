@@ -62,7 +62,8 @@ export function CuttingScreen() {
     // Cycle clôturé = plus de découpe (le serveur refuse aussi au push).
     void db.ref_slaughter_orders
       .where('status').equals('termine')
-      .filter((o) => !o.closed_at)
+      // …ni un ordre entièrement découpé (SlaughterOrder::carcasseADecouper).
+      .filter((o) => !o.closed_at && (o.carcasse_a_decouper === undefined || o.carcasse_a_decouper > 0))
       .reverse().sortBy('planned_date')
       .then((found) => setOrders(found.slice(0, 30)))
   }, [])
@@ -89,7 +90,10 @@ export function CuttingScreen() {
     }
   }
 
-  const canSubmit = Boolean(orderId) && input > 0 && totalOut > 0 && !over
+  // Carcasse restante de l'ordre (serveur) : au-delà, la découpe serait refusée.
+  const restant = orders.find((o) => String(o.id) === orderId)?.carcasse_a_decouper
+  const auDelaDuRestant = restant !== undefined && input > restant + 0.001
+  const canSubmit = !auDelaDuRestant && Boolean(orderId) && input > 0 && totalOut > 0 && !over
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -158,6 +162,9 @@ export function CuttingScreen() {
         onChange={(e) => setInputKg(e.target.value)}
         placeholder={t('ex. 15.0')}
       />
+      {restant !== undefined && (
+        <p className={auDelaDuRestant ? 'error' : 'muted'}>{t('Reste à découper sur cet ordre : :kg kg', { kg: restant })}</p>
+      )}
 
       {/* JAUGE DE PROGRESSION : se remplit vers le poids entré. */}
       {input > 0 && (
