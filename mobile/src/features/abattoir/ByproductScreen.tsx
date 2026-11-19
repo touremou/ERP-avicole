@@ -9,11 +9,13 @@ import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { t } from '../../i18n'
 import type { RefSlaughterOrder } from '../../api/types'
+import { sousProduitAdmis } from '../../offline/eligibilite'
 
 const TYPES = [
   { value: 'sang', label: '🩸 Sang' },
   { value: 'plumes', label: '🪶 Plumes' },
   { value: 'visceres', label: '🫀 Viscères' },
+  { value: 'peaux', label: '🐑 Peaux / cuirs' },
   { value: 'autre', label: '📦 Autre' },
 ] as const
 
@@ -44,6 +46,12 @@ export function ByproductScreen() {
   }, [])
 
   const qty = Number(quantity)
+  // Types de l'espèce de l'ordre choisi (plus de plumes pour un ovin).
+  const ordreChoisi = orders.find((o) => String(o.id) === orderId)
+  const typesVisibles = TYPES.filter((o) => sousProduitAdmis(o.value, ordreChoisi))
+  useEffect(() => {
+    if (!typesVisibles.some((o) => o.value === type)) setType(typesVisibles[0]?.value ?? 'autre')
+  }, [orderId, orders]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -84,7 +92,7 @@ export function ByproductScreen() {
 
       <label>{t('Type')}</label>
       <div className="chip-row">
-        {TYPES.map((option) => (
+        {typesVisibles.map((option) => (
           <button
             key={option.value}
             type="button"

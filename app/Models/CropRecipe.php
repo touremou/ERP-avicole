@@ -69,4 +69,56 @@ class CropRecipe extends Model
             ? $this->items->sum('quantity')
             : $this->items()->sum('quantity'));
     }
+
+    // ─── CULTURE TRANSFORMÉE ───
+
+    /** Intrants de la recette (noms libres : « Manioc frais », « Maïs grain »). */
+    public function intrants(): array
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+
+        return $items->pluck('input_product')->filter()->values()->all();
+    }
+
+    /**
+     * Cette recette transforme-t-elle cette culture ?
+     *
+     * L'atelier proposait toutes les recettes quelle que soit la récolte —
+     * « Gari » pour une récolte de maïs. Les intrants étant des noms libres,
+     * on compare les mots à leur racine (4 premières lettres, sans accents) :
+     * « Manioc » ↔ « Manioc frais », « Maïs » ↔ « Farine de mais »,
+     * « Palmier à huile » ↔ « Régimes de palme ». Une recette sans intrant
+     * déclaré convient à tout (rien pour en juger). Miroir terrain :
+     * mobile/src/offline/eligibilite.ts (recetteConvient).
+     */
+    public function convientA(?string $culture): bool
+    {
+        $intrants = $this->intrants();
+        if ($intrants === [] || blank($culture)) {
+            return true;
+        }
+
+        $racines = static::racines($culture);
+        foreach ($intrants as $intrant) {
+            foreach (static::racines($intrant) as $racine) {
+                if (in_array($racine, $racines, true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** Racines des mots d'au moins 3 lettres (4 premières lettres, sans accents). */
+    public static function racines(string $texte): array
+    {
+        $plat = mb_strtolower(\Illuminate\Support\Str::ascii($texte));
+        $mots = preg_split('/[^a-z0-9]+/', $plat, -1, PREG_SPLIT_NO_EMPTY);
+
+        return array_values(array_unique(array_map(
+            fn (string $mot) => substr($mot, 0, 4),
+            array_filter($mots, fn (string $mot) => strlen($mot) >= 3),
+        )));
+    }
 }

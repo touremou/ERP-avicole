@@ -122,6 +122,21 @@ return [
     ],
 
     /*
+    | Sous-produits COLLECTÉS par famille (types de SlaughterByproduct::TYPES).
+    | La collecte proposait « Plumes » pour un ordre d'ovins ou de porcs, et
+    | ignorait les peaux des ruminants. Source unique : registre E9 du bureau,
+    | écrans du terrain (servis avec l'ordre) et validation.
+    */
+    'byproduct_types' => [
+        'volaille'       => ['sang', 'plumes', 'visceres', 'autre'],
+        'petit_ruminant' => ['sang', 'visceres', 'peaux', 'autre'],
+        'grand_ruminant' => ['sang', 'visceres', 'peaux', 'autre'],
+        'porcin'         => ['sang', 'visceres', 'autre'],
+        'lagomorphe'     => ['sang', 'visceres', 'peaux', 'autre'],
+        'aquaculture'    => ['visceres', 'autre'],
+    ],
+
+    /*
     | Présentations de la carcasse choisies À L'EXÉCUTION (gammes de sortie).
     | Chacune nomme l'article de stock produit et ajuste la bande de rendement
     | attendue (yield_delta, en points, ajouté à la bande carcasse de l'espèce) :
@@ -136,17 +151,22 @@ return [
             'yield_delta' => 0,
             'to_cut'      => true,
         ],
+        // PAC et effilé sont des gammes de VOLAILLE : proposées pour un ordre
+        // d'ovins, elles produisaient un article « Mouton PAC ». `familles`
+        // absent = toutes les espèces (cf. ButcheryNomenclature::presentationsFor).
         'pac' => [
             'label'       => 'PAC — prêt-à-cuire (vidé, emballé)',
             'name'        => 'PAC',
             'yield_delta' => 0,
             'to_cut'      => false,
+            'familles'    => ['volaille'],
         ],
         'effile' => [
             'label'       => 'Effilé — têtes/pattes conservées',
             'name'        => 'Effilé',
             'yield_delta' => 12,
             'to_cut'      => false,
+            'familles'    => ['volaille'],
         ],
     ],
     'default_presentation' => 'brut',

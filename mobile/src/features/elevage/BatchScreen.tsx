@@ -11,6 +11,7 @@ import { t } from '../../i18n'
 import type { RefBatch, RefBuilding, RefProductionType } from '../../api/types'
 import { BatchHistory } from './BatchHistory'
 import { accepteEvenementDElevage, motifSansEvenement } from '../../offline/statutsDeLot'
+import { nourritAuBrut, sortAuPaturage } from '../../offline/eligibilite'
 
 export function BatchScreen() {
   const { batchId } = useParams()
@@ -92,6 +93,28 @@ export function BatchScreen() {
         </div>
       </div>
 
+      {/* Alimentation naturelle (Batch::alimentationNaturelleTerrain) : ce que
+          l'indice de consommation, qui ne compte que le concentré, ne dit pas. */}
+      {batch.alimentation_naturelle_terrain && (
+        <div className="kpi-row">
+          <div className="kpi">
+            <div className="kpi-val">{batch.alimentation_naturelle_terrain.jours_naturels}</div>
+            <div className="kpi-lab">{t('jours nourris au naturel / :n', { n: batch.alimentation_naturelle_terrain.jours_suivis })}</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-val">{batch.alimentation_naturelle_terrain.heures_paturage}</div>
+            <div className="kpi-lab">{t('h de pâturage (:n sorties)', { n: batch.alimentation_naturelle_terrain.sorties })}</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-val">{batch.alimentation_naturelle_terrain.distributions}</div>
+            <div className="kpi-lab">{t('distributions brutes')}</div>
+          </div>
+        </div>
+      )}
+      {(batch.alimentation_naturelle_terrain?.manquants ?? 0) > 0 && (
+        <p className="error">⚠️ {t(':n tête(s) manquante(s) au retour du pâturage, cumulées.', { n: batch.alimentation_naturelle_terrain?.manquants ?? 0 })}</p>
+      )}
+
       {motifFerme && <p className="muted">{t(motifFerme)}</p>}
 
       {ouvert && (
@@ -104,11 +127,19 @@ export function BatchScreen() {
           )}
 
           {/* Alimentation brute (herbe, fanes…) : ni formule ni stock, le temps
-              passé est imputé au lot (RawFeedingScreen). */}
-          {can('elevage', 'C') && (
+              passé est imputé au lot (RawFeedingScreen). Herbivores seulement. */}
+          {can('elevage', 'C') && nourritAuBrut(batch) && (
             <Link to={`/elevage/nourrir-brut/${batch.id}`} className="task-card">
               <span className="task-title">🌿 {t('Nourrir (brut)')}</span>
               <span className="task-meta">{t('herbe · fanes · temps passé')}</span>
+            </Link>
+          )}
+
+          {/* Pâturage : les ruminants vont chercher eux-mêmes (GrazingScreen). */}
+          {can('elevage', 'C') && sortAuPaturage(batch) && (
+            <Link to={`/elevage/paturage/${batch.id}`} className="task-card">
+              <span className="task-title">☀️ {t('Sortie au pâturage')}</span>
+              <span className="task-meta">{t('ruminants · têtes au retour')}</span>
             </Link>
           )}
 

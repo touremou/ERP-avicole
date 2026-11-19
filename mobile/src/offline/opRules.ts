@@ -464,6 +464,26 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     optNum(p, 'quantity', 'Quantité', e, 0)
     return e
   },
+  // Pâturage : lot, heures, mode et comptage obligatoires ; retour après le
+  // départ ; pas plus de rentrées que de sorties (RecordGrazing). L'effectif
+  // du lot reste AUTORITAIRE serveur (il bouge entre deux synchros).
+  'grazing.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'batch_id', 'Lot', e)
+    reqStr(p, 'mode', 'Mode', e)
+    const depart = Date.parse(String(p.left_at ?? ''))
+    const retour = Date.parse(String(p.returned_at ?? ''))
+    if (Number.isNaN(depart) || Number.isNaN(retour) || retour <= depart) {
+      e.push('L’heure de retour doit suivre l’heure de départ.')
+    }
+    const sorties = num(p.heads_out)
+    const rentrees = num(p.heads_back)
+    if (sorties === null || sorties < 1) e.push('Têtes sorties : au moins une.')
+    if (rentrees === null || rentrees < 0 || (sorties !== null && rentrees > sorties)) {
+      e.push('Plus de têtes rentrées que de têtes sorties.')
+    }
+    return e
+  },
   'task.dispatch': (p) => {
     const e: string[] = []
     reqStr(p, 'title', 'Intitulé', e)

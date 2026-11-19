@@ -51,6 +51,15 @@ class SlaughterService
             // création de l'ordre (mortalité, ventes) et une quarantaine a pu
             // être posée entre-temps.
             $batch = $order->batch_id ? Batch::lockForUpdate()->find($order->batch_id) : null;
+
+            // Gamme d'une AUTRE espèce (PAC ou effilé pour des ovins) : refusée.
+            // Elle produisait un article « Mouton PAC » dans le stock.
+            if (! array_key_exists($presentation, ButcheryNomenclature::presentationsFor($batch?->species))) {
+                throw new Exception(__('La présentation « :p » ne s’applique pas à cette espèce.', [
+                    'p' => ButcheryNomenclature::presentation($presentation)['label'],
+                ]));
+            }
+
             if ($batch) {
                 if ($batch->status !== 'Actif') {
                     throw new Exception("Le lot {$batch->code} n'est plus actif (statut : {$batch->status}) — abattage impossible.");

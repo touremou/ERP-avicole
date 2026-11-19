@@ -992,42 +992,9 @@
                 </div>
             </div>
 
-            {{-- ALIMENTATION BRUTE — herbe coupée, fanes… : preuves de travail (qui,
-                 quand, quoi, combien de temps). Le coût n'apparaît qu'à qui voit l'argent. --}}
-            @php $rawFeedings = $batch->rawFeedings()->with(['employee:id,first_name,last_name', 'user:id,name', 'plot:id,name'])->limit(30)->get(); @endphp
-            @if($rawFeedings->isNotEmpty())
-            <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden mb-8 not-italic">
-                <div class="px-8 py-5 border-b border-slate-50 flex items-center justify-between">
-                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">🌿 {{ __('Alimentation brute') }}</h3>
-                    <span class="text-[10px] font-black text-slate-400">{{ __(':n distribution(s) · :h h', ['n' => $batch->rawFeedings()->count(), 'h' => round($batch->rawFeedings()->sum('minutes_spent') / 60, 1)]) }}</span>
-                </div>
-                <table class="w-full text-left text-xs">
-                    <thead><tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                        <th class="px-8 py-3">{{ __('Date') }}</th><th class="px-3 py-3">{{ __('Ressource') }}</th>
-                        <th class="px-3 py-3 text-right">{{ __('Quantité') }}</th><th class="px-3 py-3 text-right">{{ __('Temps') }}</th>
-                        <th class="px-3 py-3">{{ __('Par') }}</th>
-                        @can('finances.voir')<th class="px-8 py-3 text-right">{{ __('Coût') }}</th>@endcan
-                    </tr></thead>
-                    <tbody class="divide-y divide-slate-50">
-                        @foreach($rawFeedings as $rf)
-                        <tr>
-                            <td class="px-8 py-3 text-slate-500">{{ $rf->fed_at->format('d/m H:i') }}</td>
-                            <td class="px-3 py-3 font-bold text-slate-700">{{ $rf->resource }}@if($rf->plot)<span class="text-[9px] text-emerald-600 ml-1">· {{ $rf->plot->name }}</span>@endif</td>
-                            <td class="px-3 py-3 text-right">{{ $rf->quantity !== null ? rtrim(rtrim(number_format($rf->quantity, 2, ',', ' '), '0'), ',') . ' ' . __($rf->quantity_unit) : '—' }}</td>
-                            <td class="px-3 py-3 text-right">{{ $rf->minutes_spent }} min</td>
-                            <td class="px-3 py-3 text-slate-500">{{ $rf->employee ? $rf->employee->first_name . ' ' . $rf->employee->last_name : ($rf->user?->name ?? '—') }}</td>
-                            @can('finances.voir')
-                            <td class="px-8 py-3 text-right font-black {{ (float) $rf->labor_cost_gnf > 0 ? 'text-slate-700' : 'text-amber-500' }}"
-                                title="{{ (float) $rf->labor_cost_gnf > 0 ? '' : __('Coût horaire inconnu : renseigner le salaire ou le coût horaire de l’employé') }}">
-                                {{ (float) $rf->labor_cost_gnf > 0 ? number_format($rf->labor_cost_gnf, 0, ',', ' ') . ' ' . currency() : '—' }}
-                            </td>
-                            @endcan
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @endif
+            {{-- ALIMENTATION NATURELLE — brute (apportée) et pâturage (cherchée) :
+                 bilan, saisie au bureau, journaux. Cf. batches/_natural-feeding. --}}
+            @include('batches._natural-feeding')
 
             {{-- RÉPARTITION DES COÛTS — le coût de revient du lot, poste par poste.
                  La main-d'œuvre de l'alimentation locale y a sa propre catégorie,

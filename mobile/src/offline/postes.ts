@@ -35,6 +35,7 @@ const SOIN = T('/elevage/soin', '💉', 'Soin / vaccination', 'produit · dose �
 const TRAITE = T('/elevage/traite', '🥛', 'Traite du jour', 'matin · soir')
 const RELEVE = T('/ressources/releve', '💧', 'Relevé eau / énergie', 'compteurs · citernes')
 const NOURRIR_BRUT = T('/elevage/nourrir-brut', '🌿', 'Nourrir (brut)', 'herbe · fanes · temps passé')
+const PATURAGE = T('/elevage/paturage', '☀️', 'Sortie au pâturage', 'ruminants · têtes au retour')
 const TACHES = T('/taches', '✅', 'Mes tâches', 'du jour et en retard')
 const SAISIES = T('/nouvelle', '➕', 'Toutes mes saisies', 'collectes · récoltes · ordres')
 const RECEPTION_ALIMENT = T('/logistique/reception-aliment', '🚚', 'Réception d’aliment', 'livraison · sacs · fournisseur')
@@ -54,7 +55,7 @@ export const ESPACES_D_ENCADREMENT: Espace[] = ['direction', 'gerant']
 const PERSONNELLES = new Set([TACHES.to, SAISIES.to, SEMAINE.to])
 
 export const POSTES: Record<Espace, Tuile[]> = {
-  terrain: [POINTAGE, NOURRIR_BRUT, SCANNER, SOIN, TRAITE, RELEVE, TACHES],
+  terrain: [POINTAGE, NOURRIR_BRUT, PATURAGE, SCANNER, SOIN, TRAITE, RELEVE, TACHES],
   elevage: [
     POINTAGE, SCANNER, SOIN,
     T('/elevage/couvoir', '🐣', 'Couvoir', 'mirage · éclosion'),
@@ -171,7 +172,7 @@ export const CATALOGUE: Rubrique[] = [
   {
     titre: 'Élevage',
     tuiles: [
-      POINTAGE, NOURRIR_BRUT, SCANNER, SOIN,
+      POINTAGE, NOURRIR_BRUT, PATURAGE, SCANNER, SOIN,
       T('/elevage/mise-en-lot', '🐔', 'Mise en lot', 'arrivée d’une bande'),
       T('/elevage/couvoir', '🐣', 'Couvoir', 'mirage · éclosion'),
       TRAITE,

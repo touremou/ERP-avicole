@@ -87,6 +87,18 @@ class SlaughterOrder extends Model
         return $lot->blocageSanitaire();
     }
 
+    /** Gammes de sortie de l'espèce, avec leur bande de rendement (terrain). */
+    public function presentations(): array
+    {
+        return \App\Services\ButcheryNomenclature::presentationsPourLeTerrain($this->batch?->species);
+    }
+
+    /** Types de sous-produits collectés pour l'espèce (codes). */
+    public function byproductTypes(): array
+    {
+        return array_keys(\App\Services\ButcheryNomenclature::byproductTypesFor($this->batch?->species));
+    }
+
     public function getCutsAttribute(): array
     {
         return collect(\App\Services\ButcheryNomenclature::effectiveCutsForSpecies($this->batch?->species))

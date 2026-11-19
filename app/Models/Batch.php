@@ -440,6 +440,12 @@ class Batch extends Model
         return $this->hasMany(\App\Models\RawFeeding::class)->latest('fed_at');
     }
 
+    /** Sorties au pâturage (ruminants en autonomie ou gardés). */
+    public function grazingSessions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\GrazingSession::class)->latest('left_at');
+    }
+
     /** Imputations analytiques (main-d'œuvre…) — hors trésorerie. */
     public function costAllocations(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
@@ -2050,6 +2056,102 @@ class Batch extends Model
     public function speciesFamily(): ?string
     {
         return $this->species?->family;
+    }
+
+    // ═══════════════════════════════════════════════
+    // ALIMENTATION NATURELLE — brute (apportée) et pâturage (cherchée)
+    // ═══════════════════════════════════════════════
+
+    /**
+     * Ce lot reçoit-il de l'alimentation brute (herbe coupée, fanes…) ?
+     * Herbivores seulement (RawFeeding::FAMILLES) : l'écran « Nourrir (brut) »
+     * était proposé pour un bassin de tilapias ou une bande de poulets.
+     */
+    public function accepteAlimentationBrute(): bool
+    {
+        return in_array($this->speciesFamily(), \App\Models\RawFeeding::FAMILLES, true);
+    }
+
+    /** Ce lot sort-il au pâturage ? Ruminants seulement (GrazingSession::FAMILLES). */
+    public function acceptePaturage(): bool
+    {
+        return in_array($this->speciesFamily(), \App\Models\GrazingSession::FAMILLES, true);
+    }
+
+    /**
+     * L'ALIMENTATION NATURELLE DU LOT — ce que le concentré ne dit pas.
+     *
+     * L'indice de consommation ne compte que l'aliment du stock : un mouton
+     * nourri à l'herbe et au pâturage paraissait « manger » très peu. Ce bilan
+     * dit combien de jours le lot a été nourri naturellement, combien d'heures
+     * il a pâturé, et ce que cela a coûté en main-d'œuvre — le vrai coût d'un
+     * animal local. Servi à la fiche du lot (bureau) et au terrain.
+     *
+     * @return array{distributions:int, minutes_distribution:int, sorties:int, heures_paturage:float,
+     *               jours_naturels:int, jours_suivis:int, part_jours:?float, manquants:int,
+     *               cout_main_oeuvre:float, cout_par_tete:?float}
+     */
+    public function alimentationNaturelle(): array
+    {
+        $distributions = $this->rawFeedings()->reorder()->get(['fed_at', 'minutes_spent', 'labor_cost_gnf']);
+        $sorties = $this->grazingSessions()->reorder()->get(['left_at', 'duration_minutes', 'heads_out', 'heads_back', 'labor_cost_gnf']);
+
+        // toBase() : une collection Eloquent VIDE resterait Eloquent après map(),
+        // et sa fusion avec des dates (chaînes) échoue.
+        $jours = $distributions->toBase()->map(fn ($d) => $d->fed_at->toDateString())
+            ->merge($sorties->toBase()->map(fn ($g) => $g->left_at->toDateString()))
+            ->unique();
+
+        $debut = $this->arrival_date ? \Carbon\Carbon::parse($this->arrival_date) : null;
+        $fin = in_array($this->status, [self::STATUS_ACTIF, self::STATUS_SOLDE], true) ? now() : ($this->updated_at ?? now());
+        $joursSuivis = $debut ? max(1, (int) $debut->copy()->startOfDay()->diffInDays($fin->copy()->startOfDay()) + 1) : 0;
+
+        $cout = (float) $distributions->sum('labor_cost_gnf') + (float) $sorties->sum('labor_cost_gnf');
+        $tetes = (int) ($this->current_quantity ?: $this->initial_quantity);
+
+        return [
+            'distributions'        => $distributions->count(),
+            'minutes_distribution' => (int) $distributions->sum('minutes_spent'),
+            'sorties'              => $sorties->count(),
+            'heures_paturage'      => round($sorties->sum('duration_minutes') / 60, 1),
+            'jours_naturels'       => $jours->count(),
+            'jours_suivis'         => $joursSuivis,
+            'part_jours'           => $joursSuivis > 0 ? round(min(100, $jours->count() / $joursSuivis * 100), 1) : null,
+            'manquants'            => (int) $sorties->sum(fn ($g) => max(0, $g->heads_out - $g->heads_back)),
+            'cout_main_oeuvre'     => round($cout, 0),
+            'cout_par_tete'        => $tetes > 0 ? round($cout / $tetes, 0) : null,
+        ];
+    }
+
+    /**
+     * Ce que le lot a mangé HORS STOCK un jour donné — pour le pointage : le
+     * champ « consommation » ne compte que le concentré ; l'herbe apportée et
+     * le pâturage du jour s'affichent à côté, au lieu d'un « 0 kg » qui se
+     * lirait comme un jeûne.
+     *
+     * @return array{distributions: \Illuminate\Support\Collection, sorties: \Illuminate\Support\Collection}
+     */
+    public function alimentationNaturelleDuJour(mixed $jour = null): array
+    {
+        $date = \Carbon\Carbon::parse($jour ?? today())->toDateString();
+
+        return [
+            'distributions' => $this->rawFeedings()->whereDate('fed_at', $date)->get(),
+            'sorties'       => $this->grazingSessions()->whereDate('left_at', $date)->with('plot:id,name')->get(),
+        ];
+    }
+
+    /** Résumé servi au terrain (fiche du lot) — sans montant : le terrain ne voit pas l'argent. */
+    public function alimentationNaturelleTerrain(): ?array
+    {
+        if (! $this->accepteAlimentationBrute() && ! $this->acceptePaturage()) {
+            return null;
+        }
+        $bilan = $this->alimentationNaturelle();
+
+        return array_intersect_key($bilan, array_flip([
+            'distributions', 'sorties', 'heures_paturage', 'jours_naturels', 'jours_suivis', 'part_jours', 'manquants',
+        ]));
     }
 
     // ═══════════════════════════════════════════════

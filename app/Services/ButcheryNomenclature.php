@@ -184,6 +184,49 @@ class ButcheryNomenclature
         return config('butchery.presentations', []);
     }
 
+    /**
+     * Présentations PROPOSÉES pour l'espèce : PAC et effilé sont des gammes de
+     * volaille. Une présentation sans `familles` vaut pour toutes.
+     */
+    public static function presentationsFor(?Species $species): array
+    {
+        $famille = static::familyFor($species);
+
+        return array_filter(
+            static::presentations(),
+            fn (array $p) => ! isset($p['familles']) || in_array($famille, $p['familles'], true),
+        );
+    }
+
+    /**
+     * Gammes servies au terrain pour un ordre : code, libellé, bande de
+     * rendement attendue de l'espèce (l'écran codait celle de la volaille).
+     *
+     * @return array<int, array{code:string,label:string,min:int,max:int}>
+     */
+    public static function presentationsPourLeTerrain(?Species $species): array
+    {
+        $liste = [];
+        foreach (static::presentationsFor($species) as $code => $cfg) {
+            $bande = static::presentationYieldBand($code, $species);
+            $liste[] = ['code' => $code, 'label' => __($cfg['label']), 'min' => $bande['alert_min'], 'max' => $bande['target_max']];
+        }
+
+        return $liste;
+    }
+
+    /**
+     * Types de sous-produits COLLECTÉS pour l'espèce (config butchery.byproduct_types).
+     *
+     * @return array<string, string> code => libellé
+     */
+    public static function byproductTypesFor(?Species $species): array
+    {
+        $codes = config('butchery.byproduct_types.' . static::familyFor($species), array_keys(\App\Models\SlaughterByproduct::TYPES));
+
+        return array_intersect_key(\App\Models\SlaughterByproduct::TYPES, array_flip($codes));
+    }
+
     /** Code de présentation par défaut (repli si non renseigné). */
     public static function defaultPresentation(): string
     {

@@ -20,6 +20,7 @@ import { enqueue } from '../../offline/sync'
 import { safeLoad } from '../../offline/safeLoad'
 import { t, dateLocale } from '../../i18n'
 import type { RefCropCycle, RefCropRecipe, RefPendingHarvest } from '../../api/types'
+import { recetteConvient } from '../../offline/eligibilite'
 
 /** Miroir de App\Models\CropTransformation::TYPES. */
 const TYPES = [
@@ -81,6 +82,10 @@ export function CropTransformationScreen() {
     () => recipes.find((r) => r.id === Number(recipeId)) ?? null,
     [recipes, recipeId],
   )
+  // Une recette d'une autre culture ne reste pas choisie après le choix de la récolte.
+  useEffect(() => {
+    if (recipe && !recetteConvient(recipe, cycle?.crop_name)) setRecipeId('')
+  }, [cycle]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Choisir la récolte pré-remplit ce qui est déjà connu : le terrain ne
   // ressaisit ni la culture, ni le poids engagé.
@@ -210,7 +215,7 @@ export function CropTransformationScreen() {
           <label htmlFor="recipe">{t('Recette — optionnel')}</label>
           <select id="recipe" value={recipeId} onChange={(e) => setRecipeId(e.target.value)}>
             <option value="">{t('— Saisie libre —')}</option>
-            {recipes.map((r) => (
+            {recipes.filter((r) => recetteConvient(r, cycle?.crop_name)).map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
                 {r.expected_yield_percent != null ? ` · ${t('rdt')} ${r.expected_yield_percent}%` : ''}

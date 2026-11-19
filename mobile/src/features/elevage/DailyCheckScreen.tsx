@@ -19,6 +19,7 @@ import { useAuth } from '../../app/AuthContext'
 import { rubriqueVisible, suiviPour } from '../../offline/suivi'
 import { useFieldTasks } from '../home/useFieldTasks'
 import { alimentAccepte } from '../../offline/eligibilite'
+import { nourritAuBrut, sortAuPaturage } from '../../offline/eligibilite'
 
 export function DailyCheckScreen() {
   const { batchId } = useParams()
@@ -38,6 +39,10 @@ export function DailyCheckScreen() {
   const [avgWeight, setAvgWeight] = useState('')
   const [observations, setObservations] = useState('')
   const [prefilled, setPrefilled] = useState(false)
+  // Alimentation naturelle notée AUJOURD'HUI sur ce téléphone pour ce lot
+  // (herbe apportée, pâturage) : le champ « aliment consommé » ne compte que
+  // le concentré du stock — 0 kg n'est pas un jeûne pour un lot au pâturage.
+  const [naturelDuJour, setNaturelDuJour] = useState<string[]>([])
   const [saved, setSaved] = useState(false)
 
   // Détails optionnels (repliés par défaut : la saisie rapide reste 3 taps).
@@ -80,6 +85,18 @@ export function DailyCheckScreen() {
         }
       })
     }
+  }, [batchId])
+
+  useEffect(() => {
+    if (!batchId) return
+    const jour = new Date().toISOString().slice(0, 10)
+    void db.my_records.toArray().then((records) => setNaturelDuJour(
+      records
+        .filter((r) => (r.type === 'raw_feeding.create' || r.type === 'grazing.create')
+          && Number(r.payload.batch_id) === Number(batchId)
+          && String(r.created_at).slice(0, 10) === jour)
+        .map((r) => r.label),
+    ))
   }, [batchId])
 
   async function onSubmit(event: FormEvent) {
@@ -198,6 +215,16 @@ export function DailyCheckScreen() {
       </div>
 
       <NumberStepper label={t('Mortalité (sujets)')} value={mortality} onChange={setMortality} min={0} />
+
+      {(nourritAuBrut(batch) || sortAuPaturage(batch)) && (
+        <div className="proof-hint">
+          <strong>🌿 {t("Aujourd'hui, hors stock")}</strong>
+          {naturelDuJour.length > 0
+            ? naturelDuJour.map((libelle) => <div key={libelle}>{libelle}</div>)
+            : <div>{t('Rien de noté sur ce téléphone pour l’instant.')}</div>}
+          <div className="muted">{t('L’aliment consommé ne compte que le concentré du stock : 0 kg est normal pour un lot nourri au pâturage.')}</div>
+        </div>
+      )}
 
       <NumberStepper
         label={t('Aliment consommé (kg)')}

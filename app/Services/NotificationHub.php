@@ -516,6 +516,22 @@ class NotificationHub
     }
 
     /**
+     * Têtes MANQUANTES au retour du pâturage. Pas une mortalité présumée :
+     * l'élevage est prévenu pour les retrouver, ou les déclarer (pointage,
+     * incident) s'ils sont perdus.
+     */
+    public function alertGrazingMissing(\App\Models\GrazingSession $sortie): void
+    {
+        $lot = $sortie->batch;
+        $message = "🐑 Retour du pâturage — lot {$lot->code} : {$sortie->manquants} tête(s) manquante(s) "
+            . "({$sortie->heads_back} rentrée(s) sur {$sortie->heads_out} sortie(s), {$sortie->lieu}). "
+            . 'À retrouver, ou à déclarer si elles sont perdues.';
+
+        $this->broadcast('alert_mortality', $message, 'Têtes manquantes — ' . $lot->code, 'attention',
+            route('batches.show', $lot->id, absolute: false), "/lot/{$lot->id}");
+    }
+
+    /**
      * Alerte INCIDENT SANITAIRE déclaré (anomalie/crise). Diffusée sur le canal
      * sanitaire (alert_mortality) ; sévérité « critique » → escalade (admin
      * WhatsApp/e-mail), sinon « normal ». Le vétérinaire/responsable est ainsi

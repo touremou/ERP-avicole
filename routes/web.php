@@ -173,6 +173,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{batch}/close', 'close')->name('close')->middleware(['can:M', 'can:finances.voir']);
         Route::put('/{batch}/reopen', 'reopen')->name('reopen')->middleware(['can:M', 'can:S']);
         Route::post('/{batch}/transfer', [BatchTransferController::class, 'transfer'])->name('transfer')->middleware('can:M');
+        // Alimentation naturelle saisie AU BUREAU — la saisie n'existait qu'au
+        // terrain : herbe coupée apportée, sortie au pâturage (même action).
+        Route::post('/{batch}/raw-feedings', [\App\Http\Controllers\BatchNaturalFeedingController::class, 'storeRawFeeding'])->name('raw_feedings.store')->where('batch', '[0-9]+')->middleware('can:C');
+        Route::post('/{batch}/grazings', [\App\Http\Controllers\BatchNaturalFeedingController::class, 'storeGrazing'])->name('grazings.store')->where('batch', '[0-9]+')->middleware('can:C');
 
         // S-16 corrigé : syncAllStocks est une opération admin (recalcule TOUS les lots)
         Route::post('/sync-stocks', 'syncAllStocks')->name('sync_stocks')->middleware('can:S');

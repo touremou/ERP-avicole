@@ -20,11 +20,16 @@ const LIBELLES_STATUT: Record<string, string> = { annule: 'annulé', bloque: 'bl
 // Gammes de sortie carcasse (miroir de config/butchery.php, volaille) : bande
 // de rendement attendue [alerte_min, cible_max] — l'effilé garde tête/pattes,
 // donc rendement plus haut. Le serveur reste l'autorité sur le nom d'article.
-const PRESENTATIONS = [
+// Repli d'un serveur antérieur : le serveur sert désormais les gammes DE
+// L'ESPÈCE avec leur bande (SlaughterOrder::presentations) — PAC et effilé
+// sont des gammes de volaille, proposées à tort pour un ordre d'ovins.
+const PRESENTATIONS_VOLAILLE: Gamme[] = [
   { value: 'brut', label: '🔪 Brut (à découper)', min: 65, max: 75 },
   { value: 'pac', label: '📦 PAC (prêt-à-cuire)', min: 65, max: 75 },
   { value: 'effile', label: '🍗 Effilé (têtes/pattes)', min: 77, max: 87 },
-] as const
+]
+
+interface Gamme { value: string; label: string; min: number; max: number }
 
 export function SlaughterScreen() {
   const { orderId } = useParams()
@@ -36,7 +41,7 @@ export function SlaughterScreen() {
   const [liveWeight, setLiveWeight] = useState('')
   const [carcassWeight, setCarcassWeight] = useState('')
   const [condemned, setCondemned] = useState(0)
-  const [presentation, setPresentation] = useState<(typeof PRESENTATIONS)[number]['value']>('brut')
+  const [presentation, setPresentation] = useState<string>('brut')
   const [notes, setNotes] = useState('')
   // Anti-corvée : le CCP 3 (T° à cœur) se saisit dans le MÊME geste —
   // une seconde opération part dans la file, pas de second écran.
@@ -64,6 +69,9 @@ export function SlaughterScreen() {
   const carcass = Number(carcassWeight)
   const weightsValid = live > 0 && carcass > 0 && carcass <= live
   const yieldPercent = weightsValid ? Math.round((carcass / live) * 1000) / 10 : null
+  const PRESENTATIONS: Gamme[] = order?.presentations
+    ? order.presentations.map((p) => ({ value: p.code, label: p.label, min: p.min, max: p.max }))
+    : PRESENTATIONS_VOLAILLE
   const band = PRESENTATIONS.find((p) => p.value === presentation) ?? PRESENTATIONS[0]
   const yieldOff = yieldPercent !== null && (yieldPercent < band.min || yieldPercent > band.max)
 

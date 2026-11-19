@@ -10,6 +10,7 @@ import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { t } from '../../i18n'
 import type { RefSlaughterOrder } from '../../api/types'
+import { sousProduitAdmis } from '../../offline/eligibilite'
 
 /**
  * Miroir PARTIEL de App\Models\SlaughterByproduct::TYPES / DESTINATIONS
@@ -20,6 +21,7 @@ const TYPES = [
   { value: 'sang', label: '🩸 Sang' },
   { value: 'plumes', label: '🪶 Plumes' },
   { value: 'visceres', label: '🫀 Viscères non comestibles' },
+  { value: 'peaux', label: '🐑 Peaux / cuirs' },
 ] as const
 
 const DESTINATIONS = [
@@ -51,7 +53,10 @@ export function ByproductRoundScreen() {
     setRows((prev) => ({ ...prev, [type]: { ...prev[type], ...patch } }))
   }
 
-  const filled = TYPES.filter((tp) => (Number(rows[tp.value].kg) || 0) > 0)
+  // Types de l'espèce de l'ordre choisi (plus de plumes pour un ovin).
+  const ordreChoisi = orders.find((o) => String(o.id) === orderId)
+  const typesVisibles = TYPES.filter((tp) => sousProduitAdmis(tp.value, ordreChoisi))
+  const filled = typesVisibles.filter((tp) => (Number(rows[tp.value].kg) || 0) > 0)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -99,7 +104,7 @@ export function ByproductRoundScreen() {
         ))}
       </select>
 
-      {TYPES.map((tp) => {
+      {typesVisibles.map((tp) => {
         const row = rows[tp.value]
         const has = (Number(row.kg) || 0) > 0
         return (

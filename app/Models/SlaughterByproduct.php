@@ -18,6 +18,7 @@ class SlaughterByproduct extends Model
         'sang'      => 'Sang',
         'plumes'    => 'Plumes',
         'visceres'  => 'Viscères non comestibles',
+        'peaux'     => 'Peaux / cuirs',
         'autre'     => 'Autre',
     ];
 
@@ -54,5 +55,23 @@ class SlaughterByproduct extends Model
     public function operator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'operator_id');
+    }
+
+    /**
+     * Pourquoi ce type ne se collecte pas sur cet ordre — ou null. Les plumes
+     * d'un ovin, les peaux d'un poulet (ButcheryNomenclature::byproductTypesFor).
+     */
+    public static function refusPourLOrdre(string $type, ?int $ordreId): ?string
+    {
+        $ordre = $ordreId ? SlaughterOrder::with('batch.species')->find($ordreId) : null;
+        if (! $ordre) {
+            return null;
+        }
+
+        $admis = \App\Services\ButcheryNomenclature::byproductTypesFor($ordre->batch?->species);
+
+        return array_key_exists($type, $admis)
+            ? null
+            : __('« :type » n’est pas un sous-produit de cette espèce.', ['type' => __(self::TYPES[$type] ?? $type)]);
     }
 }
