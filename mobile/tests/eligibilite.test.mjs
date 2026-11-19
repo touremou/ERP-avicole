@@ -5,6 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  nourritAuBrut, sortAuPaturage,
   alimentAccepte, batimentAccueille, cycleArchive, fournisseurActif, machineOperationnelle, surfaceLibre,
 } from '../src/offline/eligibilite.ts'
 
@@ -39,4 +40,13 @@ test('semis : une parcelle entièrement occupée n’a plus de surface libre', (
   const cycles = [{ plot_id: 1, status: 'en_cours', area_used_ha: 2 }, { plot_id: 1, status: 'termine', area_used_ha: 1 }]
   assert.equal(surfaceLibre({ id: 1, area_ha: 2 }, cycles), 0)
   assert.equal(surfaceLibre({ id: 1, area_ha: '3' }, cycles), 1)
+})
+
+test('alimentation brute : herbivores et porcs ; pâturage : ruminants seulement', () => {
+  assert.equal(nourritAuBrut({ species_family: 'porcin' }), true)
+  assert.equal(nourritAuBrut({ species_family: 'volaille' }), false)
+  assert.equal(sortAuPaturage({ species_family: 'porcin' }), false)
+  assert.equal(sortAuPaturage({ species_family: 'petit_ruminant' }), true)
+  // Le drapeau du serveur prime sur la famille.
+  assert.equal(nourritAuBrut({ species_family: 'volaille', accepte_alimentation_brute: true }), true)
 })

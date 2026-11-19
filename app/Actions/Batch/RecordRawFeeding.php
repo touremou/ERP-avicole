@@ -45,7 +45,7 @@ final class RecordRawFeeding
         }
         if (! $lot->accepteAlimentationBrute()) {
             throw ValidationException::withMessages([
-                'batch_id' => __('L’alimentation brute est réservée aux herbivores (ruminants, lapins).'),
+                'batch_id' => __('L’alimentation brute est réservée aux herbivores (ruminants, lapins) et aux porcs.'),
             ]);
         }
 

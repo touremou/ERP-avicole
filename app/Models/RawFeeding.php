@@ -32,10 +32,11 @@ class RawFeeding extends Model
 
     /**
      * Familles nourries à la ressource brute (Species::$family) : les
-     * herbivores. Décision de l'exploitation — l'écran était proposé pour
-     * toutes les espèces, poissons et volaille compris.
+     * herbivores, et les porcs (restes de cuisine, épluchures, son).
+     * Décision de l'exploitation — l'écran était proposé pour toutes les
+     * espèces, poissons et volaille compris.
      */
-    public const FAMILLES = ['petit_ruminant', 'grand_ruminant', 'lagomorphe'];
+    public const FAMILLES = ['petit_ruminant', 'grand_ruminant', 'lagomorphe', 'porcin'];
 
     /** Unités d'estimation sans balance. */
     public const UNITES = ['kg', 'brouette', 'botte', 'sac', 'seau', 'fagot', 'tas'];

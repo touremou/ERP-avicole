@@ -92,8 +92,8 @@ export function recetteConvient(recette: { intrants?: string[] }, culture: strin
   return recette.intrants.some((intrant) => racines(intrant).some((r) => cibles.includes(r)))
 }
 
-/** Herbivores (RawFeeding::FAMILLES) — repli quand le serveur n'a pas encore servi le drapeau. */
-export const FAMILLES_ALIMENTATION_BRUTE = ['petit_ruminant', 'grand_ruminant', 'lagomorphe']
+/** Herbivores et porcs (RawFeeding::FAMILLES) — repli quand le serveur n'a pas encore servi le drapeau. */
+export const FAMILLES_ALIMENTATION_BRUTE = ['petit_ruminant', 'grand_ruminant', 'lagomorphe', 'porcin']
 /** Ruminants (GrazingSession::FAMILLES). */
 export const FAMILLES_PATURAGE = ['petit_ruminant', 'grand_ruminant']
 
