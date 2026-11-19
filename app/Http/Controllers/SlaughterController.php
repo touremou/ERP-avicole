@@ -366,7 +366,8 @@ class SlaughterController extends Controller
 
         // Gammes de sortie (PAC / effilé / brut) + leur bande de rendement
         // attendue → le formulaire adapte la plage affichée au choix de gamme.
-        $presentations = \App\Services\ButcheryNomenclature::presentations();
+        // Gammes de l'ESPÈCE seulement (PAC/effilé : volaille).
+        $presentations = \App\Services\ButcheryNomenclature::presentationsFor($order->batch?->species);
         $presentationBands = [];
         foreach ($presentations as $code => $cfg) {
             $presentationBands[$code] = \App\Services\ButcheryNomenclature::presentationYieldBand($code, $order->batch?->species);

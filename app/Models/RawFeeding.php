@@ -30,6 +30,13 @@ class RawFeeding extends Model
         'Épluchures', 'Restes de cuisine', 'Son de riz', 'Paille',
     ];
 
+    /**
+     * Familles nourries à la ressource brute (Species::$family) : les
+     * herbivores. Décision de l'exploitation — l'écran était proposé pour
+     * toutes les espèces, poissons et volaille compris.
+     */
+    public const FAMILLES = ['petit_ruminant', 'grand_ruminant', 'lagomorphe'];
+
     /** Unités d'estimation sans balance. */
     public const UNITES = ['kg', 'brouette', 'botte', 'sac', 'seau', 'fagot', 'tas'];
 

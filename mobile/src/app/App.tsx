@@ -15,6 +15,7 @@ import { HealthCareScreen } from '../features/elevage/HealthCareScreen'
 import { HatcheryScreen } from '../features/elevage/HatcheryScreen'
 import { MilkingScreen } from '../features/elevage/MilkingScreen'
 import { RawFeedingScreen } from '../features/elevage/RawFeedingScreen'
+import { GrazingScreen } from '../features/elevage/GrazingScreen'
 import { BatchScreen } from '../features/elevage/BatchScreen'
 import { ScanScreen } from '../features/scan/ScanScreen'
 import { SaleScreen } from '../features/commerce/SaleScreen'
@@ -93,6 +94,7 @@ const SCREENS: Array<[RoutePath, ReactElement]> = [
   ['/elevage/traite/:batchId?', <MilkingScreen />],
   ['/elevage/mise-en-lot', <NewBatchScreen />],
   ['/elevage/nourrir-brut/:batchId?', <RawFeedingScreen />],
+  ['/elevage/paturage/:batchId?', <GrazingScreen />],
   ['/lot/:batchId', <BatchScreen />],
   ['/scan', <ScanScreen />],
   ['/commerce/vente', <SaleScreen />],

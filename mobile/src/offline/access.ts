@@ -120,6 +120,7 @@ export const OP_ACCESS: Record<OperationType, AccessSpec> = {
   'task.dispatch': 'planning.C',
   // Alimentation brute / spontanée (herbe, fanes…) — SyncService::rawFeedingCreate.
   'raw_feeding.create': 'elevage.C',
+  'grazing.create': 'elevage.C',
 }
 
 /**
@@ -157,6 +158,7 @@ export const ROUTE_ACCESS = {
   '/elevage/mise-en-lot': 'elevage.C',
   // Nourrir (brut) : même droit que l'op qu'il produit (raw_feeding.create).
   '/elevage/nourrir-brut/:batchId?': 'elevage.C',
+  '/elevage/paturage/:batchId?': 'elevage.C',
   '/lot/:batchId': 'elevage.L',
   '/scan': 'elevage.L|production.L',
 

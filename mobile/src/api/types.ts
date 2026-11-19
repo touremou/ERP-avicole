@@ -123,6 +123,7 @@ export type OperationType =
   | 'task.create'
   | 'task.dispatch'
   | 'raw_feeding.create'
+  | 'grazing.create'
   // Ravitaillement d'une citerne d'eau (appoint) depuis le terrain.
   | 'water_refill.create'
 
@@ -313,6 +314,15 @@ export interface RefBatch {
   can_collect_eggs?: boolean
   /** Calculé serveur : lot laitier (Batch::tracksMilk) — seul proposé à la traite. */
   tracks_milk?: boolean
+  /** Herbivore : reçoit l'alimentation brute (Batch::accepteAlimentationBrute). */
+  accepte_alimentation_brute?: boolean
+  /** Ruminant : sort au pâturage (Batch::acceptePaturage). */
+  accepte_paturage?: boolean
+  /** Bilan d'alimentation naturelle, sans montant (Batch::alimentationNaturelleTerrain). */
+  alimentation_naturelle_terrain?: {
+    distributions: number; sorties: number; heures_paturage: number; jours_naturels: number
+    jours_suivis: number; part_jours: number | null; manquants: number
+  } | null
   /** Taux de mortalité du serveur (Batch::mortality_rate), en %. */
   mortality_rate?: number | null
   /** Poules du lot (sans les coqs d'un lot de reproducteurs) — Batch::effectifPondeur. */
@@ -430,6 +440,8 @@ export interface RefCropRecipe {
   shelf_life_days: number | null
   is_active: boolean
   updated_at: string
+  /** Intrants de la recette (CropRecipe::intrants) — sert à recetteConvient. */
+  intrants?: string[]
 }
 
 /**
@@ -778,6 +790,10 @@ export interface RefSlaughterOrder {
   updated_at: string
   /** Pourquoi l'ordre ne s'exécute pas aujourd'hui (SlaughterOrder::blocage) — null s'il le peut. */
   blocage?: string | null
+  /** Gammes de sortie de l'espèce, avec leur bande de rendement (SlaughterOrder::presentations). */
+  presentations?: { code: string; label: string; min: number; max: number }[]
+  /** Sous-produits collectés pour l'espèce (SlaughterOrder::byproductTypes). */
+  byproduct_types?: string[]
   /**
    * Morceaux de découpe de l'ESPÈCE abattue (SlaughterOrder::getCutsAttribute).
    * Absent d'un serveur plus ancien : repli sur les morceaux de volaille.

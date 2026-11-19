@@ -371,6 +371,7 @@ class HaccpRegisterController extends Controller
             ->pluck('total_kg', 'type');
 
         $recentOrders = SlaughterOrder::whereIn('status', ['termine', 'bloque'])
+            ->with('batch.species')
             ->latest('actual_date')->take(30)->get();
 
         // Tournée : dernière destination utilisée par type (préremplissage).
@@ -404,6 +405,13 @@ class HaccpRegisterController extends Controller
 
         if ($filled->isEmpty()) {
             return back()->with('error', __('Aucune pesée saisie — remplissez au moins un type de sous-produit.'));
+        }
+
+        // Sous-produit d'une autre espèce (plumes d'un ovin) : refusé.
+        foreach ($filled->keys() as $type) {
+            if ($motif = \App\Models\SlaughterByproduct::refusPourLOrdre($type, $validated['slaughter_order_id'] ?? null)) {
+                return back()->withErrors(['rows' => $motif])->withInput();
+            }
         }
 
         // Destination obligatoire pour chaque ligne pesée (registre E9).
@@ -441,6 +449,10 @@ class HaccpRegisterController extends Controller
             'destination'        => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),
             'notes'              => 'nullable|string|max:1000',
         ]);
+
+        if ($motif = \App\Models\SlaughterByproduct::refusPourLOrdre($validated['type'], $validated['slaughter_order_id'] ?? null)) {
+            return back()->withErrors(['type' => $motif])->withInput();
+        }
 
         \App\Models\SlaughterByproduct::create(array_merge($validated, [
             'operator_id'  => Auth::id(),

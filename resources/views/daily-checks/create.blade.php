@@ -109,6 +109,28 @@
                     </div>
 
                     {{-- 02: Mortalité & Aliment --}}
+                    {{-- ALIMENTATION NATURELLE DU JOUR (herbivores) — la consommation
+                         ci-dessous ne compte que l'aliment du stock. L'herbe apportée et
+                         le pâturage se notent à part (fiche du lot, ou au terrain). --}}
+                    @if($batch->accepteAlimentationBrute() || $batch->acceptePaturage())
+                    @php $naturel = $batch->alimentationNaturelleDuJour(); @endphp
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-[2rem] p-5 text-left">
+                        <p class="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2">🌿 {{ __("Aujourd'hui, hors stock") }}</p>
+                        @forelse($naturel['distributions'] as $d)
+                            <p class="text-xs font-bold text-slate-700">{{ $d->fed_at->format('H:i') }} — {{ $d->resource }}{{ $d->quantity !== null ? ' · '.rtrim(rtrim(number_format($d->quantity, 2, ',', ' '), '0'), ',').' '.__($d->quantity_unit) : '' }} ({{ $d->minutes_spent }} min)</p>
+                        @empty
+                        @endforelse
+                        @foreach($naturel['sorties'] as $g)
+                            <p class="text-xs font-bold {{ $g->manquants > 0 ? 'text-rose-600' : 'text-slate-700' }}">☀️ {{ __('Pâturage :de–:a, :lieu — :r/:s têtes rentrées', ['de' => $g->left_at->format('H:i'), 'a' => $g->returned_at->format('H:i'), 'lieu' => $g->lieu, 'r' => $g->heads_back, 's' => $g->heads_out]) }}</p>
+                        @endforeach
+                        @if($naturel['distributions']->isEmpty() && $naturel['sorties']->isEmpty())
+                            <p class="text-xs font-bold text-slate-500">{{ __('Rien de noté pour l’instant.') }}</p>
+                        @endif
+                        <a href="{{ route('batches.show', $batch) }}#alimentation-naturelle" class="inline-block mt-2 text-[9px] font-black uppercase tracking-widest text-emerald-700 no-underline">{{ __('Noter une distribution ou une sortie →') }}</a>
+                        <p class="text-[9px] text-slate-500 font-bold mt-1">{{ __('La consommation ci-dessous ne concerne que l’aliment du stock (concentré) : 0 kg est normal pour un lot nourri au pâturage.') }}</p>
+                    </div>
+                    @endif
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                         <div id="mortality-card" class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 transition-all duration-500 relative">
                             <div class="flex justify-between items-center mb-6">

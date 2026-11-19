@@ -140,6 +140,17 @@ class CreateDispatch
             $batch = Batch::findOrFail($item->batch_id);
             $qty = (int) $item->quantity_dispatched;
 
+            /*
+             * QUARANTAINE ET DÉLAI D'ATTENTE — la règle de la vente (ValidateSale)
+             * et de l'abattage (SlaughterService). L'expédition sur pied n'en
+             * posait aucune : des bêtes sous traitement sortaient de la ferme par
+             * ce chemin, alors que la vente les refusait. Le destinataire les
+             * abat ; le résidu part avec elles.
+             */
+            if ($motif = $batch->blocageSanitaire()) {
+                throw new Exception(__('Expédition refusée : :motif', ['motif' => $motif]));
+            }
+
             if ($batch->current_quantity < $qty) {
                 throw new Exception("Effectif insuffisant dans le lot {$batch->code} : besoin {$qty}, disponible {$batch->current_quantity}.");
             }

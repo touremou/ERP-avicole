@@ -13,7 +13,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * ENREGISTRER UNE ALIMENTATION BRUTE — et imputer son temps au lot.
  *
- * Seule porte d'écriture (terrain : SyncService `raw_feeding.create`).
+ * Seule porte d'écriture — terrain (SyncService `raw_feeding.create`) et
+ * bureau (BatchNaturalFeedingController) : la même règle des deux côtés.
  *
  *   coût de l'action = (minutes ÷ 60) × coût horaire de l'employé
  *
@@ -40,6 +41,11 @@ final class RecordRawFeeding
         if (! $lot->isActive() && ! $lot->isSolde()) {
             throw ValidationException::withMessages([
                 'batch_id' => __('Le lot :code est clôturé : on ne le nourrit plus.', ['code' => $lot->code]),
+            ]);
+        }
+        if (! $lot->accepteAlimentationBrute()) {
+            throw ValidationException::withMessages([
+                'batch_id' => __('L’alimentation brute est réservée aux herbivores (ruminants, lapins).'),
             ]);
         }
 

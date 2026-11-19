@@ -71,7 +71,7 @@ class DataReset
         // Élevage, santé, production
         'batches', 'daily_checks', 'daily_check_extensions', 'health_checks', 'health_incidents',
         // Alimentation brute et main-d'œuvre imputée aux lots
-        'raw_feedings', 'batch_cost_allocations',
+        'raw_feedings', 'grazing_sessions', 'batch_cost_allocations',
         'egg_productions', 'egg_movements', 'milk_productions', 'planned_batches', 'campaigns',
         'chick_dispatches', 'incubations', 'incubator_maintenances',
         // Provenderie, achats, stocks

@@ -61,3 +61,50 @@ export function surfaceLibre(
 export function cycleArchive(statut: string | null | undefined): boolean {
   return statut === 'termine' || statut === 'abandonne'
 }
+
+/**
+ * Sous-produits de l'ESPÈCE de l'ordre (ButcheryNomenclature::byproductTypesFor,
+ * servis avec l'ordre) : pas de plumes pour un ovin. Sans ordre, ou référentiel
+ * ancien : tout reste proposé, le serveur tranchera.
+ */
+export function sousProduitAdmis(
+  type: string,
+  ordre: { byproduct_types?: string[] } | null | undefined,
+): boolean {
+  return !ordre?.byproduct_types || ordre.byproduct_types.includes(type)
+}
+
+/** Racines des mots d'au moins 3 lettres (4 premières lettres, sans accents) — CropRecipe::racines. */
+export function racines(texte: string): string[] {
+  const plat = texte.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const mots = plat.split(/[^a-z0-9]+/).filter((mot) => mot.length >= 3)
+  return [...new Set(mots.map((mot) => mot.slice(0, 4)))]
+}
+
+/**
+ * Cette recette transforme-t-elle cette culture ? (CropRecipe::convientA) —
+ * « Gari » n'est pas proposé pour une récolte de maïs. Sans intrant déclaré,
+ * ou serveur antérieur, la recette reste proposée.
+ */
+export function recetteConvient(recette: { intrants?: string[] }, culture: string | null | undefined): boolean {
+  if (!recette.intrants || recette.intrants.length === 0 || !culture) return true
+  const cibles = racines(culture)
+  return recette.intrants.some((intrant) => racines(intrant).some((r) => cibles.includes(r)))
+}
+
+/** Herbivores (RawFeeding::FAMILLES) — repli quand le serveur n'a pas encore servi le drapeau. */
+export const FAMILLES_ALIMENTATION_BRUTE = ['petit_ruminant', 'grand_ruminant', 'lagomorphe']
+/** Ruminants (GrazingSession::FAMILLES). */
+export const FAMILLES_PATURAGE = ['petit_ruminant', 'grand_ruminant']
+
+type LotNourri = { accepte_alimentation_brute?: boolean; accepte_paturage?: boolean; species_family?: string | null }
+
+/** Batch::accepteAlimentationBrute — « Nourrir (brut) » : herbivores seulement. */
+export function nourritAuBrut(lot: LotNourri): boolean {
+  return lot.accepte_alimentation_brute ?? FAMILLES_ALIMENTATION_BRUTE.includes(String(lot.species_family ?? ''))
+}
+
+/** Batch::acceptePaturage — sortie au pâturage : ruminants seulement. */
+export function sortAuPaturage(lot: LotNourri): boolean {
+  return lot.accepte_paturage ?? FAMILLES_PATURAGE.includes(String(lot.species_family ?? ''))
+}

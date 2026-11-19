@@ -126,6 +126,7 @@ class SyncService
             'task.dispatch'              => 'taskDispatch',
             // Alimentation brute / spontanée (herbe, fanes…) + main-d'œuvre imputée.
             'raw_feeding.create'         => 'rawFeedingCreate',
+            'grazing.create'             => 'grazingCreate',
         ];
     }
 
@@ -2550,6 +2551,11 @@ class SyncService
 
         $data = $v->validated();
 
+        // Un sous-produit d'une autre espèce (plumes d'un ovin) : refusé.
+        if ($motif = \App\Models\SlaughterByproduct::refusPourLOrdre($data['type'], $data['slaughter_order_id'] ?? null)) {
+            return $this->invalid(['type' => [$motif]]);
+        }
+
         return DB::transaction(function () use ($data) {
             if (\App\Models\SlaughterByproduct::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
                 return ['status' => 'already_synced'];
@@ -3162,6 +3168,43 @@ class SyncService
 
         try {
             app(\App\Actions\Batch\RecordRawFeeding::class)->execute($v->validated(), Auth::user());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->invalid($e->errors());
+        }
+
+        return ['status' => 'success'];
+    }
+
+    /**
+     * SORTIE AU PÂTURAGE — ruminants dehors, gardés ou en autonomie : lieu,
+     * heures, têtes sorties et rentrées. Le temps du berger est imputé au lot
+     * (RecordGrazing). Idempotent par uuid.
+     */
+    private function grazingCreate(array $payload): array
+    {
+        if (Gate::denies('elevage.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'           => 'required|uuid',
+            'batch_id'       => ['required', 'integer', $this->farmScopedExists('batches')],
+            'left_at'        => 'required|date',
+            'returned_at'    => 'required|date|before_or_equal:' . self::CLOCK_SKEW_TOLERANCE,
+            'mode'           => 'required|in:' . implode(',', array_keys(\App\Models\GrazingSession::MODES)),
+            'heads_out'      => 'required|integer|min:1',
+            'heads_back'     => 'required|integer|min:0',
+            'herder_minutes' => 'nullable|integer|min:0|max:960',
+            'plot_id'        => ['nullable', 'integer', $this->farmScopedExists('plots')],
+            'zone'           => 'nullable|string|max:120',
+            'notes'          => 'nullable|string|max:500',
+        ]);
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        try {
+            app(\App\Actions\Batch\RecordGrazing::class)->execute($v->validated(), Auth::user());
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->invalid($e->errors());
         }

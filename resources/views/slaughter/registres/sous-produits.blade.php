@@ -31,10 +31,10 @@
                     @csrf
                     <div class="space-y-1 mb-4 max-w-xs">
                         <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Ordre d'abattage — commun, optionnel") }}</label>
-                        <select name="slaughter_order_id" class="w-full bg-slate-50 border-none rounded-2xl p-3 text-xs font-black uppercase shadow-inner outline-none">
+                        <select name="slaughter_order_id" data-byproduct-order class="w-full bg-slate-50 border-none rounded-2xl p-3 text-xs font-black uppercase shadow-inner outline-none">
                             <option value="">{{ __("— Aucun —") }}</option>
                             @foreach($recentOrders as $order)
-                                <option value="{{ $order->id }}" @selected(old('slaughter_order_id') == $order->id)>{{ $order->order_number }}</option>
+                                <option value="{{ $order->id }}" data-types="{{ implode(',', $order->byproductTypes()) }}" @selected(old('slaughter_order_id') == $order->id)>{{ $order->order_number }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -49,7 +49,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-50">
                                 @foreach(\App\Models\SlaughterByproduct::TYPES as $key => $label)
-                                <tr>
+                                <tr data-byproduct-type="{{ $key }}">
                                     <td class="px-2 py-2 text-[10px] font-black text-slate-700 uppercase whitespace-nowrap">{{ __($label) }}</td>
                                     <td class="px-2 py-2 text-center"><input type="number" name="rows[{{ $key }}][quantity_kg]" value="{{ old("rows.{$key}.quantity_kg") }}" step="0.01" min="0.01" placeholder="—" class="w-24 bg-slate-50 border-none rounded-xl p-2 text-base font-black shadow-inner outline-none text-center"></td>
                                     <td class="px-2 py-2">
@@ -78,7 +78,7 @@
                         <select name="type" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                             <option value="">{{ __("— Sélectionner —") }}</option>
                             @foreach(\App\Models\SlaughterByproduct::TYPES as $key => $label)
-                                <option value="{{ $key }}">{{ __($label) }}</option>
+                                <option value="{{ $key }}" data-byproduct-type="{{ $key }}">{{ __($label) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -97,10 +97,10 @@
                     </div>
                     <div class="space-y-1">
                         <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Ordre d'abattage") }}</label>
-                        <select name="slaughter_order_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                        <select name="slaughter_order_id" data-byproduct-order class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                             <option value="">{{ __("— Aucun —") }}</option>
                             @foreach($recentOrders as $order)
-                                <option value="{{ $order->id }}">{{ $order->order_number }}</option>
+                                <option value="{{ $order->id }}" data-types="{{ implode(',', $order->byproductTypes()) }}">{{ $order->order_number }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -187,4 +187,25 @@
             <div class="mt-6">{{ $byproducts->links() }}</div>
         </div>
     </div>
+
+    {{-- Sous-produits de l'ESPÈCE de l'ordre choisi (ButcheryNomenclature::
+         byproductTypesFor) : plus de plumes pour un ovin, les peaux des
+         ruminants. Le serveur le refuse aussi (SlaughterByproduct::refusPourLOrdre). --}}
+    <script>
+        document.querySelectorAll('[data-byproduct-order]').forEach((select) => {
+            const form = select.closest('form');
+            const appliquer = () => {
+                const opt = select.selectedOptions[0];
+                const types = opt && opt.dataset.types ? opt.dataset.types.split(',') : null;
+                form.querySelectorAll('[data-byproduct-type]').forEach((el) => {
+                    const ok = ! types || types.includes(el.dataset.byproductType);
+                    el.hidden = ! ok;
+                    if (el.tagName === 'OPTION') { el.disabled = ! ok; if (! ok && el.selected) el.parentElement.value = ''; }
+                    el.querySelectorAll('input').forEach((input) => { if (! ok) input.value = ''; });
+                });
+            };
+            select.addEventListener('change', appliquer);
+            appliquer();
+        });
+    </script>
 </x-app-layout>

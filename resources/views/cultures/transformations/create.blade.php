@@ -38,7 +38,7 @@
                     <select name="crop_recipe_id" onchange="applyRecipe(this)" class="w-full bg-white border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
                         <option value="">{{ __("-- Aucune (saisie libre) --") }}</option>
                         @foreach($recipes as $r)
-                            <option value="{{ $r->id }}"
+                            <option value="{{ $r->id }}" data-recette="{{ $r->id }}"
                                 data-type="{{ $r->transformation_type }}"
                                 data-output="{{ $r->output_product }}"
                                 data-unit="{{ $r->output_unit }}"
@@ -100,6 +100,7 @@
                                     data-crop="{{ $h->cropCycle?->crop_name }}"
                                     data-cycle="{{ $h->crop_cycle_id }}"
                                     data-item="{{ $h->stock_item_name }}"
+                                    data-recettes="{{ $recipes->filter(fn ($r) => $r->convientA($h->cropCycle?->crop_name))->pluck('id')->implode(',') }}"
                                     @selected(old('harvest_id') == $h->id)>
                                     {{ $h->harvest_date->format('d/m/Y') }} — {{ $h->cropCycle?->crop_name }}
                                     ({{ number_format($h->effective_weight_kg, 1, ',', ' ') }} kg
@@ -250,6 +251,17 @@
                         const root = sel.closest('[x-data]');
                         const cost = parseFloat(o.dataset.cost || 0) || 0;
                         if (root && root._x_dataStack) root._x_dataStack[0].inputCostPerUnit = cost;
+                        // Recettes de LA culture récoltée (CropRecipe::convientA) :
+                        // « Gari » n'est plus proposé pour une récolte de maïs.
+                        const recetteSel = f.crop_recipe_id;
+                        if (recetteSel) {
+                            const ids = o.value ? (o.dataset.recettes || '').split(',').filter(Boolean) : null;
+                            recetteSel.querySelectorAll('[data-recette]').forEach((opt) => {
+                                const ok = ! ids || ids.includes(opt.dataset.recette);
+                                opt.hidden = ! ok; opt.disabled = ! ok;
+                                if (! ok && opt.selected) recetteSel.value = '';
+                            });
+                        }
                         if (!o.value) return;
                         if (o.dataset.kg && !f.input_quantity.value) {
                             f.input_quantity.value = o.dataset.kg;

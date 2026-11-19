@@ -58,8 +58,12 @@ class SyncController extends Controller
             // la réception d'aliment — le champ restreint du bureau).
             // + TRACKS_MILK (Batch::tracksMilk) : la traite ne liste que les
             // lots laitiers — elle proposait des lots de volaille.
+            // + ACCEPTE_ALIMENTATION_BRUTE / ACCEPTE_PATURAGE (herbivores,
+            // ruminants) et le bilan d'ALIMENTATION NATURELLE sans montant
+            // (Batch::alimentationNaturelleTerrain) pour la fiche du lot.
             'append'  => ['can_collect_eggs', 'mortality_rate', 'effectif_pondeur',
-                          'current_phase', 'species_family', 'feed_phases', 'tracks_milk'],
+                          'current_phase', 'species_family', 'feed_phases', 'tracks_milk',
+                          'accepte_alimentation_brute', 'accepte_paturage', 'alimentation_naturelle_terrain'],
             'with'    => ['species', 'productionType', 'breed'],
             // Ni les lots VIRTUELS de traçabilité (effectif initial nul, cf.
             // Batch::isVirtual) : aucun animal à soigner, nourrir ni pointer.
@@ -262,7 +266,9 @@ class SyncController extends Controller
             // + BLOCAGE (SlaughterOrder::blocage : lot inactif, quarantaine,
             // délai d'attente) — renvoyé chaque jour pour un ordre planifié,
             // le délai d'attente se lève à la date sans que l'ordre change.
-            'append'  => ['cuts', 'blocage'],
+            // + PRESENTATIONS et BYPRODUCT_TYPES de l'espèce : le terrain
+            // proposait PAC/effilé et les plumes pour un ordre d'ovins.
+            'append'  => ['cuts', 'blocage', 'presentations', 'byproduct_types'],
             'with'    => ['batch.species'],
             'toujours' => ['planifie'],
         ],
@@ -316,6 +322,10 @@ class SyncController extends Controller
                           'output_unit', 'expected_yield_percent', 'shelf_life_days',
                           'is_active', 'updated_at'],
             'scope'   => 'active',
+            // + INTRANTS : le terrain ne propose que les recettes de la culture
+            // récoltée (CropRecipe::convientA) — « Gari » pour du maïs.
+            'append'  => ['intrants'],
+            'with'    => ['items'],
         ],
         // T1 — Récoltes EN ATTENTE DE TRANSFORMATION : la liste de travail de
         // l'atelier. Choisir la récolte donne la traçabilité au lot ET le coût
