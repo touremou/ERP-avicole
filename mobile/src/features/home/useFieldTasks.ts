@@ -86,7 +86,9 @@ export function useFieldTasks(): FieldTasks {
       // actif) n'est pas « à exécuter » : le serveur le refuserait.
       setSlaughterOrders(orders.filter((o) => !executedOrders.has(o.id) && !o.blocage))
       const ops = await db.ref_mill_productions.where('status').anyOf('Planifié', 'En cours').toArray()
-      setMillProductions(ops.filter((op) => !completedOps.has(op.id)))
+      // Un OP dont une machine est en panne n'est pas « à clôturer » : le
+      // serveur refuserait la clôture (MillProduction::blocageDeCloture).
+      setMillProductions(ops.filter((op) => !completedOps.has(op.id) && !op.blocage_de_cloture))
     }
 
     void safeLoad('champ:taches', load)

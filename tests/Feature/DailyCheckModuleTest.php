@@ -471,18 +471,21 @@ test('le registre de consommation s\'aligne sur les pointages : une ligne par da
 
     $date = now()->subDay()->toDateString();
 
-    // Saisie initiale puis CORRECTION le même jour (10 → 30 kg).
-    foreach ([10, 30] as $qty) {
-        $this->actingAs($this->managerUser)
-            ->post(route('daily-checks.store'), [
-                'batch_id'      => $batch->id,
-                'check_date'    => $date,
-                'mortality'     => 0,
-                'feed_consumed' => $qty,
-                'feed_type'     => 'Chair Démarrage',
-            ])
-            ->assertSessionHasNoErrors();
-    }
+    // Saisie initiale puis CORRECTION le même jour (10 → 30 kg). Une seconde
+    // saisie n'écrase plus la première en silence : elle est refusée, et la
+    // correction passe par la fiche existante (édition).
+    $saisie = fn (int $qty) => $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id' => $batch->id, 'check_date' => $date, 'mortality' => 0,
+            'feed_consumed' => $qty, 'feed_type' => 'Chair Démarrage',
+        ]);
+    $saisie(10)->assertSessionHasNoErrors();
+    $saisie(30)->assertSessionHasErrors('check_date');
+
+    $fiche = \App\Models\DailyCheck::where('batch_id', $batch->id)->firstOrFail();
+    $this->actingAs($this->managerUser)->put(route('daily-checks.update', $fiche), [
+        'mortality' => 0, 'feed_consumed' => 30, 'feed_type' => 'Chair Démarrage',
+    ])->assertSessionHasNoErrors();
 
     $batch->refresh();
     $ledger = $batch->feedConsumptionLedger();

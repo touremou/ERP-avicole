@@ -31,6 +31,16 @@ class RecordDailyCheck
         return DB::transaction(function () use ($data) {
             $batch = Batch::findOrFail($data['batch_id']);
 
+            // Pas d'aliment consommé, pas d'article (lot au pâturage) : chaîne vide.
+            $data['feed_type'] = $data['feed_type'] ?? '';
+
+            // ─── Fumier : ramassé lors d'un renouvellement de litière seulement ───
+            // Règle du formulaire du bureau, appliquée ici pour toutes les portes :
+            // le terrain valorisait du fumier sans litière changée.
+            if (empty($data['litter_changed'])) {
+                $data['manure_collected_kg'] = 0;
+            }
+
             // ─── Vie du lot : actif, date ni future ni d'avant l'arrivée ───
             // Règles des requêtes web, que le terrain ne voyait pas (cf.
             // Batch::refusDeSaisie) — appliquées ici pour toutes les portes.

@@ -31,11 +31,7 @@ class StoreBatchRequest extends FormRequest
 
         // Types valides : référentiel des types de production de toutes les espèces
         // (+ valeurs historiques 'chair', 'ponte', etc. pour compatibilité ascendante)
-        $validTypes = ProductionType::pluck('slug')
-            ->merge(['chair', 'ponte', 'poussiniere', 'reproducteur', 'engraissement'])
-            ->unique()
-            ->values()
-            ->toArray();
+        $validTypes = ProductionType::slugsAdmis();
 
         return [
             'code'               => 'required|string|max:50|unique:batches,code',

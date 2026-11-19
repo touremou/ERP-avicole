@@ -399,4 +399,18 @@ class DailyCheck extends Model
             report: false
         );
     }
+
+    /**
+     * Ce qui empêche d'enregistrer ce pointage — par champ. Lu par le bureau
+     * (StoreDailyCheckRequest) et le terrain (SyncService::dailyCheckCreate) :
+     * de l'aliment consommé se déclare avec son ARTICLE (le stock à décrémenter).
+     *
+     * @return array<string, string>
+     */
+    public static function erreursDeSaisie(array $donnees): array
+    {
+        return (float) ($donnees['feed_consumed'] ?? 0) > 0 && blank($donnees['feed_type'] ?? null)
+            ? ['feed_type' => __('Indiquez l’aliment consommé (article du stock).')]
+            : [];
+    }
 }

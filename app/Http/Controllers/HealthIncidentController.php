@@ -61,7 +61,7 @@ class HealthIncidentController extends Controller
             'daily_check_id'  => 'nullable|exists:daily_checks,id', // pointage d'origine (traçabilité)
             'symptom_tags'    => 'required_without:symptoms|nullable|array',
             'symptom_tags.*'  => 'string|max:100',
-            'symptoms'        => 'required_without:symptom_tags|nullable|string|max:1000',
+            'symptoms'        => 'required_without:symptom_tags|nullable|string|max:2000', // = terrain (SyncService)
             'photo'           => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
             'quarantine_now'  => 'nullable|boolean',
         ] + HealthIncident::reglesDeDeclaration());

@@ -207,13 +207,10 @@ class CompleteMillProduction
                 );
             }
             // ─── 4.5. VÉRIFICATION SÉCURITÉ MACHINES ───
-            foreach ($production->machines as $machine) {
-                if ($machine->status === 'En Panne') {
-                    throw new \DomainException(
-                        "Clôture impossible : la machine '{$machine->name}' est déclarée 'En Panne'. " .
-                        "Veuillez enregistrer la maintenance et la remettre en statut 'Opérationnel' avant de valider l'OP."
-                    );
-                }
+            // Règle déclarée sur le modèle (MillProduction::blocageDeCloture) :
+            // les listes du bureau et du terrain la lisent aussi.
+            if ($motif = $production->blocageDeCloture()) {
+                throw new \DomainException(__('Clôture impossible.') . ' ' . $motif);
             }
 
             /*

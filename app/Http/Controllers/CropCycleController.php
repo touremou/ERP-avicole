@@ -501,7 +501,7 @@ class CropCycleController extends Controller
             'unit_price' => 'nullable|numeric|min:0',
             'sync_to_stock' => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',
-            'notes' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:1000', // = terrain (SyncService)
         ]);
 
         $action->execute($cropCycle, $validated);
@@ -537,7 +537,7 @@ class CropCycleController extends Controller
             'provider_id' => ['nullable', \App\Support\Ferme::existe('providers')],
             'synced_to_stock' => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',
-            'notes' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:1000', // = terrain (SyncService)
         ]);
 
         $action->execute($cropCycle, $validated);

@@ -60,6 +60,14 @@ class DailyCheckController extends Controller
 
         $batch = Batch::with(['building', 'protocol.steps'])->findOrFail($batchId);
 
+        // Déjà pointé aujourd'hui : on rectifie la fiche du jour (édition) au
+        // lieu d'en ouvrir une seconde, refusée à l'envoi — comme la traite.
+        $duJour = \App\Models\DailyCheck::where('batch_id', $batch->id)->whereDate('check_date', today())->first();
+        if ($duJour && Gate::allows('elevage.M')) {
+            return redirect()->route('daily-checks.edit', $duJour)
+                ->with('info', __('Ce lot est déjà pointé aujourd’hui : corrigez la fiche du jour.'));
+        }
+
         // Préparation des phases aliment et stocks disponibles, selon le
         // secteur du lot (cf. Batch::feedSector()/feedPhases()).
         $phases = $batch->feedPhases();

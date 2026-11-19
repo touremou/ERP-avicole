@@ -121,6 +121,10 @@
                                         
                                         {{-- Permission M : Finalisation de la production --}}
                                         @can('provenderie.M')
+                                        {{-- Machine en panne : la clôture serait refusée (MillProduction::blocageDeCloture). --}}
+                                        @if($motifCloture = $prod->blocageDeCloture())
+                                        <span class="text-[9px] font-black text-rose-600 uppercase italic" title="{{ $motifCloture }}"><i class="fa-solid fa-ban mr-1"></i>{{ __('Clôture bloquée') }}</span>
+                                        @else
                                         <form action="{{ route('production.complete', $prod->id) }}" method="POST" onsubmit="return confirm(@js(__('Confirmer la fin de production ? Le stock sera mis à jour.')))">
                                             @csrf
                                             @method('PUT')
@@ -128,6 +132,7 @@
                                                 {{ __("Terminer l'ordre") }} <i class="fa-solid fa-arrow-right ml-1"></i>
                                             </button>
                                         </form>
+                                        @endif
                                         @endcan
                                     </div>
                                 @endif

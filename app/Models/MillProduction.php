@@ -204,4 +204,19 @@ class MillProduction extends Model
 
         return $refus;
     }
+
+    /**
+     * Pourquoi cet OP ne se CLÔTURE pas — ou null : une de ses machines est
+     * déclarée en panne (CompleteMillProduction). La règle n'était connue que
+     * de l'action : le terrain listait l'OP « à clôturer », la clôture partait
+     * au bac « À corriger » ; le bureau offrait le bouton sans un mot.
+     */
+    public function blocageDeCloture(): ?string
+    {
+        $enPanne = $this->machines->where('status', 'En Panne')->pluck('name');
+
+        return $enPanne->isEmpty() ? null : __('Machine en panne : :noms — à réparer (statut « Opérationnel ») avant de clôturer.', [
+            'noms' => $enPanne->implode(', '),
+        ]);
+    }
 }

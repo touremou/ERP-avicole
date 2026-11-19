@@ -14,6 +14,10 @@
                     {{-- Permission M : Clôture de la production --}}
                     @can('provenderie.M')
                         @if($production->status === 'Planifié' || $production->status === 'En cours')
+                            {{-- Machine en panne : la clôture serait refusée (MillProduction::blocageDeCloture). --}}
+                            @if($motifCloture = $production->blocageDeCloture())
+                            <span class="bg-rose-50 text-rose-700 border border-rose-100 px-6 py-4 rounded-2xl text-[10px] font-black"><i class="fa-solid fa-ban mr-2"></i>{{ $motifCloture }}</span>
+                            @else
                             <form action="{{ route('production.complete', $production->id) }}" method="POST" onsubmit="return confirm(@js(__('Confirmer la fin du mélange ? Les stocks et compteurs machines seront mis à jour.')))">
                                 @csrf
                                 @method('PUT')
@@ -21,6 +25,7 @@
                                     <i class="fa-solid fa-check-double mr-2"></i> {{ __("Clôturer & Stocker") }}
                                 </button>
                             </form>
+                            @endif
                             {{-- Annulation : libère la machine si l'OP ne sera pas mené à terme
                                  (sans elle, la machine resterait engagée indéfiniment). --}}
                             <form action="{{ route('production.cancel', $production->id) }}" method="POST" onsubmit="return confirm(@js(__('Annuler cet ordre et libérer la/les machine(s) ? Aucun stock n\'est consommé tant que l\'OP n\'est pas clôturé.')))">

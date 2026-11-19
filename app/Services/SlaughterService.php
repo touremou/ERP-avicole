@@ -234,8 +234,8 @@ class SlaughterService
             $alreadyCut = (float) $order->cuttingSessions()->sum('total_input_kg');
             $inputKg    = (float) $data['total_input_kg'];
 
-            if ($inputKg + $alreadyCut > $carcassKg + 0.001) {
-                $remaining = max(0, $carcassKg - $alreadyCut);
+            if ($inputKg > $order->carcasseADecouper() + 0.001) {
+                $remaining = $order->carcasseADecouper();
                 throw new Exception(
                     "Conservation de matière : {$inputKg} kg demandés mais il ne reste que "
                     . number_format($remaining, 1) . " kg de carcasse à découper sur l'ordre {$order->order_number} "
@@ -243,6 +243,10 @@ class SlaughterService
                     . number_format($alreadyCut, 1) . " kg)."
                 );
             }
+
+            // L'ordre change : sa carcasse restante (servie au terrain) baisse.
+            // Sans ce `touch`, la synchronisation par date ne la renverrait pas.
+            $order->touch();
 
             $session = CuttingSession::create([
                 'uuid'               => $data['uuid'] ?? null, // idempotence push mobile

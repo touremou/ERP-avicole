@@ -299,7 +299,8 @@
                          qui la porte refuse, et se cachait à qui elle accepte —
                          alors que le crayon et la corbeille du même achat, plus
                          bas dans ce fichier, lisent déjà « provenderie ». --}}
-                    @can('provenderie.C')
+                    {{-- Provenderie ou magasin : la règle de la porte (Gate aliment.receptionner). --}}
+                    @can('aliment.receptionner')
                     <button type="button" onclick="document.getElementById('manage-menu').classList.add('hidden'); openFeedModal()"
                             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all border-none bg-transparent cursor-pointer text-left">
                         <i class="fa-solid fa-truck-ramp-box text-orange-400 w-4"></i> {{ __("Achat direct aliment") }}

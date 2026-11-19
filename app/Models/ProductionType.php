@@ -215,4 +215,21 @@ class ProductionType extends Model
 
         return null;
     }
+
+    /**
+     * Slugs de type ADMIS pour un lot : le référentiel + les valeurs
+     * historiques. Une liste fermée, au bureau (StoreBatchRequest) comme au
+     * terrain (SyncService::batchUpsert) — le terrain acceptait un slug libre,
+     * et resolveOrCreate créait un nouveau type à la première faute de frappe.
+     *
+     * @return array<int, string>
+     */
+    public static function slugsAdmis(): array
+    {
+        return static::pluck('slug')
+            ->merge(['chair', 'ponte', 'poussiniere', 'reproducteur', 'engraissement'])
+            ->unique()
+            ->values()
+            ->all();
+    }
 }

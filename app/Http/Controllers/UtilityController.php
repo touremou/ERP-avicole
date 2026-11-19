@@ -146,6 +146,11 @@ class UtilityController extends Controller
             'notes'               => 'nullable|string|max:500',
         ]);
 
+        // Source désactivée : ni relevé ni ravitaillement (WaterSource::refusDeReleve).
+        if ($motif = WaterSource::refusDeReleve($source->id)) {
+            return back()->withErrors(['water_source_id' => $motif]);
+        }
+
         /*
          * TOUT LE RAVITAILLEMENT SOUS VERROU.
          *

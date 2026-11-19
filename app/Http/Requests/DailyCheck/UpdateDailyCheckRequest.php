@@ -24,12 +24,23 @@ class UpdateDailyCheckRequest extends FormRequest
         return Gate::allows('elevage.M');
     }
 
+    /** Aliment consommé ⇒ article indiqué (DailyCheck::erreursDeSaisie), comme à la création. */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            foreach (\App\Models\DailyCheck::erreursDeSaisie($this->all()) as $champ => $message) {
+                $validator->errors()->add($champ, $message);
+            }
+        });
+    }
+
     public function rules(): array
     {
         return [
             'mortality'          => 'required|integer|min:0',
             'feed_consumed'      => 'required|numeric|min:0',
-            'feed_type'          => 'required|string|max:255',
+            // Exigé seulement s'il y a eu de l'aliment (DailyCheck::erreursDeSaisie).
+            'feed_type'          => 'nullable|string|max:255',
             'water_consumed'     => 'nullable|numeric|min:0',
             // Bornes physiques strictes (anti « fat-finger », cf. Store).
             'temp_min'           => 'nullable|numeric|between:-10,50',

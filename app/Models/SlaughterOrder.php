@@ -87,6 +87,19 @@ class SlaughterOrder extends Model
         return $lot->blocageSanitaire();
     }
 
+    /**
+     * Carcasse qui RESTE à découper (kg) : produite à l'abattage, moins les
+     * entrées de toutes les sessions de découpe. La règle de conservation de
+     * matière de SlaughterService::executeCutting, servie au terrain — qui
+     * listait un ordre entièrement découpé, et dont la saisie était refusée.
+     */
+    public function carcasseADecouper(): float
+    {
+        $carcasse = (float) ($this->result?->total_carcass_weight_kg ?? 0);
+
+        return round(max(0, $carcasse - (float) $this->cuttingSessions()->sum('total_input_kg')), 2);
+    }
+
     /** Gammes de sortie de l'espèce, avec leur bande de rendement (terrain). */
     public function presentations(): array
     {

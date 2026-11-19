@@ -71,6 +71,36 @@ class RecordCcp
      * Publique : la sync la pré-calcule pour exiger l'action corrective
      * AVANT d'écrire (pas d'alerte partie sur une écriture annulée).
      */
+    /**
+     * Les mesures EXIGÉES par chaque CCP — par champ, vide si complètes.
+     *
+     * Le bureau les validait (HaccpRegisterController::ccpStore) ; le terrain
+     * n'exigeait qu'un tableau non vide. Or evaluate() retombe sur « conforme »
+     * quand la mesure manque : un CCP 3 sans température, un CCP 1 sans
+     * déclaration s'inscrivaient CONFORMES au registre légal, sans blocage
+     * d'ordre. Mêmes exigences, lues par la synchronisation.
+     *
+     * @return array<string, string>
+     */
+    public static function erreursDeMesures(string $ccp, array $mesures, ?bool $declared): array
+    {
+        $nombre = fn ($v) => is_numeric($v) && (float) $v >= -60 && (float) $v <= 120;
+
+        return match ($ccp) {
+            CcpRecord::CCP1 => $declared === null
+                ? ['conforme' => __('CCP 1 : déclarez l’appréciation ante-mortem (conforme ou non).')] : [],
+            CcpRecord::CCP2 => (! is_numeric($mesures['carcasses_total'] ?? null) || (int) $mesures['carcasses_total'] < 1
+                    || ! is_numeric($mesures['carcasses_souillees'] ?? null) || (int) $mesures['carcasses_souillees'] < 0
+                    || (int) $mesures['carcasses_souillees'] > (int) $mesures['carcasses_total'])
+                ? ['mesures' => __('CCP 2 : carcasses contrôlées (au moins 1) et souillées (au plus le total).')] : [],
+            CcpRecord::CCP3 => ! $nombre($mesures['temperature_coeur'] ?? null)
+                ? ['mesures' => __('CCP 3 : température à cœur obligatoire (entre −60 et 120 °C).')] : [],
+            CcpRecord::CCP4 => (! array_key_exists((string) ($mesures['point'] ?? ''), TemperatureLog::POINTS) || ! $nombre($mesures['temperature'] ?? null))
+                ? ['mesures' => __('CCP 4 : point de mesure et température obligatoires.')] : [],
+            default => [],
+        };
+    }
+
     public function evaluate(string $ccp, array $mesures, ?bool $declared): bool
     {
         switch ($ccp) {

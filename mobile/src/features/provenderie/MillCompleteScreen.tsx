@@ -50,6 +50,16 @@ export function MillCompleteScreen() {
     )
   }
 
+  // Machine en panne : la clôture serait refusée — on le dit avant.
+  if (production.blocage_de_cloture) {
+    return (
+      <div className="screen-center">
+        <p className="big">⛔ {t('Clôture impossible')}</p>
+        <p className="muted">{production.blocage_de_cloture}</p>
+      </div>
+    )
+  }
+
   if (saved) {
     return (
       <div className="screen-center">
